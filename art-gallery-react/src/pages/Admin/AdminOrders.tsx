@@ -25,8 +25,16 @@ const AdminOrders: React.FC = () => {
     };
 
     const handleStatusChange = async (orderId: number, newStatus: number) => {
+        let reason = '';
+        if (newStatus === 3) {
+            reason = prompt('Vui lòng nhập lý do hủy đơn hàng:') || '';
+            if (!reason) {
+                alert('Bạn cần cung cấp lý do để hủy đơn hàng.');
+                return;
+            }
+        }
         try {
-            await adminService.updateOrderStatus(orderId, newStatus);
+            await adminService.updateOrderStatus(orderId, newStatus, reason);
             alert('Cập nhật trạng thái thành công!');
             loadOrders();
         } catch (error: any) {
@@ -121,6 +129,11 @@ const AdminOrders: React.FC = () => {
                                             <option value={2}>Hoàn thành</option>
                                             <option value={3}>Đã hủy</option>
                                         </select>
+                                        {order.trangThai === 3 && order.lyDoHuy && (
+                                            <div style={{ fontSize: '11px', color: '#e74c3c', marginTop: '4px' }}>
+                                                Lý do: {order.lyDoHuy}
+                                            </div>
+                                        )}
                                     </td>
                                     <td>{formatPrice(order.tongTien)}</td>
                                     <td>

@@ -1,7 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { adminService, HoSoHoaSiResponse } from '../../services/adminService';
 
 const AdminAuthors: React.FC = () => {
+    const [authors, setAuthors] = useState<HoSoHoaSiResponse[]>([]);
+    const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        loadAuthors();
+    }, []);
+
+    const loadAuthors = async () => {
+        try {
+            setLoading(true);
+            const data = await adminService.getAllHoaSi();
+            setAuthors(data);
+        } catch (error) {
+            console.error('Lỗi khi tải danh sách tác giả:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleLock = async (id: number, currentStatus: boolean) => {
+        if (window.confirm(currentStatus ? 'Khóa tài khoản tác giả này?' : 'Mở khóa tài khoản tác giả này?')) {
+            try {
+                if (currentStatus) {
+                    await adminService.khoaHoaSi(id);
+                } else {
+                    await adminService.moKhoaHoaSi(id);
+                }
+                loadAuthors();
+            } catch (error) {
+                console.error('Lỗi khi cập nhật trạng thái:', error);
+            }
+        }
+    };
 
     return (
         <div id="authors" className="page">
@@ -9,59 +43,69 @@ const AdminAuthors: React.FC = () => {
                 <h4 style={{ color: '#2c7be5', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
                     <i className="ti-id-badge"></i> Quản lý Tác giả
                 </h4>
-                <button className="add-btn" onClick={() => setIsModalOpen(true)} style={{ margin: 0 }}>
-                    <i className="ti-plus"></i> Thêm tác giả
-                </button>
+                {/* 
+                Trong hệ thống hiện tại, Tác giả đăng ký qua trang Register 
+                nên nút "Thêm tác giả" có thể dùng để tạo nhanh hoặc chỉ Admin mới được tạo.
+                Tạm thời để logic mở modal.
+                */}
             </div>
 
-            <table className="styled-table" style={{ width: '100%', borderCollapse: 'collapse', borderRadius: '10px', overflow: 'hidden' }}>
-                <thead>
-                    <tr>
-                        <th style={{ background: '#2c7be5', color: 'white', padding: '10px' }}>Tên tác giả</th>
-                        <th style={{ background: '#2c7be5', color: 'white', padding: '10px' }}>Số tác phẩm</th>
-                        <th style={{ background: '#2c7be5', color: 'white', padding: '10px' }}>Đánh giá</th>
-                        <th style={{ background: '#2c7be5', color: 'white', padding: '10px' }}>Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>Lân Vũ</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>18</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>5 Sao</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd', textAlign: 'center' }}>
-                            <button style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '5px', background: 'transparent', cursor: 'pointer' }}><i className="ti-pencil"></i></button>
-                            <button style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '5px', background: 'transparent', cursor: 'pointer', color: 'red', marginLeft: '5px' }}><i className="ti-trash"></i></button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>Trần Vinh</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>5</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd' }}>4 Sao</td>
-                        <td style={{ padding: '10px', borderBottom: '1px solid #ddd', textAlign: 'center' }}>
-                            <button style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '5px', background: 'transparent', cursor: 'pointer' }}><i className="ti-pencil"></i></button>
-                            <button style={{ border: '1px solid #ccc', borderRadius: '4px', padding: '5px', background: 'transparent', cursor: 'pointer', color: 'red', marginLeft: '5px' }}><i className="ti-trash"></i></button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '20px' }}>Đang tải dữ liệu...</div>
+            ) : (
+                <div className="table-container">
+                    <table className="styled-table">
+                        <thead>
+                            <tr>
+                                <th>Mã</th>
+                                <th>Tên tác giả</th>
+                                <th>Email</th>
+                                <th>Số điện thoại</th>
+                                <th>Số tác phẩm</th>
+                                <th>Doanh thu</th>
+                                <th>Trạng thái</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {authors.map((author) => (
+                                <tr key={author.id}>
+                                    <td>{author.id}</td>
+                                    <td><strong>{author.tenHoaSi}</strong></td>
+                                    <td>{author.email}</td>
+                                    <td>{author.soDienThoai}</td>
+                                    <td>{author.soTacPham}</td>
+                                    <td>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(author.doanhThu)}</td>
+                                    <td>
+                                        <span className={`status ${author.trangThai ? 'status-success' : 'status-canceled'}`}>
+                                            {author.trangThai ? 'Hoạt động' : 'Đang khóa'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button 
+                                            onClick={() => handleLock(author.id, author.trangThai)}
+                                            title={author.trangThai ? 'Khóa' : 'Mở khóa'}
+                                            style={{ color: author.trangThai ? 'red' : 'green' }}
+                                        >
+                                            <i className={author.trangThai ? 'ti-lock' : 'ti-unlock'}></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {isModalOpen && (
                 <div className="modal show" style={{ display: 'flex' }}>
                     <div className="modal-content">
                         <span className="close" onClick={() => setIsModalOpen(false)}>&times;</span>
                         <h3>Thêm Tác giả mới</h3>
-                        <form>
-                            <label>Tên họa sĩ/tác giả:</label>
-                            <input type="text" placeholder="Nhập tên..." required style={{ width: '100%', padding: '10px', marginTop: '5px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ddd' }} />
-
-                            <label>Tiểu sử sơ lược:</label>
-                            <textarea rows={4} placeholder="Vài nét về tác giả..." style={{ width: '100%', padding: '10px', marginTop: '5px', marginBottom: '15px', borderRadius: '5px', border: '1px solid #ddd' }}></textarea>
-
-                            <div className="modal-buttons" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                                <button type="button" onClick={() => setIsModalOpen(false)} style={{ background: '#008000', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Lưu thông tin</button>
-                                <button type="button" onClick={() => setIsModalOpen(false)} style={{ background: '#f0f0f0', border: '1px solid #dc3545', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>Hủy</button>
-                            </div>
-                        </form>
+                        <p style={{ color: '#666', fontSize: '0.9rem' }}>Chức năng tạo tài khoản tác giả trực tiếp từ Admin đang được cập nhật.</p>
+                        <div className="modal-buttons" style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                            <button type="button" onClick={() => setIsModalOpen(false)} className="cancel">Đóng</button>
+                        </div>
                     </div>
                 </div>
             )}

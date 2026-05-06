@@ -39,6 +39,7 @@ export interface User {
   website?: string;
   facebook?: string;
   instagram?: string;
+  avatar?: string;
 }
 
 export interface Order {

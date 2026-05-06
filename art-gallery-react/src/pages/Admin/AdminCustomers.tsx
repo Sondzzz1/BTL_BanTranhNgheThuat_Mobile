@@ -68,9 +68,9 @@ const AdminCustomers: React.FC = () => {
                     </thead>
                     <tbody>
                         {customers.map((customer) => (
-                            <tr key={customer.maNguoiDung}>
-                                <td>{customer.ten}</td>
-                                <td>{customer.dienThoai || 'N/A'}</td>
+                            <tr key={customer.id}>
+                                <td>{customer.hoTen}</td>
+                                <td>{customer.soDienThoai || 'N/A'}</td>
                                 <td>{customer.email || 'N/A'}</td>
                                 <td>{customer.diaChi || 'Chưa cập nhật'}</td>
                                 <td>

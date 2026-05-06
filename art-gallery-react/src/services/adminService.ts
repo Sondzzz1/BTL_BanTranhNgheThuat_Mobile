@@ -55,6 +55,7 @@ export interface DonHangAdminResponse {
   trangThaiText: string;
   trangThai: number;
   trangThaiThanhToan?: string;
+  lyDoHuy?: string;
 }
 
 export interface DonHangResponse {
@@ -770,8 +771,8 @@ export const adminService = {
     return this.getAllDonHang();
   },
 
-  async updateOrderStatus(orderId: number, newStatus: number): Promise<void> {
-    return this.capNhatTrangThaiDonHang(orderId, { trangThai: newStatus });
+  async updateOrderStatus(orderId: number, newStatus: number, ghiChu?: string): Promise<void> {
+    return this.capNhatTrangThaiDonHang(orderId, { trangThai: newStatus, ghiChu });
   },
 
   // Tác phẩm

@@ -155,7 +155,21 @@ const UserOrders: React.FC = () => {
                     Xem Chi Tiết
                   </Link>
                   {order.trangThai === 'pending' && (
-                    <button className="btn-cancel">
+                    <button 
+                      className="btn-cancel"
+                      onClick={async () => {
+                        const reason = prompt('Vui lòng nhập lý do hủy đơn hàng:');
+                        if (reason) {
+                          try {
+                            await orderService.cancelOrder(parseInt(order.id), reason);
+                            alert('Hủy đơn hàng thành công');
+                            loadOrders();
+                          } catch (error: any) {
+                            alert(error.message);
+                          }
+                        }
+                      }}
+                    >
                       Hủy Đơn
                     </button>
                   )}

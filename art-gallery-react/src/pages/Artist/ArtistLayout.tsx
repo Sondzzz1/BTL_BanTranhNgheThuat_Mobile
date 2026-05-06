@@ -32,7 +32,7 @@ const ArtistLayout: React.FC = () => {
         <ul>
           <NavLink to="/artist" end>
             <li className={location.pathname === '/artist' ? 'active' : ''}>
-              <i className="ti-dashboard"></i> Dashboard
+              <i className="ti-dashboard"></i> Bảng điều khiển
             </li>
           </NavLink>
 

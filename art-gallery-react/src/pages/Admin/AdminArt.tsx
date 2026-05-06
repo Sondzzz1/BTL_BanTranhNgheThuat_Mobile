@@ -121,7 +121,11 @@ const AdminArt: React.FC = () => {
                                 <td>{artwork.tenHoaSi || '-'}</td>
                                 <td>{formatPrice(artwork.gia)}</td>
                                 <td>
-                                    <span className={`status status-${artwork.trangThai}`}>
+                                    <span className={`status ${
+                                        artwork.trangThai === 0 ? 'pending' : 
+                                        artwork.trangThai === 1 ? 'success' : 
+                                        artwork.trangThai === 2 ? 'canceled' : ''
+                                    }`}>
                                         {artwork.trangThaiText}
                                     </span>
                                 </td>

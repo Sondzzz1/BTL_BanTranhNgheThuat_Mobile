@@ -3,10 +3,10 @@ import apiClient from './api';
 
 // Interface khớp với ThongTinKhachHangResponse từ backend
 export interface ThongTinKhachHangResponse {
-  maNguoiDung: number;
-  ten: string;
+  id: number;
+  hoTen: string;
   diaChi?: string;
-  dienThoai?: string;
+  soDienThoai?: string;
   email?: string;
 }
 

@@ -1,59 +1,47 @@
-// Admin Report - Báo cáo và thống kê chi tiết
 import React, { useState, useEffect } from 'react';
-import { useAppContext } from '../../context/AppContext';
-
-interface ReportData {
-  totalRevenue: number;
-  totalProfit: number;
-  totalOrders: number;
-  totalItemsSold: number;
-  dailyData: {
-    date: string;
-    revenue: number;
-    profit: number;
-    orders: number;
-  }[];
-  topSellingArtworks: {
-    id: string;
-    name: string;
-    sold: number;
-    revenue: number;
-  }[];
-  revenueByCategory: {
-    category: string;
-    revenue: number;
-    percentage: number;
-  }[];
-}
+import { adminService } from '../../services/adminService';
+import './Admin.css';
 
 const AdminReport: React.FC = () => {
-    const { artworks } = useAppContext();
-    const [reportType, setReportType] = useState('sales');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [reportData, setReportData] = useState<ReportData>({
-        totalRevenue: 24000000,
-        totalProfit: 10000000,
-        totalOrders: 12,
-        totalItemsSold: 15,
-        dailyData: [
-            { date: '2026-04-20', revenue: 4500000, profit: 1500000, orders: 2 },
-            { date: '2026-04-21', revenue: 6000000, profit: 2000000, orders: 3 },
-            { date: '2026-04-22', revenue: 3500000, profit: 1200000, orders: 1 },
-            { date: '2026-04-23', revenue: 5000000, profit: 1800000, orders: 3 },
-            { date: '2026-04-24', revenue: 5000000, profit: 1500000, orders: 3 },
-        ],
-        topSellingArtworks: [
-            { id: '1', name: 'Vàng Vọng Thinh Không', sold: 5, revenue: 7500000 },
-            { id: '2', name: 'Sang Đông', sold: 4, revenue: 6000000 },
-            { id: '3', name: 'Phố Băng', sold: 3, revenue: 4500000 },
-        ],
-        revenueByCategory: [
-            { category: 'Tranh sơn dầu', revenue: 12000000, percentage: 50 },
-            { category: 'Tranh sơn mài', revenue: 7200000, percentage: 30 },
-            { category: 'Tranh cổ điển', revenue: 4800000, percentage: 20 },
-        ],
-    });
+    const [loading, setLoading] = useState(true);
+    const [summary, setSummary] = useState<any>(null);
+    const [monthlyRevenue, setMonthlyRevenue] = useState<any[]>([]);
+    const [bestSelling, setBestSelling] = useState<any[]>([]);
+    const [authorRevenue, setAuthorRevenue] = useState<any[]>([]);
+    const [orderStats, setOrderStats] = useState<any>(null);
+
+    useEffect(() => {
+        loadReportData();
+    }, []);
+
+    const loadReportData = async () => {
+        try {
+            setLoading(true);
+            const [
+                summaryData,
+                monthlyData,
+                bestSellingData,
+                authorData,
+                orderStatsData
+            ] = await Promise.all([
+                adminService.getThongKeTongQuan(),
+                adminService.getDoanhThuTheoThang(2026),
+                adminService.getTacPhamBanChay(5),
+                adminService.getDoanhThuTheoHoaSi({}),
+                adminService.getThongKeTrangThaiDonHang()
+            ]);
+
+            setSummary(summaryData);
+            setMonthlyRevenue(monthlyData);
+            setBestSelling(bestSellingData);
+            setAuthorRevenue(authorData);
+            setOrderStats(orderStatsData);
+        } catch (error) {
+            console.error('Lỗi khi tải báo cáo:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('vi-VN', {
@@ -62,74 +50,14 @@ const AdminReport: React.FC = () => {
         }).format(amount);
     };
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('vi-VN');
-    };
-
-    const handleGenerateReport = () => {
-        // TODO: Call API to generate report with date range
-        console.log('Generate report:', { reportType, startDate, endDate });
-        alert('Đang tạo báo cáo...');
-    };
-
-    const handlePrintReport = () => {
-        window.print();
-    };
-
-    const handleExportExcel = () => {
-        alert('Xuất Excel - Chức năng đang phát triển');
-        // TODO: Implement Excel export
-    };
+    if (loading) return <div className="page"><div className="loading">Đang tải báo cáo...</div></div>;
 
     return (
         <div id="report" className="page">
-            <h4><i className="ti-bar-chart"></i> Báo cáo thống kê</h4>
-
-            <div className="filter-bar report-filter">
-                <div className="filter-item">
-                    <label>Loại báo cáo:</label>
-                    <select 
-                        value={reportType}
-                        onChange={(e) => setReportType(e.target.value)}
-                    >
-                        <option value="sales">Doanh thu & Lợi nhuận</option>
-                        <option value="orders">Đơn hàng</option>
-                        <option value="inventory">Tồn kho</option>
-                        <option value="bestselling">Bán chạy</option>
-                    </select>
-                </div>
-                <div className="filter-item">
-                    <label>Từ ngày:</label>
-                    <input 
-                        type="date" 
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                    />
-                </div>
-                <div className="filter-item">
-                    <label>Đến ngày:</label>
-                    <input 
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                    />
-                </div>
-                <button className="add-btn" onClick={handleGenerateReport}>
-                    <i className="ti-search"></i> Xem báo cáo
-                </button>
-                <button 
-                    className="add-btn" 
-                    style={{ background: '#17a2b8', marginLeft: '10px' }}
-                    onClick={handlePrintReport}
-                >
-                    <i className="ti-printer"></i> In báo cáo
-                </button>
-                <button 
-                    className="add-btn" 
-                    style={{ background: '#28a745', marginLeft: '10px' }}
-                    onClick={handleExportExcel}
-                >
-                    <i className="ti-download"></i> Xuất Excel
+            <div className="page-header">
+                <h4><i className="ti-bar-chart"></i> Báo cáo thống kê tổng quát</h4>
+                <button className="add-btn" onClick={loadReportData}>
+                    <i className="ti-reload"></i> Làm mới
                 </button>
             </div>
 
@@ -138,158 +66,144 @@ const AdminReport: React.FC = () => {
                 <div className="card bg-success">
                     <i className="ti-money"></i>
                     <p>Tổng Doanh thu</p>
-                    <h3>{formatCurrency(reportData.totalRevenue)}</h3>
-                </div>
-                <div className="card bg-danger">
-                    <i className="ti-stats-up"></i>
-                    <p>Tổng Lợi nhuận</p>
-                    <h3>{formatCurrency(reportData.totalProfit)}</h3>
+                    <h3>{formatCurrency(summary?.tongDoanhThu || 0)}</h3>
                 </div>
                 <div className="card bg-primary">
                     <i className="ti-shopping-cart-full"></i>
                     <p>Tổng Đơn hàng</p>
-                    <h3>{reportData.totalOrders}</h3>
+                    <h3>{summary?.tongDonHang || 0}</h3>
                 </div>
                 <div className="card bg-warning">
-                    <i className="ti-layers"></i>
-                    <p>Tranh bán ra</p>
-                    <h3>{reportData.totalItemsSold}</h3>
+                    <i className="ti-user"></i>
+                    <p>Khách hàng</p>
+                    <h3>{summary?.tongKhachHang || 0}</h3>
+                </div>
+                <div className="card bg-danger">
+                    <i className="ti-palette"></i>
+                    <p>Số Họa sĩ</p>
+                    <h3>{summary?.tongHoaSi || 0}</h3>
                 </div>
             </div>
 
-            {/* Daily Revenue Table */}
-            <div className="block report-detail">
-                <h4 style={{ marginTop: '20px' }}>Doanh Thu Theo Ngày</h4>
-                <div className="table-container">
-                    <table className="styled-table">
-                        <thead>
-                            <tr>
-                                <th>Ngày</th>
-                                <th>Doanh thu</th>
-                                <th>Lợi nhuận</th>
-                                <th>Số đơn</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.dailyData.map((day, index) => (
-                                <tr key={index}>
-                                    <td>{formatDate(day.date)}</td>
-                                    <td>{formatCurrency(day.revenue)}</td>
-                                    <td>{formatCurrency(day.profit)}</td>
-                                    <td>{day.orders}</td>
+            <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                {/* Monthly Revenue */}
+                <div className="block report-detail">
+                    <h4>Doanh Thu Theo Tháng (2026)</h4>
+                    <div className="table-container">
+                        <table className="styled-table">
+                            <thead>
+                                <tr>
+                                    <th>Tháng</th>
+                                    <th>Số đơn</th>
+                                    <th>Doanh thu</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr style={{ fontWeight: 'bold', background: '#f8f9fa' }}>
-                                <td>Tổng cộng</td>
-                                <td>{formatCurrency(reportData.totalRevenue)}</td>
-                                <td>{formatCurrency(reportData.totalProfit)}</td>
-                                <td>{reportData.totalOrders}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {monthlyRevenue.map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td>Tháng {item.thang}</td>
+                                        <td>{item.soDonHang}</td>
+                                        <td>{formatCurrency(item.doanhThu)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            {/* Top Selling Artworks */}
-            <div className="block report-detail">
-                <h4 style={{ marginTop: '20px' }}>Top Tác Phẩm Bán Chạy</h4>
-                <div className="table-container">
-                    <table className="styled-table">
-                        <thead>
-                            <tr>
-                                <th>Xếp hạng</th>
-                                <th>Tên tác phẩm</th>
-                                <th>Số lượng bán</th>
-                                <th>Doanh thu</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.topSellingArtworks.map((artwork, index) => (
-                                <tr key={artwork.id}>
-                                    <td>
-                                        <span style={{
-                                            display: 'inline-block',
-                                            width: '30px',
-                                            height: '30px',
-                                            borderRadius: '50%',
-                                            background: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : '#cd7f32',
-                                            color: 'white',
-                                            textAlign: 'center',
-                                            lineHeight: '30px',
-                                            fontWeight: 'bold',
-                                        }}>
-                                            {index + 1}
-                                        </span>
-                                    </td>
-                                    <td><strong>{artwork.name}</strong></td>
-                                    <td>{artwork.sold}</td>
-                                    <td>{formatCurrency(artwork.revenue)}</td>
+                {/* Best Selling Artworks */}
+                <div className="block report-detail">
+                    <h4>Top 5 Tác Phẩm Bán Chạy</h4>
+                    <div className="table-container">
+                        <table className="styled-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên tác phẩm</th>
+                                    <th>Số lượng</th>
+                                    <th>Doanh thu</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {bestSelling.map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td><strong>{item.tenTacPham}</strong></td>
+                                        <td>{item.soLuongBan}</td>
+                                        <td>{formatCurrency(item.doanhThu)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            {/* Revenue by Category */}
-            <div className="block report-detail">
-                <h4 style={{ marginTop: '20px' }}>Doanh Thu Theo Danh Mục</h4>
-                <div className="table-container">
-                    <table className="styled-table">
-                        <thead>
-                            <tr>
-                                <th>Danh mục</th>
-                                <th>Doanh thu</th>
-                                <th>Tỷ lệ</th>
-                                <th>Biểu đồ</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.revenueByCategory.map((cat, index) => (
-                                <tr key={index}>
-                                    <td><strong>{cat.category}</strong></td>
-                                    <td>{formatCurrency(cat.revenue)}</td>
-                                    <td>{cat.percentage}%</td>
-                                    <td>
-                                        <div style={{
-                                            width: '100%',
-                                            height: '20px',
-                                            background: '#e9ecef',
-                                            borderRadius: '10px',
-                                            overflow: 'hidden',
-                                        }}>
-                                            <div style={{
-                                                width: `${cat.percentage}%`,
-                                                height: '100%',
-                                                background: index === 0 ? '#667eea' : index === 1 ? '#28a745' : '#ffc107',
-                                                transition: 'width 0.3s',
-                                            }}></div>
-                                        </div>
-                                    </td>
+            <div className="report-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+                {/* Author Performance */}
+                <div className="block report-detail">
+                    <h4>Hiệu Suất Họa Sĩ</h4>
+                    <div className="table-container">
+                        <table className="styled-table">
+                            <thead>
+                                <tr>
+                                    <th>Họa sĩ</th>
+                                    <th>Số tranh</th>
+                                    <th>Doanh thu</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {authorRevenue.slice(0, 5).map((item, idx) => (
+                                    <tr key={idx}>
+                                        <td>{item.tenHoaSi}</td>
+                                        <td>{item.soTacPham}</td>
+                                        <td>{formatCurrency(item.doanhThu)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-            </div>
 
-            {/* Chart Placeholder */}
-            <div className="block report-detail">
-                <h4 style={{ marginTop: '20px' }}>Biểu Đồ Doanh Thu</h4>
-                <div style={{
-                    padding: '60px',
-                    background: '#f8f9fa',
-                    borderRadius: '10px',
-                    textAlign: 'center',
-                    color: '#666',
-                }}>
-                    <i className="ti-bar-chart" style={{ fontSize: '3rem', marginBottom: '20px' }}></i>
-                    <p>Biểu đồ sẽ được hiển thị ở đây</p>
-                    <p style={{ fontSize: '0.9rem' }}>
-                        (Cần tích hợp thư viện Chart.js hoặc Recharts)
-                    </p>
+                {/* Order Status Stats */}
+                <div className="block report-detail">
+                    <h4>Trạng Thái Đơn Hàng</h4>
+                    <div style={{ padding: '20px' }}>
+                        <div className="stat-item" style={{ marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <span>Chờ xử lý</span>
+                                <strong>{orderStats?.choXuLy || 0}</strong>
+                            </div>
+                            <div style={{ height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', background: '#ffc107', width: `${((orderStats?.choXuLy || 0) / (summary?.tongDonHang || 1)) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div className="stat-item" style={{ marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <span>Đang giao</span>
+                                <strong>{orderStats?.dangGiao || 0}</strong>
+                            </div>
+                            <div style={{ height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', background: '#17a2b8', width: `${((orderStats?.dangGiao || 0) / (summary?.tongDonHang || 1)) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div className="stat-item" style={{ marginBottom: '15px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <span>Đã giao</span>
+                                <strong>{orderStats?.daGiao || 0}</strong>
+                            </div>
+                            <div style={{ height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', background: '#28a745', width: `${((orderStats?.daGiao || 0) / (summary?.tongDonHang || 1)) * 100}%` }}></div>
+                            </div>
+                        </div>
+                        <div className="stat-item">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <span>Đã hủy</span>
+                                <strong>{orderStats?.daHuy || 0}</strong>
+                            </div>
+                            <div style={{ height: '8px', background: '#eee', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', background: '#dc3545', width: `${((orderStats?.daHuy || 0) / (summary?.tongDonHang || 1)) * 100}%` }}></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -149,13 +149,16 @@ const ArtworkDetail: React.FC = () => {
               <p><strong>Họa sĩ:</strong> {artwork.tacGia}</p>
               <p><strong>Chất liệu tranh:</strong> {artwork.chatLieu || 'Sơn dầu trên vải'}</p>
               <p><strong>Chất liệu khung:</strong> {artwork.chatLieuKhung || 'Khung gỗ sồi cao cấp'}</p>
-              <p><strong>Kích thước tranh:</strong> {artwork.kichThuoc || 'Chưa rõ'}</p>
-              <p><strong>Tình trạng:</strong> {artwork.soLuongTon > 0 ? `Còn hàng (${artwork.soLuongTon})` : 'Hết hàng'}</p>
             </div>
 
-            <div className="price-section">
-              <div className="price-label">Giá bán:</div>
-              <div className="price-value">{formatPrice(artwork.giaBan)}</div>
+            <div className="stock-info">
+              <span className={`stock-badge ${artwork.soLuongTon > 0 ? 'in-stock' : 'out-of-stock'}`}>
+                <i className={artwork.soLuongTon > 0 ? 'ti-check-box' : 'ti-alert'}></i>
+                {artwork.soLuongTon > 0 ? `Còn hàng: ${artwork.soLuongTon} tác phẩm` : 'Đã hết hàng'}
+              </span>
+              {artwork.soLuongTon > 0 && artwork.soLuongTon <= 5 && (
+                <span className="stock-warning">Chỉ còn vài sản phẩm cuối cùng!</span>
+              )}
             </div>
 
             <div className="quantity-section">
@@ -173,7 +176,12 @@ const ArtworkDetail: React.FC = () => {
                   value={quantity}
                   onChange={(e) => {
                     const val = parseInt(e.target.value) || 1;
-                    setQuantity(Math.min(artwork.soLuongTon, Math.max(1, val)));
+                    if (val > artwork.soLuongTon) {
+                      alert(`⚠️ Rất tiếc, hiện tại chỉ còn ${artwork.soLuongTon} sản phẩm trong kho.`);
+                      setQuantity(artwork.soLuongTon);
+                    } else {
+                      setQuantity(Math.max(1, val));
+                    }
                   }}
                   min="1"
                   max={artwork.soLuongTon}
@@ -181,7 +189,13 @@ const ArtworkDetail: React.FC = () => {
                 />
                 <button 
                   className="qty-btn"
-                  onClick={() => setQuantity(Math.min(artwork.soLuongTon, quantity + 1))}
+                  onClick={() => {
+                    if (quantity >= artwork.soLuongTon) {
+                      alert(`⚠️ Rất tiếc, hiện tại chỉ còn ${artwork.soLuongTon} sản phẩm trong kho.`);
+                    } else {
+                      setQuantity(quantity + 1);
+                    }
+                  }}
                   disabled={artwork.soLuongTon === 0 || quantity >= artwork.soLuongTon}
                 >
                   +

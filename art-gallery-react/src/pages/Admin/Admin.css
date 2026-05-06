@@ -181,6 +181,35 @@
     background: #165aba;
 }
 
+/* Tab Buttons */
+.tab-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.tab-btn {
+    padding: 8px 16px;
+    border: 1px solid #2c7be5;
+    background: #fff;
+    color: #2c7be5;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.3s;
+}
+.tab-btn.active {
+    background: #2c7be5;
+    color: #fff;
+}
+.tab-btn:hover:not(.active) {
+    background: #f0f6ff;
+}
+
+.btn-approve { color: #28a745; background: none; border: none; cursor: pointer; font-size: 18px; margin-right: 5px; }
+.btn-delete { color: #dc3545; background: none; border: none; cursor: pointer; font-size: 18px; }
+.btn-edit { color: #2c7be5; background: none; border: none; cursor: pointer; font-size: 18px; margin-right: 5px; }
+
+
 /* ==== POPUP FORM CHUNG (MODAL) ==== */
 .modal {
     /* 💥 SỬA LỖI CHÍNH: Đảm bảo nó được ẩn ngay từ đầu */
@@ -676,10 +705,11 @@
     font-weight: 600;
     color: white;
 }
-.status.pending { background: #f39c12; }
-.status.shipped { background: #3498db; }
-.status.success { background: #2ecc71; }
-.status.canceled { background: #e74c3c; }
+.status.pending, .status-0 { background: #f39c12; } /* Chờ xử lý / Chờ duyệt */
+.status.shipped, .status-1 { background: #3498db; } /* Đang giao / Đang bán */
+.status.success, .status-2 { background: #2ecc71; } /* Hoàn thành / Đã duyệt */
+.status.canceled, .status-3 { background: #e74c3c; } /* Đã hủy / Từ chối */
+.status-inactive { background: #95a5a6; } /* Ngừng hoạt động */
 
 /* Bảng đơn hàng và bảng chung có style*/
 .table-container {

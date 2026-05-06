@@ -115,9 +115,9 @@ export const orderService = {
   },
 
   // Hủy đơn hàng (Khách hàng)
-  async cancelOrder(id: number): Promise<string> {
+  async cancelOrder(id: number, lyDo: string): Promise<string> {
     try {
-      const response = await apiClient.put(`/don-hang/${id}/huy`);
+      const response = await apiClient.put(`/don-hang/${id}/huy`, { lyDo });
       return response.data.message;
     } catch (error: any) {
       console.error('Error canceling order:', error);
