@@ -94,55 +94,63 @@ const UserProfile: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label>Họ Tên</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              disabled={!isEditing}
-              required
-            />
+          <div className="profile-info-section">
+            <h3 className="section-title">Hồ Sơ Của Tôi</h3>
+            <div className="form-group">
+              <label>Họ Tên</label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                disabled={!isEditing}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                disabled
+                title="Email không thể thay đổi"
+              />
+            </div>
           </div>
 
-          <div className="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              disabled
-              title="Email không thể thay đổi"
-            />
-          </div>
+          <div className="profile-info-section" style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #eee' }}>
+            <h3 className="section-title">Địa Chỉ Của Tôi</h3>
+            <div className="form-group">
+              <label>Số Điện Thoại</label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+            </div>
 
-          <div className="form-group">
-            <label>Số Điện Thoại</label>
-            <input
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              disabled={!isEditing}
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Địa Chỉ</label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              disabled={!isEditing}
-            />
+            <div className="form-group">
+              <label>Địa Chỉ Giao Hàng</label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                disabled={!isEditing}
+              />
+            </div>
           </div>
 
           {isEditing && (
-            <button type="submit" className="btn-save">
-              Lưu Thay Đổi
-            </button>
+            <div className="form-actions" style={{ marginTop: '20px' }}>
+              <button type="submit" className="btn-save">
+                Lưu Thay Đổi
+              </button>
+            </div>
           )}
         </form>
       </div>

@@ -33,12 +33,13 @@ interface DonHangResponseDTO {
 }
 
 // Map trạng thái
-const mapTrangThai = (status: number): 'pending' | 'shipped' | 'success' | 'canceled' => {
+const mapTrangThai = (status: number): 'pending' | 'shipped' | 'success' | 'canceled' | 'cancel_pending' => {
   switch (status) {
     case 0: return 'pending';
     case 1: return 'shipped';
     case 2: return 'success';
     case 3: return 'canceled';
+    case 4: return 'cancel_pending';
     default: return 'pending';
   }
 };

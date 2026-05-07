@@ -28,22 +28,23 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  // Load user từ localStorage ngay từ lần render đầu tiên
+  // để tránh các trang layout/guard redirect nhầm khi user chưa kịp hydrate.
+  const [user, setUser] = useState<User | null>(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (!savedUser) return null;
+    try {
+      return JSON.parse(savedUser) as User;
+    } catch (error) {
+      console.error('Error loading user:', error);
+      return null;
+    }
+  });
   const [cart, setCart] = useState<CartItem[]>([]);
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Load user từ localStorage khi app khởi động
-  useEffect(() => {
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error('Error loading user:', error);
-      }
-    }
-  }, []);
+  // Không cần useEffect hydrate user nữa (đã load ngay trong initial state).
 
   // Load artworks từ API khi app khởi động
   const refreshArtworks = async () => {

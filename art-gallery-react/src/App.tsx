@@ -39,6 +39,7 @@ import ArtistRevenue from './pages/Artist/ArtistRevenue';
 import UserLayout from './pages/User/UserLayout';
 import UserProfile from './pages/User/UserProfile';
 import UserOrders from './pages/User/UserOrders';
+import UserOrderDetail from './pages/User/UserOrderDetail';
 import ScrollToTop from './components/ScrollToTop';
 import PlaceholderPage from './pages/PlaceholderPage';
 import './App.css';
@@ -109,6 +110,7 @@ function App() {
               <Route index element={<UserProfile />} />
               <Route path="profile" element={<UserProfile />} />
               <Route path="orders" element={<UserOrders />} />
+              <Route path="orders/:id" element={<UserOrderDetail />} />
             </Route>
 
             {/* Fallback Route */}

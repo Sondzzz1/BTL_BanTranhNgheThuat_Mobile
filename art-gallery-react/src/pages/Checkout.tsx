@@ -89,9 +89,9 @@ const Checkout: React.FC = () => {
   }
 
   return (
-    <div className="checkout-page">
-      <div className="checkout-container">
-        <div className="checkout-content">
+      <div className="checkout-page">
+        <div className="checkout-container">
+          <div className="checkout-content">
           {/* Thông tin thanh toán */}
           <div className="checkout-form">
             <div className="section-header">
@@ -169,32 +169,32 @@ const Checkout: React.FC = () => {
           </div>
 
           {/* Đơn hàng */}
-          <div className="order-summary">
+          <div className="checkout-order-summary">
             <div className="section-header">
               <h2>ĐƠN HÀNG</h2>
             </div>
 
-            <div className="order-table">
-              <div className="table-header">
+            <div className="checkout-order-table">
+              <div className="checkout-table-header">
                 <span>SẢN PHẨM</span>
                 <span>TỔNG</span>
               </div>
 
-              <div className="order-items">
+              <div className="checkout-order-items">
                 {cart.map((item) => (
-                  <div key={item.id} className="order-row">
-                    <div className="product-info">
-                      <span className="product-name">{item.name}</span>
-                      <span className="product-qty">× {item.quantity}</span>
+                  <div key={item.id} className="checkout-order-row">
+                    <div className="checkout-product-info">
+                      <span className="checkout-product-name">{item.name}</span>
+                      <span className="checkout-product-qty">× {item.quantity}</span>
                     </div>
-                    <div className="product-price">
+                    <div className="checkout-product-price">
                       {formatPrice(item.price * item.quantity)}
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="order-subtotal">
+              <div className="checkout-order-subtotal">
                 <span>Tổng</span>
                 <span className="price">{formatPrice(cartTotal)}</span>
               </div>
@@ -209,8 +209,8 @@ const Checkout: React.FC = () => {
               </button>
             </div>
 
-            <div className="payment-methods">
-              <div className="payment-option">
+            <div className="checkout-payment-methods">
+              <div className="checkout-payment-option">
                 <input 
                   type="radio" 
                   id="cod" 
@@ -223,7 +223,7 @@ const Checkout: React.FC = () => {
                   Thanh toán tiền mặt khi nhận hàng (COD)
                 </label>
               </div>
-              <div className="payment-option">
+              <div className="checkout-payment-option">
                 <input 
                   type="radio" 
                   id="transfer" 
@@ -236,14 +236,14 @@ const Checkout: React.FC = () => {
                   Thanh toán qua chuyển khoản ngân hàng
                 </label>
                 {paymentMethod === 'BankTransfer' && (
-                  <p className="payment-note">Vui lòng chuyển khoản vào STK: 123456789 - Ngân hàng MBBank. Nội dung: [Mã đơn hàng]</p>
+                  <p className="checkout-payment-note">Vui lòng chuyển khoản vào STK: 123456789 - Ngân hàng MBBank. Nội dung: [Mã đơn hàng]</p>
                 )}
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+      </div>
   );
 };
 

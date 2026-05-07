@@ -24,14 +24,22 @@ const AdminOrders: React.FC = () => {
         }
     };
 
-    const handleStatusChange = async (orderId: number, newStatus: number) => {
+    const handleStatusChange = async (
+        orderId: number,
+        newStatus: number,
+        requireCancelReason: boolean = true,
+        reasonOverride?: string
+    ) => {
         let reason = '';
-        if (newStatus === 3) {
+        if (newStatus === 3 && requireCancelReason) {
             reason = prompt('Vui lòng nhập lý do hủy đơn hàng:') || '';
             if (!reason) {
                 alert('Bạn cần cung cấp lý do để hủy đơn hàng.');
                 return;
             }
+        } else if (newStatus === 3 && !requireCancelReason) {
+            // Nếu admin "duyệt hủy" thì không cần nhập lại, nhưng vẫn giữ nguyên lý do đang có
+            reason = reasonOverride || '';
         }
         try {
             await adminService.updateOrderStatus(orderId, newStatus, reason);
@@ -77,10 +85,11 @@ const AdminOrders: React.FC = () => {
                         onChange={(e) => setStatusFilter(Number(e.target.value))}
                     >
                         <option value={-1}>Tất cả ({orders.length})</option>
-                        <option value={0}>Chờ xử lý</option>
-                        <option value={1}>Đang giao</option>
-                        <option value={2}>Hoàn thành</option>
+                        <option value={0}>Chờ xác nhận</option>
+                        <option value={1}>Đã xác nhận</option>
+                        <option value={2}>Đang giao</option>
                         <option value={3}>Đã hủy</option>
+                        <option value={4}>Yêu cầu hủy</option>
                     </select>
                 </div>
                 <div className="filter-item">
@@ -119,18 +128,38 @@ const AdminOrders: React.FC = () => {
                                     <td>DH{order.maDonHang}</td>
                                     <td>{formatDate(order.ngayDat)}</td>
                                     <td>
-                                        <select
-                                            value={order.trangThai}
-                                            onChange={(e) => handleStatusChange(order.maDonHang, Number(e.target.value))}
-                                            className={`status status-${order.trangThai}`}
-                                        >
-                                            <option value={0}>Chờ xử lý</option>
-                                            <option value={1}>Đang giao</option>
-                                            <option value={2}>Hoàn thành</option>
-                                            <option value={3}>Đã hủy</option>
-                                        </select>
-                                        {order.trangThai === 3 && order.lyDoHuy && (
-                                            <div style={{ fontSize: '11px', color: '#e74c3c', marginTop: '4px' }}>
+                                        {order.trangThai !== 4 && (
+                                            <select
+                                                value={order.trangThai}
+                                                onChange={(e) => handleStatusChange(order.maDonHang, Number(e.target.value))}
+                                                className={`status status-${order.trangThai}`}
+                                            >
+                                                <option value={0}>Chờ xác nhận</option>
+                                                <option value={1}>Đã xác nhận</option>
+                                                <option value={2}>Đang giao</option>
+                                                <option value={3}>Đã hủy</option>
+                                            </select>
+                                        )}
+                                        {order.trangThai === 4 && (
+                                            <div style={{ margin: '8px auto 0', display: 'grid', gridTemplateColumns: 'repeat(2, minmax(92px, 1fr))', gap: '8px', maxWidth: '220px' }}>
+                                                <button
+                                                    style={{ fontSize: '12px', fontWeight: 600, padding: '6px 10px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                                    onClick={() => handleStatusChange(order.maDonHang, 3, false, order.lyDoHuy)}
+                                                    title="Duyệt hủy đơn hàng"
+                                                >
+                                                    ✔ Duyệt hủy
+                                                </button>
+                                                <button
+                                                    style={{ fontSize: '12px', fontWeight: 600, padding: '6px 10px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                                    onClick={() => handleStatusChange(order.maDonHang, 1)}
+                                                    title="Từ chối yêu cầu hủy"
+                                                >
+                                                    ✖ Từ chối
+                                                </button>
+                                            </div>
+                                        )}
+                                        {(order.trangThai === 3 || order.trangThai === 4) && order.lyDoHuy && (
+                                            <div style={{ fontSize: '11px', color: '#e74c3c', marginTop: '6px', textAlign: 'center' }}>
                                                 Lý do: {order.lyDoHuy}
                                             </div>
                                         )}

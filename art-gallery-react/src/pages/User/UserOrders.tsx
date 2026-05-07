@@ -4,12 +4,15 @@ import { useAuth } from '../../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { orderService } from '../../services/orderService';
 import { Order } from '../../types';
+import CancelOrderModal from '../../components/CancelOrderModal';
 
 const UserOrders: React.FC = () => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('all');
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<{ id: string, maHD: string } | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -38,6 +41,7 @@ const UserOrders: React.FC = () => {
       shipped: 'Đang giao',
       success: 'Hoàn thành',
       canceled: 'Đã hủy',
+      cancel_pending: 'Đang xử lý hủy',
     };
     return statusMap[status] || status;
   };
@@ -55,6 +59,23 @@ const UserOrders: React.FC = () => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  const handleCancelOrder = (orderId: string, maHD: string) => {
+    setOrderToCancel({ id: orderId, maHD });
+    setIsCancelModalOpen(true);
+  };
+
+  const handleCancelConfirm = async (reason: string) => {
+    if (!orderToCancel) return;
+    
+    try {
+      await orderService.cancelOrder(parseInt(orderToCancel.id), reason);
+      alert('Hủy đơn hàng thành công');
+      loadOrders();
+    } catch (error: any) {
+      alert(error.message || 'Lỗi khi hủy đơn hàng');
+    }
   };
 
   const filteredOrders = filter === 'all'
@@ -154,30 +175,31 @@ const UserOrders: React.FC = () => {
                   >
                     Xem Chi Tiết
                   </Link>
-                  {order.trangThai === 'pending' && (
+                  {(order.trangThai === 'pending' || order.trangThai === 'shipped') && (
                     <button 
                       className="btn-cancel"
-                      onClick={async () => {
-                        const reason = prompt('Vui lòng nhập lý do hủy đơn hàng:');
-                        if (reason) {
-                          try {
-                            await orderService.cancelOrder(parseInt(order.id), reason);
-                            alert('Hủy đơn hàng thành công');
-                            loadOrders();
-                          } catch (error: any) {
-                            alert(error.message);
-                          }
-                        }
-                      }}
+                      onClick={() => handleCancelOrder(order.id, order.maHD)}
                     >
-                      Hủy Đơn
+                      Yêu Cầu Hủy
                     </button>
+                  )}
+                  {order.trangThai === 'cancel_pending' && (
+                    <span className="cancel-pending-note">⏳ Chờ admin duyệt hủy</span>
                   )}
                 </div>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {orderToCancel && (
+        <CancelOrderModal
+          isOpen={isCancelModalOpen}
+          onClose={() => setIsCancelModalOpen(false)}
+          onConfirm={handleCancelConfirm}
+          orderCode={orderToCancel.maHD}
+        />
       )}
     </div>
   );

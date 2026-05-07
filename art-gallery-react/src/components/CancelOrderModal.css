@@ -1,0 +1,250 @@
+/* Cancel Order Modal Styles */
+.cancel-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.cancel-modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cancel-modal-close {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 35px;
+  height: 35px;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+  line-height: 1;
+}
+
+.cancel-modal-close:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.cancel-modal-header {
+  padding: 30px 30px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.cancel-modal-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #333;
+  margin: 0 0 10px 0;
+  text-align: center;
+}
+
+.order-code {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin: 0;
+}
+
+.cancel-modal-body {
+  padding: 25px 30px;
+}
+
+.cancel-description {
+  font-size: 15px;
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.cancel-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reason-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.reason-option:hover {
+  border-color: #ff7b00;
+  background: #fff5eb;
+}
+
+.reason-option input[type="radio"] {
+  margin-top: 2px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #ff7b00;
+}
+
+.reason-option input[type="radio"]:checked + .reason-text {
+  color: #ff7b00;
+  font-weight: 600;
+}
+
+.reason-text {
+  flex: 1;
+  font-size: 15px;
+  color: #333;
+  line-height: 1.5;
+}
+
+.other-reason-input {
+  margin-top: 15px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    max-height: 200px;
+  }
+}
+
+.other-reason-input textarea {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.3s;
+}
+
+.other-reason-input textarea:focus {
+  outline: none;
+  border-color: #ff7b00;
+}
+
+.cancel-modal-footer {
+  padding: 20px 30px;
+  display: flex;
+  gap: 12px;
+  border-top: 1px solid #eee;
+}
+
+.btn-confirm,
+.btn-cancel {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+}
+
+.btn-confirm {
+  background: #007bff;
+  color: white;
+}
+
+.btn-confirm:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-cancel {
+  background: white;
+  color: #007bff;
+  border: 2px solid #007bff;
+}
+
+.btn-cancel:hover {
+  background: #007bff;
+  color: white;
+}
+
+.cancel-note {
+  padding: 20px 30px;
+  background: #f8f9fa;
+  border-top: 1px solid #eee;
+}
+
+.cancel-note p {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+  margin: 5px 0;
+}
+
+.cancel-note strong {
+  color: #333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .cancel-modal-content {
+    max-width: 100%;
+    margin: 0 10px;
+  }
+
+  .cancel-modal-header,
+  .cancel-modal-body,
+  .cancel-modal-footer,
+  .cancel-note {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .reason-option {
+    padding: 12px;
+  }
+
+  .reason-text {
+    font-size: 14px;
+  }
+}
