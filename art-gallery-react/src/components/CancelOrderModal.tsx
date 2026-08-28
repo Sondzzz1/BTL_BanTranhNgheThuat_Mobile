@@ -62,7 +62,7 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
 
         <div className="cancel-modal-body">
           <p className="cancel-description">
-            Dienmayxanh.com mong nhận được sự góp ý của anh để phục vụ được tốt hơn.
+            Vui lòng chọn lý do hủy đơn để chúng tôi cải thiện dịch vụ tốt hơn.
           </p>
 
           <div className="cancel-reasons">
@@ -94,16 +94,15 @@ const CancelOrderModal: React.FC<CancelOrderModalProps> = ({
 
         <div className="cancel-modal-footer">
           <button className="btn-confirm" onClick={handleConfirm}>
-            ĐỒNG Ý
+            GỬI YÊU CẦU HỦY
           </button>
           <button className="btn-cancel" onClick={handleClose}>
-            XÁC NHẬN
+            ĐÓNG
           </button>
         </div>
 
         <div className="cancel-note">
-          <p><strong>Lưu ý:</strong></p>
-          <p>- Quà khuyến mãi có thể thay đổi theo thời điểm đặt hàng.</p>
+          <p><strong>Lưu ý:</strong> Yêu cầu hủy sẽ được Admin xem xét trước khi chính thức huỷ đơn hàng.</p>
         </div>
       </div>
     </div>

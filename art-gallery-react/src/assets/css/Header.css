@@ -22,6 +22,8 @@
   padding: 15px 50px;
   max-width: 1400px;
   margin: 0 auto;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .logo a {
@@ -31,6 +33,8 @@
 .logo h1 {
   color: #ff7b00 !important;
   margin: 0;
+  font-size: 24px;
+  white-space: nowrap;
 }
 
 #nav {

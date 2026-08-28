@@ -32,14 +32,18 @@ interface DonHangResponseDTO {
   }[];
 }
 
-// Map trạng thái
-const mapTrangThai = (status: number): 'pending' | 'shipped' | 'success' | 'canceled' | 'cancel_pending' => {
+// Map trạng thái đơn hàng từ backend (0..5) sang label string ở frontend
+// 0=Chờ xác nhận, 1=Đã xác nhận, 2=Đang giao, 3=Đã giao, 4=Yêu cầu hủy, 5=Đã hủy
+const mapTrangThai = (
+  status: number
+): 'pending' | 'confirmed' | 'shipping' | 'success' | 'cancel_pending' | 'canceled' => {
   switch (status) {
     case 0: return 'pending';
-    case 1: return 'shipped';
-    case 2: return 'success';
-    case 3: return 'canceled';
+    case 1: return 'confirmed';
+    case 2: return 'shipping';
+    case 3: return 'success';
     case 4: return 'cancel_pending';
+    case 5: return 'canceled';
     default: return 'pending';
   }
 };

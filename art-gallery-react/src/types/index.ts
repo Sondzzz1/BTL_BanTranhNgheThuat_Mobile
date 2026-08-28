@@ -50,7 +50,7 @@ export interface Order {
   phone: string;
   address: string;
   ngayLap: string;
-  trangThai: 'pending' | 'shipped' | 'success' | 'canceled' | 'cancel_pending';
+  trangThai: 'pending' | 'confirmed' | 'shipping' | 'success' | 'canceled' | 'cancel_pending';
   tongTien: number;
   items: CartItem[];
   ghiChu?: string;

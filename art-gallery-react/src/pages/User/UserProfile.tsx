@@ -1,82 +1,154 @@
 // User Profile - Quản lý tài khoản người dùng
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { customerService } from '../../services/customerService';
 
 const UserProfile: React.FC = () => {
-  const { user, setUser } = useAuth();
+  const { user, setUser, changePassword } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
   const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    address: user?.address || '',
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
   });
+
+  // Đổi mật khẩu
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwSubmitting, setPwSubmitting] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    setLoading(true);
+    setSubmitError('');
+    try {
+      const data = await customerService.getThongTin();
+      const next = {
+        name: data.hoTen || '',
+        email: data.email || user?.email || '',
+        phone: data.soDienThoai || '',
+        address: data.diaChi || '',
+      };
+      setFormData(next);
+
+      // Đồng bộ vào context để các trang khác dùng (Checkout etc.)
+      if (user) {
+        setUser({ ...user, name: next.name, phone: next.phone, address: next.address });
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      setSubmitError('Không thể tải hồ sơ từ server.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setSubmitError('');
+    setSuccessMsg('');
   };
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPasswordData({
-      ...passwordData,
-      [e.target.name]: e.target.value,
-    });
+    setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
+    setPwError('');
+    setPwSuccess('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
+    setSuccessMsg('');
+
+    if (!formData.name.trim()) {
+      setSubmitError('Vui lòng nhập họ tên');
+      return;
+    }
+    if (formData.phone && !/^[0-9]{9,11}$/.test(formData.phone.trim())) {
+      setSubmitError('Số điện thoại không hợp lệ (9-11 chữ số)');
+      return;
+    }
+
     try {
-      if (user?.id) {
-        await customerService.capNhatThongTin({
-          ten: formData.name,
-          email: formData.email,
-          dienThoai: formData.phone,
-          diaChi: formData.address,
-        });
-        
-        // Update local user state
+      await customerService.capNhatThongTin({
+        ten: formData.name.trim(),
+        email: formData.email.trim() || undefined,
+        dienThoai: formData.phone.trim() || undefined,
+        diaChi: formData.address.trim() || undefined,
+      });
+
+      if (user) {
         setUser({
           ...user,
-          name: formData.name,
-          phone: formData.phone,
-          address: formData.address,
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          address: formData.address.trim(),
         });
-        
-        setIsEditing(false);
-        alert('Cập nhật thông tin thành công!');
       }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      alert('Có lỗi xảy ra khi cập nhật thông tin');
+
+      setIsEditing(false);
+      setSuccessMsg('Cập nhật thông tin thành công.');
+    } catch (error: any) {
+      setSubmitError(error?.message || 'Có lỗi xảy ra khi cập nhật');
     }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert('Mật khẩu xác nhận không khớp!');
+    setPwError('');
+    setPwSuccess('');
+
+    if (!passwordData.currentPassword) {
+      setPwError('Vui lòng nhập mật khẩu hiện tại');
       return;
     }
-    // TODO: Call API to change password
-    console.log('Change password');
-    alert('Đổi mật khẩu thành công!');
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
-    setShowPasswordForm(false);
+    if (passwordData.newPassword.length < 6) {
+      setPwError('Mật khẩu mới phải có ít nhất 6 ký tự');
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPwError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      setPwError('Mật khẩu mới không được trùng mật khẩu cũ');
+      return;
+    }
+
+    setPwSubmitting(true);
+    try {
+      const result = await changePassword(passwordData.currentPassword, passwordData.newPassword);
+      if (result.success) {
+        setPwSuccess(result.message || 'Đổi mật khẩu thành công');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPasswordForm(false);
+      } else {
+        setPwError(result.message || 'Đổi mật khẩu thất bại');
+      }
+    } catch (err: any) {
+      setPwError(err?.message || 'Có lỗi xảy ra');
+    } finally {
+      setPwSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return <div className="loading" style={{ padding: 40, textAlign: 'center' }}>Đang tải hồ sơ...</div>;
+  }
 
   return (
     <div className="user-profile">
@@ -85,13 +157,21 @@ const UserProfile: React.FC = () => {
       <div className="profile-card">
         <div className="card-header">
           <h2>Thông Tin Cá Nhân</h2>
-          <button
-            className="btn-edit"
-            onClick={() => setIsEditing(!isEditing)}
-          >
+          <button className="btn-edit" onClick={() => { setIsEditing(!isEditing); setSubmitError(''); setSuccessMsg(''); }}>
             {isEditing ? 'Hủy' : 'Chỉnh Sửa'}
           </button>
         </div>
+
+        {submitError && (
+          <div style={{ background: '#fee', color: '#c0392b', padding: 10, borderRadius: 6, marginBottom: 12 }}>
+            {submitError}
+          </div>
+        )}
+        {successMsg && (
+          <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: 10, borderRadius: 6, marginBottom: 12 }}>
+            {successMsg}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div className="profile-info-section">
@@ -114,8 +194,8 @@ const UserProfile: React.FC = () => {
                 type="email"
                 name="email"
                 value={formData.email}
-                disabled
-                title="Email không thể thay đổi"
+                onChange={handleChange}
+                disabled={!isEditing}
               />
             </div>
           </div>
@@ -147,9 +227,7 @@ const UserProfile: React.FC = () => {
 
           {isEditing && (
             <div className="form-actions" style={{ marginTop: '20px' }}>
-              <button type="submit" className="btn-save">
-                Lưu Thay Đổi
-              </button>
+              <button type="submit" className="btn-save">Lưu Thay Đổi</button>
             </div>
           )}
         </form>
@@ -160,7 +238,7 @@ const UserProfile: React.FC = () => {
           <h2>Đổi Mật Khẩu</h2>
           <button
             className="btn-edit"
-            onClick={() => setShowPasswordForm(!showPasswordForm)}
+            onClick={() => { setShowPasswordForm(!showPasswordForm); setPwError(''); setPwSuccess(''); }}
           >
             {showPasswordForm ? 'Hủy' : 'Đổi Mật Khẩu'}
           </button>
@@ -168,6 +246,17 @@ const UserProfile: React.FC = () => {
 
         {showPasswordForm && (
           <form onSubmit={handlePasswordSubmit}>
+            {pwError && (
+              <div style={{ background: '#fee', color: '#c0392b', padding: 10, borderRadius: 6, marginBottom: 12 }}>
+                {pwError}
+              </div>
+            )}
+            {pwSuccess && (
+              <div style={{ background: '#e8f5e9', color: '#2e7d32', padding: 10, borderRadius: 6, marginBottom: 12 }}>
+                {pwSuccess}
+              </div>
+            )}
+
             <div className="form-group">
               <label>Mật Khẩu Hiện Tại</label>
               <input
@@ -176,6 +265,7 @@ const UserProfile: React.FC = () => {
                 value={passwordData.currentPassword}
                 onChange={handlePasswordChange}
                 required
+                autoComplete="current-password"
               />
             </div>
 
@@ -188,6 +278,7 @@ const UserProfile: React.FC = () => {
                 onChange={handlePasswordChange}
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
 
@@ -200,11 +291,12 @@ const UserProfile: React.FC = () => {
                 onChange={handlePasswordChange}
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
 
-            <button type="submit" className="btn-save">
-              Đổi Mật Khẩu
+            <button type="submit" className="btn-save" disabled={pwSubmitting}>
+              {pwSubmitting ? 'Đang xử lý...' : 'Đổi Mật Khẩu'}
             </button>
           </form>
         )}

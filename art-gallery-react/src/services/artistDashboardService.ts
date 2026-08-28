@@ -53,25 +53,31 @@ export interface TacPhamHoaSiResponse {
     trangThai: number;
     trangThaiText: string;
     ngayTao: string;
+    lyDo?: string;
 }
 
 export interface BaiVietResponse {
     maBaiViet: number;
     tieuDe: string;
     noiDung?: string;
+    anhTieuDe?: string;
     maHoaSi: number;
     tenHoaSi: string;
     ngayDang: string;
+    trangThai: number; // 0=Draft, 2=Published, 3=Rejected
+    lyDo?: string;
 }
 
 export interface TaoBaiVietRequest {
     tieuDe: string;
     noiDung?: string;
+    anhTieuDe?: string;
 }
 
 export interface CapNhatBaiVietRequest {
     tieuDe: string;
     noiDung?: string;
+    anhTieuDe?: string;
 }
 
 export interface DoanhThuTongQuanResponse {
@@ -129,6 +135,10 @@ export const artistDashboardService = {
     const response = await apiClient.delete(`/hoa-si/tac-pham/${id}/delete`);
     return response.data;
   },
+  guiDuyetLaiTacPham: async (id: number): Promise<any> => {
+    const response = await apiClient.put(`/hoa-si/tac-pham/${id}/gui-duyet-lai`);
+    return response.data;
+  },
 
   // --- BÀI VIẾT ---
   getBaiVietCuaToi: async (): Promise<BaiVietResponse[]> => {
@@ -145,6 +155,10 @@ export const artistDashboardService = {
   },
   xoaBaiViet: async (id: number): Promise<any> => {
     const response = await apiClient.delete(`/hoa-si/bai-viet/${id}/delete`);
+    return response.data;
+  },
+  guiDuyetBaiViet: async (id: number): Promise<any> => {
+    const response = await apiClient.put(`/hoa-si/bai-viet/${id}/gui-duyet`);
     return response.data;
   },
 

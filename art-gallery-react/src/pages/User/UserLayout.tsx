@@ -48,6 +48,10 @@ const UserLayout: React.FC = () => {
               <i className="ti-shopping-cart"></i>
               <span>Đơn Hàng</span>
             </Link>
+            <Link to="/user/favorites" className="nav-item">
+              <i className="ti-heart"></i>
+              <span>Yêu Thích</span>
+            </Link>
             <Link to="/cart" className="nav-item">
               <i className="ti-bag"></i>
               <span>Giỏ Hàng</span>

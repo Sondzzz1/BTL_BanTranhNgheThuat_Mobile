@@ -5,15 +5,16 @@ import { useAuth } from '../hooks/useAuth';
 import './Register.css'; // Sử dụng chung file css của trang đăng kí
 
 const Login: React.FC = () => {
-  // State cho form inputs
+  // State cho form inputs (dùng "username" làm tên field, có thể là email hoặc username)
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
   const [errors, setErrors] = useState({
-    email: '',
+    username: '',
     password: '',
   });
+  const [submitError, setSubmitError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
@@ -26,37 +27,25 @@ const Login: React.FC = () => {
       ...prev,
       [name]: value,
     }));
-    // Clear error khi user nhập
     setErrors(prev => ({
       ...prev,
       [name]: '',
     }));
+    setSubmitError('');
   };
 
   // Validation
   const validateForm = (): boolean => {
-    const newErrors = {
-      email: '',
-      password: '',
-    };
+    const newErrors = { username: '', password: '' };
     let isValid = true;
 
-    // Validate email
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email) {
-      newErrors.email = 'Vui lòng nhập email';
-      isValid = false;
-    } else if (!emailPattern.test(formData.email)) {
-      newErrors.email = 'Email không đúng định dạng';
+    if (!formData.username.trim()) {
+      newErrors.username = 'Vui lòng nhập tên đăng nhập hoặc email';
       isValid = false;
     }
 
-    // Validate password
     if (!formData.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu';
-      isValid = false;
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
       isValid = false;
     }
 
@@ -66,20 +55,19 @@ const Login: React.FC = () => {
 
   // Event Handler - Xử lý submit form
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault(); // Ngăn chặn reload trang
+    e.preventDefault();
 
     if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
+    setSubmitError('');
 
     try {
-      const success = await login(formData.email, formData.password);
-      
+      const success = await login(formData.username.trim(), formData.password);
+
       if (success) {
-        alert('✅ Đăng nhập thành công!');
-        // Điều hướng dựa trên role
         const userRole = sessionStorage.getItem('userRole');
         if (userRole === 'admin') {
           navigate('/admin');
@@ -89,11 +77,11 @@ const Login: React.FC = () => {
           navigate('/');
         }
       } else {
-        alert('❌ Email hoặc mật khẩu không đúng!');
+        setSubmitError('Tên đăng nhập hoặc mật khẩu không đúng');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
-      alert('❌ Có lỗi xảy ra. Vui lòng thử lại!');
+      setSubmitError(error?.message || 'Có lỗi xảy ra. Vui lòng thử lại!');
     } finally {
       setIsLoading(false);
     }
@@ -106,18 +94,28 @@ const Login: React.FC = () => {
         <p>Nếu bạn chưa có tài khoản, <Link to="/register">đăng ký TẠI ĐÂY!</Link></p>
 
         <form onSubmit={handleSubmit} className="register-form">
-          <label htmlFor="email">Email</label>
+          {submitError && (
+            <div style={{
+              background: '#fee', color: '#c0392b', padding: '10px 12px',
+              borderRadius: '6px', marginBottom: '15px', fontSize: '14px',
+              borderLeft: '4px solid #e74c3c', textAlign: 'left'
+            }}>
+              {submitError}
+            </div>
+          )}
+
+          <label htmlFor="username">Tên đăng nhập hoặc Email</label>
           <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
+            type="text"
+            id="username"
+            name="username"
+            value={formData.username}
             onChange={handleChange}
-            placeholder="Nhập địa chỉ email*"
-            className={errors.email ? 'error' : ''}
-            required
+            placeholder="Tên đăng nhập hoặc email*"
+            className={errors.username ? 'error' : ''}
+            autoComplete="username"
           />
-          {errors.email && <span style={{color: 'red', fontSize: '13px', display: 'block', textAlign: 'left', marginBottom: '10px', marginTop: '-10px'}}>{errors.email}</span>}
+          {errors.username && <span style={{ color: 'red', fontSize: '13px', display: 'block', textAlign: 'left', marginBottom: '10px', marginTop: '-10px' }}>{errors.username}</span>}
 
           <label htmlFor="password">Mật khẩu</label>
           <input
@@ -128,12 +126,12 @@ const Login: React.FC = () => {
             onChange={handleChange}
             placeholder="Mật khẩu*"
             className={errors.password ? 'error' : ''}
-            required
+            autoComplete="current-password"
           />
-          {errors.password && <span style={{color: 'red', fontSize: '13px', display: 'block', textAlign: 'left', marginBottom: '10px', marginTop: '-10px'}}>{errors.password}</span>}
+          {errors.password && <span style={{ color: 'red', fontSize: '13px', display: 'block', textAlign: 'left', marginBottom: '10px', marginTop: '-10px' }}>{errors.password}</span>}
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="register-button"
             disabled={isLoading}
           >
@@ -141,12 +139,11 @@ const Login: React.FC = () => {
           </button>
         </form>
 
-        <div style={{marginTop: '20px', fontSize: '14px', color: '#666', background: '#f8f9fa', padding: '15px', borderRadius: '8px'}}>
-          <p style={{margin: '5px 0', fontWeight: 'bold', color: '#333'}}>📋 Tài khoản demo:</p>
-          <p style={{margin: '5px 0'}}><strong>Admin:</strong> admin@art.com | 123456</p>
-          <p style={{margin: '5px 0'}}><strong>Họa sĩ 1:</strong> artist@art.com | 123456 (Lân Vũ)</p>
-          <p style={{margin: '5px 0'}}><strong>Họa sĩ 2:</strong> author@art.com | 123456 (Đoàn Hòa)</p>
-          <p style={{margin: '5px 0'}}><strong>User:</strong> user@art.com | 123456</p>
+        <div style={{ marginTop: '20px', fontSize: '14px', color: '#666', background: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
+          <p style={{ margin: '5px 0', fontWeight: 'bold', color: '#333' }}>📋 Tài khoản demo:</p>
+          <p style={{ margin: '5px 0' }}><strong>Admin:</strong> admin | 123456</p>
+          <p style={{ margin: '5px 0' }}><strong>Họa sĩ:</strong> artist | 123456</p>
+          <p style={{ margin: '5px 0' }}><strong>User:</strong> user | 123456</p>
         </div>
       </div>
     </section>
@@ -154,4 +151,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-

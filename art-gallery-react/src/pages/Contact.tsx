@@ -1,7 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Contact.css';
 
 const Contact: React.FC = () => {
+    const [form, setForm] = useState({
+        name: '', email: '', phone: '', subject: '', message: '',
+    });
+    const [info, setInfo] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        setForm({ ...form, [e.target.name]: e.target.value });
+        setInfo(null);
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || !form.message.trim()) {
+            setInfo({ type: 'error', text: 'Vui lòng nhập đầy đủ các trường bắt buộc.' });
+            return;
+        }
+        const phonePattern = /^[0-9]{9,11}$/;
+        if (!phonePattern.test(form.phone.trim())) {
+            setInfo({ type: 'error', text: 'Số điện thoại không hợp lệ.' });
+            return;
+        }
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailPattern.test(form.email.trim())) {
+            setInfo({ type: 'error', text: 'Email không hợp lệ.' });
+            return;
+        }
+
+        // Backend hiện chưa có endpoint nhận liên hệ → log local và phản hồi UX.
+        console.log('[Contact] Tin nhắn liên hệ:', form);
+        setInfo({ type: 'success', text: 'Cảm ơn bạn! Tin nhắn của bạn đã được ghi nhận, chúng tôi sẽ phản hồi sớm.' });
+        setForm({ name: '', email: '', phone: '', subject: '', message: '' });
+    };
+
     return (
         <div className="contact-page">
             {/* Hero Section */}
@@ -90,36 +123,44 @@ const Contact: React.FC = () => {
                                 <p>Điền thông tin bên dưới, chúng tôi sẽ phản hồi trong thời gian sớm nhất</p>
                             </div>
                             
-                            <form id="contactForm" className="contact-form">
+                            <form id="contactForm" className="contact-form" onSubmit={handleSubmit}>
+                                {info && (
+                                    <div style={{
+                                        padding: '10px 12px', borderRadius: 6, marginBottom: 12,
+                                        background: info.type === 'success' ? '#e8f5e9' : '#fee',
+                                        color: info.type === 'success' ? '#2e7d32' : '#c0392b',
+                                        borderLeft: `4px solid ${info.type === 'success' ? '#2e7d32' : '#c0392b'}`,
+                                        fontSize: 14
+                                    }}>
+                                        {info.text}
+                                    </div>
+                                )}
                                 <div className="form-group">
                                     <label htmlFor="name">
                                         <i className="ti-user"></i> Họ và Tên <span>*</span>
                                     </label>
-                                    <input type="text" id="name" name="name" required placeholder="Nhập họ và tên của bạn" />
-                                    <span className="error-message"></span>
+                                    <input type="text" id="name" name="name" value={form.name} onChange={handleChange} required placeholder="Nhập họ và tên của bạn" />
                                 </div>
 
                                 <div className="form-group">
                                     <label htmlFor="email">
                                         <i className="ti-email"></i> Email <span>*</span>
                                     </label>
-                                    <input type="email" id="email" name="email" required placeholder="your.email@example.com" />
-                                    <span className="error-message"></span>
+                                    <input type="email" id="email" name="email" value={form.email} onChange={handleChange} required placeholder="your.email@example.com" />
                                 </div>
 
                                 <div className="form-group">
                                     <label htmlFor="phone">
                                         <i className="ti-mobile"></i> Số Điện Thoại <span>*</span>
                                     </label>
-                                    <input type="tel" id="phone" name="phone" required placeholder="0948 88 35 35" />
-                                    <span className="error-message"></span>
+                                    <input type="tel" id="phone" name="phone" value={form.phone} onChange={handleChange} required placeholder="0948 88 35 35" />
                                 </div>
 
                                 <div className="form-group">
                                     <label htmlFor="subject">
                                         <i className="ti-bookmark"></i> Chủ Đề
                                     </label>
-                                    <select id="subject" name="subject">
+                                    <select id="subject" name="subject" value={form.subject} onChange={handleChange}>
                                         <option value="">Chọn chủ đề</option>
                                         <option value="tuvan">Tư vấn mua tranh</option>
                                         <option value="thietke">Tư vấn thiết kế</option>
@@ -132,11 +173,10 @@ const Contact: React.FC = () => {
                                     <label htmlFor="message">
                                         <i className="ti-comment"></i> Tin Nhắn <span>*</span>
                                     </label>
-                                    <textarea id="message" name="message" rows={6} required placeholder="Nhập tin nhắn của bạn..."></textarea>
-                                    <span className="error-message"></span>
+                                    <textarea id="message" name="message" value={form.message} onChange={handleChange} rows={6} required placeholder="Nhập tin nhắn của bạn..."></textarea>
                                 </div>
 
-                                <button type="submit" className="submit-btn" onClick={(e) => e.preventDefault()}>
+                                <button type="submit" className="submit-btn">
                                     <span>Gửi Tin Nhắn</span>
                                     <i className="ti-arrow-right"></i>
                                 </button>

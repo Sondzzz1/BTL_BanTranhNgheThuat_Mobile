@@ -8,6 +8,7 @@ export interface ThongTinKhachHangResponse {
   diaChi?: string;
   soDienThoai?: string;
   email?: string;
+  trangThai?: boolean;
 }
 
 export interface CapNhatThongTinRequest {
@@ -35,8 +36,8 @@ export const customerService = {
       const response = await apiClient.put('/khach-hang/cap-nhat', data);
       return response.data.message;
     } catch (error: any) {
-      console.error('Error updating customer info:', error);
-      throw new Error(error.response?.data?.message || 'Lỗi khi cập nhật thông tin');
+      const msg = error.response?.data?.message || 'Lỗi khi cập nhật thông tin';
+      throw new Error(msg);
     }
   },
 

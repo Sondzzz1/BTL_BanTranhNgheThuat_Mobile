@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
+import SearchBox from './SearchBox';
 import '../assets/css/Header.css';
 
 const Header: React.FC = () => {
@@ -63,6 +64,9 @@ const Header: React.FC = () => {
             </li>
 
             <div className="header-icons">
+              {/* Search Icon */}
+              <SearchBox />
+              
               {isAuthenticated ? (
                 <div className="user-menu">
                   <Link to="/user" className="user-link">

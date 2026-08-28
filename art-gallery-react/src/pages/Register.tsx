@@ -19,6 +19,7 @@ const Register: React.FC = () => {
         confirmPassword: '',
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const { register } = useAuth();
     const navigate = useNavigate();
@@ -33,6 +34,7 @@ const Register: React.FC = () => {
             ...prev,
             [name]: '',
         }));
+        setSubmitError('');
     };
 
     const validateForm = (): boolean => {
@@ -96,20 +98,24 @@ const Register: React.FC = () => {
         }
 
         setIsLoading(true);
+        setSubmitError('');
 
         try {
+            // Trang đăng ký công khai chỉ tạo tài khoản người dùng (vaiTro = 1).
+            // Tài khoản tác giả/họa sĩ do admin tạo.
             await register(
                 formData.email,
                 formData.password,
                 formData.fullname,
-                formData.phone
+                formData.phone,
+                undefined,
+                1
             );
-            
-            alert('✅ Đăng ký thành công! Chào mừng bạn đến với Art Gallery.');
+
             navigate('/');
         } catch (error: any) {
             console.error('Register error:', error);
-            alert(`❌ ${error.message || 'Có lỗi xảy ra. Vui lòng thử lại!'}`);
+            setSubmitError(error?.message || 'Có lỗi xảy ra. Vui lòng thử lại!');
         } finally {
             setIsLoading(false);
         }
@@ -121,7 +127,20 @@ const Register: React.FC = () => {
                 <h2>Đăng ký tài khoản</h2>
                 <p>Nếu bạn đã có tài khoản</p>
                 <p>Bạn có thể đăng nhập <Link to="/login">TẠI ĐÂY!</Link></p>
+                <p style={{ fontSize: '13px', color: '#888' }}>
+                    Tài khoản tác giả/họa sĩ do quản trị viên cung cấp.
+                </p>
                 <form className="register-form" onSubmit={handleSubmit}>
+                    {submitError && (
+                        <div style={{
+                            background: '#fee', color: '#c0392b', padding: '10px 12px',
+                            borderRadius: '6px', marginBottom: '15px', fontSize: '14px',
+                            borderLeft: '4px solid #e74c3c', textAlign: 'left'
+                        }}>
+                            {submitError}
+                        </div>
+                    )}
+
                     <label htmlFor="fullname">Họ và Tên</label>
                     <input
                         type="text"
@@ -134,7 +153,7 @@ const Register: React.FC = () => {
                         required
                     />
                     {errors.fullname && <span className="error-text">{errors.fullname}</span>}
-                    
+
                     <label htmlFor="phone">Số điện thoại</label>
                     <input
                         type="tel"
@@ -147,7 +166,7 @@ const Register: React.FC = () => {
                         required
                     />
                     {errors.phone && <span className="error-text">{errors.phone}</span>}
-                    
+
                     <label htmlFor="email">Email</label>
                     <input
                         type="email"
@@ -160,7 +179,7 @@ const Register: React.FC = () => {
                         required
                     />
                     {errors.email && <span className="error-text">{errors.email}</span>}
-                    
+
                     <label htmlFor="password">Mật khẩu</label>
                     <input
                         type="password"
@@ -173,7 +192,7 @@ const Register: React.FC = () => {
                         required
                     />
                     {errors.password && <span className="error-text">{errors.password}</span>}
-                    
+
                     <label htmlFor="confirmPassword">Xác nhận mật khẩu</label>
                     <input
                         type="password"
@@ -186,7 +205,7 @@ const Register: React.FC = () => {
                         required
                     />
                     {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-                    
+
                     <button
                         type="submit"
                         className="register-button"

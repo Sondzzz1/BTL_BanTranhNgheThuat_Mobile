@@ -98,7 +98,8 @@ export const authService = {
     password: string,
     name: string,
     phone: string,
-    address?: string
+    address?: string,
+    vaiTro: number = 1 // 1: Người dùng (mặc định), 2: Họa sĩ/Tác giả
   ): Promise<User> {
     try {
       const request: DangKyRequest = {
@@ -108,7 +109,7 @@ export const authService = {
         email: email,
         dienThoai: phone,
         diaChi: address,
-        vaiTro: 1, // NguoiDung
+        vaiTro: vaiTro,
       };
 
       const response = await apiClient.post<DangNhapResponse>('/auth/dang-ky', request);
@@ -121,7 +122,7 @@ export const authService = {
       const role = mapVaiTro(data.user.vaiTro);
 
       const user: User = {
-        id: (data.user.maNguoiDung || data.user.maTaiKhoan).toString(),
+        id: (data.user.maNguoiDung || data.user.maHoaSi || data.user.maTaiKhoan).toString(),
         email: data.user.email || data.user.tenDangNhap,
         name: data.user.ten || name,
         phone: phone,
@@ -186,5 +187,19 @@ export const authService = {
   async getMe(): Promise<any> {
     const response = await apiClient.get('/auth/me');
     return response.data;
+  },
+
+  // Đổi mật khẩu - gọi API backend
+  async changePassword(matKhauCu: string, matKhauMoi: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await apiClient.post<{ success: boolean; message: string }>(
+        '/auth/doi-mat-khau',
+        { matKhauCu, matKhauMoi }
+      );
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Đổi mật khẩu thất bại';
+      return { success: false, message };
+    }
   },
 };

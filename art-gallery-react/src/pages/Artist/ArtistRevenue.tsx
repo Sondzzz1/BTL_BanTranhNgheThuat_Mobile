@@ -91,7 +91,7 @@ const ArtistRevenue: React.FC = () => {
                     {formatCurrency(dh.tongTien)}
                   </td>
                   <td>
-                    <span className={`status ${dh.trangThai === 'Hoàn thành' ? 'status-success' : 'status-pending'}`}>
+                    <span className={`status ${dh.trangThai === 'Đã giao' ? 'success' : 'pending'}`}>
                       {dh.trangThai}
                     </span>
                   </td>

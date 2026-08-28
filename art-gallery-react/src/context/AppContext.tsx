@@ -84,18 +84,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Load cart khi user thay đổi - Đồng bộ với Backend
   useEffect(() => {
     const loadCart = async () => {
-      if (user && user.email) {
+      if (user && user.role !== 'admin' && user.role !== 'author') {
         try {
           const serverCart = await cartService.getGioHang();
           setCart(serverCart);
-          console.log('✅ Đã đồng bộ giỏ hàng từ server');
         } catch (error) {
-          console.error('❌ Lỗi khi load giỏ hàng từ server, sử dụng local storage:', error);
-          const cartKey = `cart_${user.email}`;
-          const savedCart = localStorage.getItem(cartKey);
-          if (savedCart) {
-            setCart(JSON.parse(savedCart));
-          }
+          console.error('Lỗi khi load giỏ hàng từ server:', error);
+          setCart([]);
         }
       } else {
         setCart([]);

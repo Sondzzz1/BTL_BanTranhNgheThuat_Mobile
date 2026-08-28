@@ -60,17 +60,17 @@ const AdminHome: React.FC = () => {
                 </div>
                 <div className="card bg-danger">
                     <i className="ti-bar-chart"></i>
-                    <p>Doanh thu tháng</p>
-                    <h3>{formatCurrency(dashboardData?.doanhThuThang || 0)}</h3>
+                    <p>Đơn chờ xử lý</p>
+                    <h3>{dashboardData?.donHangChoXuLy || 0}</h3>
                 </div>
             </div>
 
             <div className="block">
                 <h4><i className="ti-time"></i> Hoạt động gần đây</h4>
                 <div className="activity">
-                    <div><i className="ti-plus"></i> Đơn hàng mới: {dashboardData?.donHangMoi || 0} đơn cần xử lý</div>
-                    <div><i className="ti-user"></i> Khách hàng mới hôm nay: {quickStats?.soKhachHangMoi || 0} người</div>
-                    <div><i className="ti-shopping-cart"></i> Doanh thu hôm nay: {formatCurrency(quickStats?.doanhThu || 0)}</div>
+                    <div><i className="ti-plus"></i> Đơn hàng chờ xử lý: {dashboardData?.donHangChoXuLy || 0} đơn</div>
+                    <div><i className="ti-palette"></i> Tác phẩm chờ duyệt: {dashboardData?.tacPhamChoDuyet || 0} tác phẩm</div>
+                    <div><i className="ti-shopping-cart"></i> Doanh thu hôm nay: {formatCurrency(quickStats?.doanhThuNgay || 0)}</div>
                 </div>
             </div>
 
@@ -79,15 +79,15 @@ const AdminHome: React.FC = () => {
                 <div className="stats">
                     <div className="stat">
                         <p>Doanh thu</p>
-                        <h3>{formatCurrency(quickStats?.doanhThu || 0)}</h3>
+                        <h3>{formatCurrency(quickStats?.doanhThuNgay || 0)}</h3>
                     </div>
                     <div className="stat">
-                        <p>Số đơn hàng</p>
-                        <h3>{quickStats?.soDonHang || 0}</h3>
+                        <p>Đơn hoàn thành</p>
+                        <h3>{quickStats?.donHangHoanThanh || 0}</h3>
                     </div>
                     <div className="stat">
-                        <p>Khách hàng mới</p>
-                        <h3>{quickStats?.soKhachHangMoi || 0}</h3>
+                        <p>Đơn chờ xử lý</p>
+                        <h3>{dashboardData?.donHangChoXuLy || 0}</h3>
                     </div>
                 </div>
             </div>

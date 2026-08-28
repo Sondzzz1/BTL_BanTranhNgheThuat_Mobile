@@ -28,18 +28,27 @@ import AdminSettings from './pages/Admin/AdminSettings';
 import AdminContent from './pages/Admin/AdminContent';
 import AdminAuthors from './pages/Admin/AdminAuthors';
 import AdminProfile from './pages/Admin/AdminProfile';
+import AdminArtworkDetails from './pages/Admin/AdminArtworkDetails';
+import AdminArtistArtworks from './pages/Admin/AdminArtistArtworks';
+
 import AdminAuthorRevenue from './pages/Admin/AdminAuthorRevenue';
 import AdminApiTest from './pages/Admin/AdminApiTest';
+import TestEditsAPI from './pages/Admin/TestEditsAPI';
 import ArtistLayout from './pages/Artist/ArtistLayout';
 import ArtistDashboard from './pages/Artist/ArtistDashboard';
 import ArtistProfile from './pages/Artist/ArtistProfile';
 import ArtistArtworks from './pages/Artist/ArtistArtworks';
+import ArtistDeletedArtworks from './pages/Artist/ArtistDeletedArtworks';
+import ArtworkDetailManagement from './pages/Artist/ArtworkDetailManagement';
+import ArtworkDetailContent from './pages/Artist/ArtworkDetailContent';
 import ArtistArticles from './pages/Artist/ArtistArticles';
 import ArtistRevenue from './pages/Artist/ArtistRevenue';
 import UserLayout from './pages/User/UserLayout';
 import UserProfile from './pages/User/UserProfile';
 import UserOrders from './pages/User/UserOrders';
 import UserOrderDetail from './pages/User/UserOrderDetail';
+import UserFavorites from './pages/User/UserFavorites';
+import FavoriteTest from './pages/FavoriteTest';
 import ScrollToTop from './components/ScrollToTop';
 import PlaceholderPage from './pages/PlaceholderPage';
 import './App.css';
@@ -66,6 +75,7 @@ function App() {
             <Route path="/test" element={<TestPage />} />
             <Route path="/api-test" element={<ApiTest />} />
             <Route path="/test-auth" element={<TestAuth />} />
+            <Route path="/favorite-test" element={<FavoriteTest />} />
             
             {/* Public Routes */}
             <Route path="/" element={<Layout><Home /></Layout>} />
@@ -89,10 +99,13 @@ function App() {
               <Route path="report" element={<AdminReport />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="content" element={<AdminContent />} />
+              <Route path="artwork-details" element={<AdminArtworkDetails />} />
               <Route path="authors" element={<AdminAuthors />} />
+              <Route path="authors/:id/artworks" element={<AdminArtistArtworks />} />
               <Route path="profile" element={<AdminProfile />} />
               <Route path="revenue" element={<AdminAuthorRevenue />} />
               <Route path="api-test" element={<AdminApiTest />} />
+              <Route path="test-edits" element={<TestEditsAPI />} />
             </Route>
 
             {/* Artist Routes */}
@@ -100,6 +113,9 @@ function App() {
               <Route index element={<ArtistDashboard />} />
               <Route path="profile" element={<ArtistProfile />} />
               <Route path="artworks" element={<ArtistArtworks />} />
+              <Route path="artworks/deleted" element={<ArtistDeletedArtworks />} />
+              <Route path="artworks/:id" element={<ArtworkDetailManagement />} />
+              <Route path="artworks/:id/content" element={<ArtworkDetailContent />} />
               <Route path="articles" element={<ArtistArticles />} />
               <Route path="revenue" element={<ArtistRevenue />} />
               <Route path="sales" element={<PlaceholderPage title="Báo Cáo Bán Hàng" />} />
@@ -111,6 +127,7 @@ function App() {
               <Route path="profile" element={<UserProfile />} />
               <Route path="orders" element={<UserOrders />} />
               <Route path="orders/:id" element={<UserOrderDetail />} />
+              <Route path="favorites" element={<UserFavorites />} />
             </Route>
 
             {/* Fallback Route */}

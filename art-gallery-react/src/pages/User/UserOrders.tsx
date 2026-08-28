@@ -37,11 +37,12 @@ const UserOrders: React.FC = () => {
 
   const getStatusText = (status: string) => {
     const statusMap: Record<string, string> = {
-      pending: 'Chờ xử lý',
-      shipped: 'Đang giao',
-      success: 'Hoàn thành',
+      pending: 'Chờ xác nhận',
+      confirmed: 'Đã xác nhận',
+      shipping: 'Đang giao',
+      success: 'Đã giao',
       canceled: 'Đã hủy',
-      cancel_pending: 'Đang xử lý hủy',
+      cancel_pending: 'Yêu cầu hủy',
     };
     return statusMap[status] || status;
   };
@@ -101,11 +102,17 @@ const UserOrders: React.FC = () => {
           className={filter === 'pending' ? 'active' : ''}
           onClick={() => setFilter('pending')}
         >
-          Chờ xử lý
+          Chờ xác nhận
         </button>
         <button
-          className={filter === 'shipped' ? 'active' : ''}
-          onClick={() => setFilter('shipped')}
+          className={filter === 'confirmed' ? 'active' : ''}
+          onClick={() => setFilter('confirmed')}
+        >
+          Đã xác nhận
+        </button>
+        <button
+          className={filter === 'shipping' ? 'active' : ''}
+          onClick={() => setFilter('shipping')}
         >
           Đang giao
         </button>
@@ -113,7 +120,7 @@ const UserOrders: React.FC = () => {
           className={filter === 'success' ? 'active' : ''}
           onClick={() => setFilter('success')}
         >
-          Hoàn thành
+          Đã giao
         </button>
         <button
           className={filter === 'canceled' ? 'active' : ''}
@@ -175,7 +182,7 @@ const UserOrders: React.FC = () => {
                   >
                     Xem Chi Tiết
                   </Link>
-                  {(order.trangThai === 'pending' || order.trangThai === 'shipped') && (
+                  {(order.trangThai === 'pending' || order.trangThai === 'confirmed') && (
                     <button 
                       className="btn-cancel"
                       onClick={() => handleCancelOrder(order.id, order.maHD)}

@@ -1,51 +1,84 @@
 import apiClient from './api';
 
+// ======================================================
+// KIỂU DỮ LIỆU
+// ======================================================
+
+// TrangThai: 0 = Chờ duyệt, 2 = Đã duyệt, 3 = Từ chối
 export interface BaiVietResponse {
   maBaiViet: number;
   tieuDe: string;
   noiDung?: string;
+  anhTieuDe?: string;
   maHoaSi: number;
   tenHoaSi: string;
   ngayDang: string;
-  trangThai?: boolean;
+  trangThai: number;
+  lyDo?: string;
 }
 
 export interface NoiDungResponse {
   maNoiDung: number;
+  maTacPham: number;
+  tenTacPham?: string; // Thêm tên tác phẩm để hiển thị
   tieuDe: string;
   moTa?: string;
   loai: string;
   trangThai: boolean;
 }
 
+// ======================================================
+// CONTENT SERVICE
+// ======================================================
+
 export const contentService = {
-  // Bài viết
+  // ======================================================
+  // BÀI VIẾT (ARTICLES)
+  // ======================================================
+
+  // Public - chỉ lấy bài đã duyệt (TrangThai = 2)
   async layTatCaBaiViet(): Promise<BaiVietResponse[]> {
     const response = await apiClient.get('/noi-dung/bai-viet');
     return response.data;
   },
 
-  async taoBaiViet(data: { tieuDe: string; noiDung: string }): Promise<void> {
-    await apiClient.post('/noi-dung/bai-viet', data);
+  // Admin - lấy tất cả bài viết (Hỗ trợ filter trangThai qua query params)
+  async layTatCaBaiVietAdmin(trangThai?: number): Promise<BaiVietResponse[]> {
+    const response = await apiClient.get('/noi-dung/bai-viet/get-all', {
+      params: { trangThai }
+    });
+    return response.data;
   },
 
-  async capNhatBaiViet(id: number, data: { tieuDe: string; noiDung: string }): Promise<void> {
-    await apiClient.put(`/noi-dung/bai-viet/${id}`, data);
-  },
-
+  // Xóa bài viết (Admin/Artist)
   async xoaBaiViet(id: number): Promise<void> {
-    await apiClient.delete(`/noi-dung/bai-viet/${id}`);
+    await apiClient.delete(`/noi-dung/bai-viet/${id}/delete`);
   },
 
-  async pheDuyetBaiViet(id: number, approve: boolean): Promise<void> {
-    await apiClient.put(`/noi-dung/bai-viet/${id}/phe-duyet`, approve, {
-      headers: { 'Content-Type': 'application/json' }
+  // Duyệt bài viết (Admin) - Gửi body { pheDuyet: true }
+  async pheDuyetBaiViet(id: number): Promise<void> {
+    await apiClient.put(`/noi-dung/bai-viet/${id}/update/duyet`, {
+      pheDuyet: true,
+      lyDo: null
     });
   },
 
-  // Chi tiết tác phẩm
+  // Từ chối bài viết (Admin) - Gửi body { pheDuyet: false, lyDo: "..." }
+  async tuChoiBaiViet(id: number, lyDo: string): Promise<void> {
+    await apiClient.put(`/noi-dung/bai-viet/${id}/update/duyet`, {
+      pheDuyet: false,
+      lyDo: lyDo
+    });
+  },
+
+  // ======================================================
+  // CHI TIẾT TÁC PHẨM (ARTWORK DETAILS)
+  // ======================================================
+
   async layTatCaChiTietTacPham(loai?: string): Promise<NoiDungResponse[]> {
-    const response = await apiClient.get('/noi-dung/chi-tiet-tac-pham', { params: { loai } });
+    const response = await apiClient.get('/noi-dung/chi-tiet-tac-pham', {
+      params: { loai }
+    });
     return response.data;
   },
 
@@ -54,11 +87,12 @@ export const contentService = {
     return response.data;
   },
 
-  async taoChiTietTacPham(data: any): Promise<void> {
-    await apiClient.post('/noi-dung/chi-tiet-tac-pham', data);
-  },
-
-  async capNhatChiTietTacPham(id: number, data: any): Promise<void> {
+  async capNhatChiTietTacPham(id: number, data: {
+    tieuDe: string;
+    moTa?: string;
+    loai: string;
+    trangThai: boolean;
+  }): Promise<void> {
     await apiClient.put(`/noi-dung/chi-tiet-tac-pham/${id}`, data);
   },
 

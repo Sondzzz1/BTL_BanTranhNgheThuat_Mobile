@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
 import { Artwork } from '../types';
+import FavoriteButton from './FavoriteButton';
 import '../assets/css/ArtworkCard.css';
 
 // Props Interface với TypeScript (thay cho PropTypes)
@@ -44,11 +45,16 @@ const ArtworkCard: React.FC<ArtworkCardProps> = ({
 
   return (
     <div className="artwork-card">
-      <Link to={`/artwork/${artwork.id}`} className="artwork-link">
+      <Link to={`/artworks/${artwork.id}`} className="artwork-link">
         <div className="artwork-image">
           <img src={artwork.anhTranh} alt={artwork.tenTranh} />
           {artwork.isFeatured && <span className="badge featured">Nổi bật</span>}
           {artwork.isBestSelling && <span className="badge bestselling">Bán chạy</span>}
+          
+          {/* Nút yêu thích ở góc trên bên phải ảnh */}
+          <div className="favorite-button-overlay">
+            <FavoriteButton artworkId={Number(artwork.id)} size="small" />
+          </div>
         </div>
         
         <div className="artwork-info">

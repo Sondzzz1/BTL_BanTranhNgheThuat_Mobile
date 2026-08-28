@@ -26,13 +26,15 @@ const Artworks: React.FC = () => {
         }
 
         if (sizeFilter) {
-            // Simple size filtering logic
+            // Lọc theo cạnh lớn nhất (cm) trong chuỗi kichThuoc, ví dụ "60x80 cm"
             filtered = filtered.filter(art => {
                 if (!art.kichThuoc) return false;
-                const size = art.kichThuoc.toLowerCase();
-                if (sizeFilter === 'Small') return size.includes('40') || size.includes('50');
-                if (sizeFilter === 'Medium') return size.includes('60') || size.includes('70');
-                if (sizeFilter === 'Large') return size.includes('80') || size.includes('90') || size.includes('100');
+                const numbers = art.kichThuoc.match(/\d+/g)?.map(Number) ?? [];
+                if (numbers.length === 0) return false;
+                const maxSide = Math.max(...numbers);
+                if (sizeFilter === 'Small') return maxSide < 60;
+                if (sizeFilter === 'Medium') return maxSide >= 60 && maxSide < 90;
+                if (sizeFilter === 'Large') return maxSide >= 90;
                 return true;
             });
         }

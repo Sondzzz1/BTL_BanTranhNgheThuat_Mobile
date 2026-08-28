@@ -1,49 +1,49 @@
 // Artist Dashboard - Trang tổng quan cho họa sĩ
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { useAppContext } from '../../context/AppContext';
-
-interface ArtistStats {
-  totalArtworks: number;
-  publishedArtworks: number;
-  pendingArtworks: number;
-  totalArticles: number;
-  totalRevenue: number;
-  totalSales: number;
-}
+import {
+  artistDashboardService,
+  TacPhamHoaSiResponse,
+  DoanhThuTongQuanResponse,
+} from '../../services/artistDashboardService';
 
 const ArtistDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { artworks } = useAppContext();
-  const [stats, setStats] = useState<ArtistStats>({
-    totalArtworks: 0,
-    publishedArtworks: 0,
-    pendingArtworks: 0,
-    totalArticles: 0,
-    totalRevenue: 0,
-    totalSales: 0,
-  });
+  const [myArtworks, setMyArtworks] = useState<TacPhamHoaSiResponse[]>([]);
+  const [tongQuan, setTongQuan] = useState<DoanhThuTongQuanResponse | null>(null);
+  const [articleCount, setArticleCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Lọc tác phẩm của họa sĩ hiện tại
-    const myArtworks = artworks.filter(art => art.tacGia === user?.name);
-    
-    setStats({
-      totalArtworks: myArtworks.length,
-      publishedArtworks: myArtworks.length, // Tất cả đều published
-      pendingArtworks: 0, // Chưa có logic pending
-      totalArticles: 0, // Chưa có API articles
-      totalRevenue: 0, // Chưa có API revenue
-      totalSales: myArtworks.reduce((sum, art) => sum + (art.soLuongTon || 0), 0),
-    });
-  }, [artworks, user]);
+    loadData();
+  }, []);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [artworks, doanhThu, articles] = await Promise.all([
+        artistDashboardService.getTacPhamCuaToi(),
+        artistDashboardService.getDoanhThuTongQuan(),
+        artistDashboardService.getBaiVietCuaToi().catch(() => []),
+      ]);
+      setMyArtworks(artworks);
+      setTongQuan(doanhThu);
+      setArticleCount(articles.length);
+    } catch (error) {
+      console.error('Lỗi khi tải dashboard tác giả:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const formatCurrency = (amount: number) =>
+    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+
+  const totalArtworks = myArtworks.length;
+  const publishedArtworks = myArtworks.filter((a) => a.trangThai === 1).length;
+
+  if (loading) return <div className="page" style={{ padding: '20px' }}>Đang tải dữ liệu...</div>;
 
   return (
     <div id="home" className="page">
@@ -54,25 +54,25 @@ const ArtistDashboard: React.FC = () => {
       <div className="dashboard">
         <div className="card bg-primary">
           <i className="ti-image" style={{ fontSize: '2.5rem' }}></i>
-          <h3>{stats.totalArtworks}</h3>
+          <h3>{totalArtworks}</h3>
           <p>Tổng Tác Phẩm</p>
         </div>
 
         <div className="card bg-success">
           <i className="ti-check" style={{ fontSize: '2.5rem' }}></i>
-          <h3>{stats.publishedArtworks}</h3>
-          <p>Đã Xuất Bản</p>
+          <h3>{publishedArtworks}</h3>
+          <p>Đang Bán</p>
         </div>
 
         <div className="card bg-warning">
           <i className="ti-write" style={{ fontSize: '2.5rem' }}></i>
-          <h3>{stats.totalArticles}</h3>
+          <h3>{articleCount}</h3>
           <p>Bài Viết</p>
         </div>
 
         <div className="card bg-success">
           <i className="ti-money" style={{ fontSize: '2.5rem' }}></i>
-          <h3>{formatCurrency(stats.totalRevenue)}</h3>
+          <h3>{formatCurrency(tongQuan?.tongDoanhThu || 0)}</h3>
           <p>Doanh Thu</p>
         </div>
       </div>
@@ -91,19 +91,45 @@ const ArtistDashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {artworks
-                  .filter(art => art.tacGia === user?.name)
-                  .slice(0, 5)
-                  .map(artwork => (
-                    <tr key={artwork.id}>
-                      <td>
-                        <img src={artwork.anhTranh} alt={artwork.tenTranh} style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '5px' }} />
-                      </td>
-                      <td>{artwork.tenTranh}</td>
-                      <td>{formatCurrency(artwork.giaBan)}</td>
-                      <td><span className="status success">Đã xuất bản</span></td>
-                    </tr>
-                  ))}
+                {myArtworks.slice(0, 5).map((artwork) => (
+                  <tr key={artwork.maTacPham}>
+                    <td>
+                      {artwork.hinhAnh ? (
+                        <img
+                          src={artwork.hinhAnh}
+                          alt={artwork.tenTacPham}
+                          style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '5px' }}
+                        />
+                      ) : (
+                        <div style={{ width: '60px', height: '60px', background: '#f0f0f0', borderRadius: '5px' }} />
+                      )}
+                    </td>
+                    <td>{artwork.tenTacPham}</td>
+                    <td>{formatCurrency(artwork.gia)}</td>
+                    <td>
+                      <span
+                        className={`status ${
+                          artwork.trangThai === 1
+                            ? 'success'
+                            : artwork.trangThai === 0
+                            ? 'pending'
+                            : artwork.trangThai === 2
+                            ? 'shipped'
+                            : 'canceled'
+                        }`}
+                      >
+                        {artwork.trangThaiText}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {myArtworks.length === 0 && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center' }}>
+                      Bạn chưa có tác phẩm nào.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -112,10 +138,10 @@ const ArtistDashboard: React.FC = () => {
         <div className="block">
           <h4><i className="ti-bolt"></i> Thao Tác Nhanh</h4>
           <div className="activity">
-            <div><a href="/artist/artworks" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-plus"></i> Thêm Tác Phẩm</a></div>
-            <div><a href="/artist/articles" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-write"></i> Viết Bài Mới</a></div>
-            <div><a href="/artist/revenue" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-bar-chart"></i> Xem Doanh Thu</a></div>
-            <div><a href="/artist/profile" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-settings"></i> Cập Nhật Hồ Sơ</a></div>
+            <div><Link to="/artist/artworks" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-plus"></i> Thêm Tác Phẩm</Link></div>
+            <div><Link to="/artist/articles" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-write"></i> Viết Bài Mới</Link></div>
+            <div><Link to="/artist/revenue" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-bar-chart"></i> Xem Doanh Thu</Link></div>
+            <div><Link to="/artist/profile" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-settings"></i> Cập Nhật Hồ Sơ</Link></div>
           </div>
         </div>
       </div>

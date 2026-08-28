@@ -1,7 +1,27 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { contentService, BaiVietResponse } from '../services/contentService';
 import './News.css';
 
 const News: React.FC = () => {
+    const [articles, setArticles] = useState<BaiVietResponse[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchArticles = async () => {
+            try {
+                // API này mặc định chỉ trả về các bài viết đã được duyệt
+                const data = await contentService.layTatCaBaiViet();
+                setArticles(data);
+            } catch (error) {
+                console.error("Error fetching articles:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchArticles();
+    }, []);
+
     return (
         <div className="news-page">
             {/* Hero Section */}
@@ -38,87 +58,49 @@ const News: React.FC = () => {
 
                     {/* News Grid */}
                     <div className="news-grid">
-                        <article className="news-card fade-in">
-                            <div className="news-card-image">
-                                <img src="/assets/tintucnoibat/deban.webp" alt="Đề bàn" />
-                                <div className="news-card-overlay">
-                                    <a href="#" className="view-btn"><i className="ti-eye"></i></a>
-                                </div>
-                            </div>
-                            <div className="news-card-content">
-                                <span className="news-category">Triển lãm</span>
-                                <span className="news-date">
-                                    <i className="ti-calendar"></i> 10/01/2025
-                                </span>
-                                <h3>Triển lãm "Đề Bàn" - Nghệ thuật đương đại</h3>
-                                <p>Khám phá những tác phẩm nghệ thuật đương đại độc đáo trong triển lãm "Đề Bàn" tại LanVu Gallery...</p>
-                                <a href="#" className="read-more">Đọc thêm →</a>
-                            </div>
-                        </article>
-
-                        <article className="news-card fade-in">
-                            <div className="news-card-image">
-                                <img src="/assets/tintucnoibat/ngamsen.webp" alt="Ngắm sen" />
-                                <div className="news-card-overlay">
-                                    <a href="#" className="view-btn"><i className="ti-eye"></i></a>
-                                </div>
-                            </div>
-                            <div className="news-card-content">
-                                <span className="news-category">Nghệ thuật</span>
-                                <span className="news-date">
-                                    <i className="ti-calendar"></i> 05/01/2025
-                                </span>
-                                <h3>Workshop "Ngắm Sen" - Học vẽ tranh sơn dầu</h3>
-                                <p>Tham gia workshop học vẽ tranh sơn dầu với chủ đề hoa sen, được hướng dẫn bởi các họa sĩ chuyên nghiệp...</p>
-                                <a href="#" className="read-more">Đọc thêm →</a>
-                            </div>
-                        </article>
-
-                        <article className="news-card fade-in">
-                            <div className="news-card-image">
-                                <img src="/assets/tintucnoibat/phongngu.webp" alt="Phòng ngủ" />
-                                <div className="news-card-overlay">
-                                    <a href="#" className="view-btn"><i className="ti-eye"></i></a>
-                                </div>
-                            </div>
-                            <div className="news-card-content">
-                                <span className="news-category">Tư vấn</span>
-                                <span className="news-date">
-                                    <i className="ti-calendar"></i> 01/01/2025
-                                </span>
-                                <h3>Bí quyết chọn tranh trang trí phòng ngủ</h3>
-                                <p>Hướng dẫn chi tiết cách chọn tranh phù hợp với không gian phòng ngủ để tạo cảm giác thư giãn và ấm cúng...</p>
-                                <a href="#" className="read-more">Đọc thêm →</a>
-                            </div>
-                        </article>
-                        
-                        <article className="news-card fade-in">
-                            <div className="news-card-image">
-                                <img src="/assets/tintucnoibat/khaitruong-hcm.png" alt="Sự kiện Khai trương" />
-                                <div className="news-card-overlay">
-                                    <a href="#" className="view-btn"><i className="ti-eye"></i></a>
-                                </div>
-                            </div>
-                            <div className="news-card-content">
-                                <span className="news-category">Sự kiện</span>
-                                <span className="news-date">
-                                    <i className="ti-calendar"></i> 28/12/2024
-                                </span>
-                                <h3>Khai trương chi nhánh mới tại TP.HCM</h3>
-                                <p>LanVu Gallery vui mừng thông báo khai trương chi nhánh mới tại quận 1, TP.HCM với nhiều ưu đãi đặc biệt...</p>
-                                <a href="#" className="read-more">Đọc thêm →</a>
-                            </div>
-                        </article>
-                    </div>
-
-                    {/* Pagination */}
-                    <div className="pagination fade-in">
-                        <button className="page-btn active">1</button>
-                        <button className="page-btn">2</button>
-                        <button className="page-btn">3</button>
-                        <button className="page-btn">
-                            <i className="ti-angle-right">{'>'}</i>
-                        </button>
+                        {loading ? (
+                            <div className="loading-state">Đang tải tin tức...</div>
+                        ) : articles.length > 0 ? (
+                            articles.map(article => (
+                                <article key={article.maBaiViet} className="news-card fade-in">
+                                    <div className="news-card-image">
+                                        <img 
+                                            src={article.anhTieuDe || "/assets/tintucnoibat/ngamsen.webp"} 
+                                            alt={article.tieuDe} 
+                                            onError={(e) => {
+                                                const img = e.target as HTMLImageElement;
+                                                img.onerror = null;
+                                                img.src = 'https://via.placeholder.com/600x400?text=No+Image';
+                                            }}
+                                        />
+                                        <div className="news-card-overlay">
+                                            <a href="#" className="view-btn"><i className="ti-eye"></i></a>
+                                        </div>
+                                    </div>
+                                    <div className="news-card-content">
+                                        <span className="news-category">Tin tức</span>
+                                        <span className="news-date">
+                                            <i className="ti-calendar"></i> {new Date(article.ngayDang).toLocaleDateString('vi-VN')}
+                                        </span>
+                                        <h3>{article.tieuDe}</h3>
+                                        <p style={{ 
+                                            display: '-webkit-box', 
+                                            WebkitLineClamp: 3, 
+                                            WebkitBoxOrient: 'vertical', 
+                                            overflow: 'hidden' 
+                                        }}>
+                                            {article.noiDung ? article.noiDung.replace(/<[^>]+>/g, '') : 'Chưa có nội dung...'}
+                                        </p>
+                                        <p className="author-name" style={{ fontSize: '0.9em', color: '#666', marginTop: '10px' }}>
+                                            Đăng bởi: <strong>{article.tenHoaSi}</strong>
+                                        </p>
+                                        <a href="#" className="read-more">Đọc thêm →</a>
+                                    </div>
+                                </article>
+                            ))
+                        ) : (
+                            <div className="no-data-state">Hiện tại chưa có tin tức nào.</div>
+                        )}
                     </div>
                 </div>
             </section>

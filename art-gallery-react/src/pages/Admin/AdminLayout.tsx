@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import './Admin.css';
 
@@ -8,14 +8,15 @@ const AdminLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Nếu người dùng là tác giả và vào nhầm URL '/admin', chuyển hướng họ đến '/artist'
+    // Redirect users đúng layout
     useEffect(() => {
+        // Author không nên ở /admin → đẩy về /artist
         if (isAuthor && location.pathname.startsWith('/admin')) {
             navigate('/artist', { replace: true });
+            return;
         }
-        
-        // Nếu người dùng chưa đăng nhập hoặc là user thường đang cố gắng vào admin (nên nằm trong hook hoặc route guard, nhưng ta thêm bảo hiểm ở đây)
-        if (!user || user.role === 'user') {
+        // User thường hoặc chưa đăng nhập → về login
+        if (!user || (user.role !== 'admin' && user.role !== 'author')) {
             navigate('/login');
         }
     }, [isAuthor, location.pathname, navigate, user]);
@@ -66,21 +67,11 @@ const AdminLayout: React.FC = () => {
                         </li>
                     </NavLink>
 
-                    {/* Tác giả thấy thêm mục Hồ sơ và Doanh thu riêng */}
-                    {isAuthor && (
-                        <>
-                            <NavLink to="/admin/profile">
-                                <li className={location.pathname === '/admin/profile' ? 'active' : ''}>
-                                    <i className="ti-id-badge"></i> Hồ sơ cá nhân
-                                </li>
-                            </NavLink>
-                            <NavLink to="/admin/revenue">
-                                <li className={location.pathname === '/admin/revenue' ? 'active' : ''}>
-                                    <i className="ti-money"></i> Doanh thu
-                                </li>
-                            </NavLink>
-                        </>
-                    )}
+                    <NavLink to="/admin/artwork-details">
+                        <li className={location.pathname === '/admin/artwork-details' ? 'active' : ''}>
+                            <i className="ti-write"></i> Chi Tiết Tác Phẩm
+                        </li>
+                    </NavLink>
 
                     {isAdmin && (
                         <>
@@ -104,12 +95,20 @@ const AdminLayout: React.FC = () => {
                             </li>
                         </NavLink>
                     )}
+
+                    {isAdmin && (
+                        <NavLink to="/admin/profile">
+                            <li className={location.pathname === '/admin/profile' ? 'active' : ''}>
+                                <i className="ti-id-badge"></i> Hồ sơ
+                            </li>
+                        </NavLink>
+                    )}
                     
-                    <Link to="/">
+                    <a href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
                         <li className="sidebar-link">
                             <i className="ti-world"></i> Về Trang Chủ
                         </li>
-                    </Link>
+                    </a>
                     <li className="logout-btn" onClick={handleLogout}>
                         <i className="ti-power-off"></i> Đăng xuất
                     </li>

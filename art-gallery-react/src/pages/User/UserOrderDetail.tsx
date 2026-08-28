@@ -31,11 +31,12 @@ const UserOrderDetail: React.FC = () => {
 
   const getStatusText = (status: string) => {
     const statusMap: Record<string, string> = {
-      pending: 'Chờ xử lý',
-      shipped: 'Đang giao',
-      success: 'Hoàn thành',
+      pending: 'Chờ xác nhận',
+      confirmed: 'Đã xác nhận',
+      shipping: 'Đang giao',
+      success: 'Đã giao',
       canceled: 'Đã hủy',
-      cancel_pending: 'Đang xử lý hủy',
+      cancel_pending: 'Yêu cầu hủy',
     };
     return statusMap[status] || status;
   };

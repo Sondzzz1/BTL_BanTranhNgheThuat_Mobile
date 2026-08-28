@@ -5,7 +5,12 @@ import { useAppContext } from '../context/AppContext';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
 import { artworkService } from '../services/artworkService';
+import { contentService, NoiDungResponse } from '../services/contentService';
+import apiClient from '../services/api';
 import { Artwork } from '../types';
+import ArtworkDetailSection from '../components/ArtworkDetailSection';
+import RecommendedArtworks from '../components/RecommendedArtworks';
+import FavoriteButton from '../components/FavoriteButton';
 import '../assets/css/ArtworkDetail.css';
 
 const ArtworkDetail: React.FC = () => {
@@ -15,12 +20,43 @@ const ArtworkDetail: React.FC = () => {
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
+  const [artworkContents, setArtworkContents] = useState<NoiDungResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [galleryImages, setGalleryImages] = useState<string[]>([]);
 
   useEffect(() => {
     loadArtwork();
   }, [id]);
+
+  useEffect(() => {
+    // Load gallery images from artwork detail
+    const loadGalleryImages = async () => {
+      if (!id) return;
+      try {
+        const response = await apiClient.get(`/public/tac-pham/${id}/chi-tiet`);
+        const detail = response.data;
+        const images = [
+          detail.hinhAnh1,
+          detail.hinhAnh2,
+          detail.hinhAnh3,
+          detail.hinhAnh4
+        ].filter(Boolean) as string[];
+        setGalleryImages(images);
+      } catch (error) {
+        console.log('Không tìm thấy ảnh bổ sung:', error);
+      }
+    };
+    loadGalleryImages();
+  }, [id]);
+
+  useEffect(() => {
+    // Set selected image to artwork main image when artwork loads
+    if (artwork?.anhTranh) {
+      setSelectedImage(artwork.anhTranh);
+    }
+  }, [artwork]);
 
   const loadArtwork = async () => {
     if (!id) return;
@@ -35,6 +71,15 @@ const ArtworkDetail: React.FC = () => {
         // Fetch from API
         const data = await artworkService.getArtworkById(id);
         setArtwork(data);
+      }
+
+      // Fetch approved contents for this artwork
+      try {
+        const contents = await contentService.layChiTietTheoTacPham(Number(id));
+        const approvedContents = contents.filter(c => c.trangThai === true);
+        setArtworkContents(approvedContents);
+      } catch (err) {
+        console.error('Error loading artwork contents:', err);
       }
     } catch (error) {
       console.error('Error loading artwork:', error);
@@ -53,7 +98,7 @@ const ArtworkDetail: React.FC = () => {
 
     if (!artwork) return;
 
-    await addToCart({
+    const ok = await addToCart({
       id: artwork.id,
       name: artwork.tenTranh,
       price: artwork.giaBan,
@@ -61,7 +106,7 @@ const ArtworkDetail: React.FC = () => {
       quantity: quantity,
     });
 
-    alert('Đã thêm vào giỏ hàng!');
+    if (ok) alert('Đã thêm vào giỏ hàng!');
   };
 
   const handleBuyNow = async () => {
@@ -73,7 +118,7 @@ const ArtworkDetail: React.FC = () => {
 
     if (!artwork) return;
 
-    await addToCart({
+    const ok = await addToCart({
       id: artwork.id,
       name: artwork.tenTranh,
       price: artwork.giaBan,
@@ -81,7 +126,7 @@ const ArtworkDetail: React.FC = () => {
       quantity: quantity,
     });
 
-    navigate('/checkout');
+    if (ok) navigate('/checkout');
   };
 
   const formatPrice = (price: number) => {
@@ -123,7 +168,7 @@ const ArtworkDetail: React.FC = () => {
           <div className="detail-media">
             <div className="main-image">
               <img
-                src={artwork.anhTranh}
+                src={selectedImage || artwork.anhTranh}
                 alt={artwork.tenTranh}
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = 'https://via.placeholder.com/600?text=No+Image';
@@ -132,11 +177,29 @@ const ArtworkDetail: React.FC = () => {
               <div className="zoom-icon">
                 <i className="ti-fullscreen"></i>
               </div>
+              {/* Nút yêu thích */}
+              <div className="favorite-icon">
+                <FavoriteButton artworkId={parseInt(id!)} size="medium" />
+              </div>
             </div>
             <div className="thumbnails">
-              <img src={artwork.anhTranh} alt="thumbnail" className="active" />
-              <img src={artwork.anhTranh} alt="thumbnail" />
-              <img src={artwork.anhTranh} alt="thumbnail" />
+              {/* Main artwork image */}
+              <img 
+                src={artwork.anhTranh} 
+                alt="Ảnh chính" 
+                className={selectedImage === artwork.anhTranh ? 'active' : ''}
+                onClick={() => setSelectedImage(artwork.anhTranh)}
+              />
+              {/* Gallery images from artwork detail */}
+              {galleryImages.map((img, index) => (
+                <img 
+                  key={index}
+                  src={img} 
+                  alt={`Góc nhìn ${index + 1}`}
+                  className={selectedImage === img ? 'active' : ''}
+                  onClick={() => setSelectedImage(img)}
+                />
+              ))}
             </div>
           </div>
 
@@ -282,18 +345,18 @@ const ArtworkDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Phần mô tả tác phẩm - Full width bên dưới */}
-        {artwork.moTa && (
-          <div className="artwork-full-description">
-            <div className="description-header">
-              
-              <h2 className="info-title">THÔNG TIN</h2>
-            </div>
-            <div className="description-content">
-              <p>"{artwork.tenTranh}" {artwork.moTa}</p>
-            </div>
-          </div>
+        {/* Component hiển thị chi tiết tác phẩm từ Họa Sĩ đã được Admin duyệt */}
+        {id && (
+          <ArtworkDetailSection 
+            artworkId={id} 
+            artworkDescription={artwork.moTa}
+            artworkName={artwork.tenTranh}
+            artworkContents={artworkContents}
+          />
         )}
+
+        {/* Tác phẩm gợi ý */}
+        {id && <RecommendedArtworks currentArtworkId={id} />}
       </div>
     </div>
   );

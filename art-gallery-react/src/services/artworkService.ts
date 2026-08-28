@@ -12,6 +12,9 @@ interface TacPhamResponse {
   soLuong: number;
   moTa?: string;
   hinhAnh?: string;
+  kichThuoc?: string;
+  chatLieu?: string;
+  chatLieuKhung?: string;
 }
 
 // Chuyển đổi từ DTO backend sang Artwork frontend
@@ -22,9 +25,9 @@ const mapToArtwork = (dto: TacPhamResponse): Artwork => {
     giaBan: dto.gia,
     danhMuc: (dto.tenDanhMuc || 'Khác') as any,
     tacGia: dto.tenHoaSi,
-    kichThuoc: '',
-    chatLieu: '',
-    chatLieuKhung: '',
+    kichThuoc: dto.kichThuoc || '',
+    chatLieu: dto.chatLieu || '',
+    chatLieuKhung: dto.chatLieuKhung || '',
     soLuongTon: dto.soLuong,
     anhTranh: dto.hinhAnh || '/placeholder.jpg',
     moTa: dto.moTa,
@@ -53,6 +56,33 @@ export const artworkService = {
     } catch (error) {
       console.error('Error fetching artwork:', error);
       throw error;
+    }
+  },
+
+  // Lấy tác phẩm gợi ý
+  async getRecommendedArtworks(id: string): Promise<Artwork[]> {
+    try {
+      const response = await apiClient.get<TacPhamResponse[]>(`/tranh/${id}/goi-y`);
+      return response.data.map(mapToArtwork);
+    } catch (error) {
+      console.error('Error fetching recommended artworks:', error);
+      return []; // Trả về mảng rỗng nếu lỗi
+    }
+  },
+
+  // Tìm kiếm tranh theo từ khóa
+  async searchArtworks(keyword: string): Promise<Artwork[]> {
+    try {
+      if (!keyword || keyword.trim().length === 0) {
+        return [];
+      }
+      const response = await apiClient.get<TacPhamResponse[]>('/tranh', {
+        params: { keyword: keyword.trim() }
+      });
+      return response.data.map(mapToArtwork);
+    } catch (error) {
+      console.error('Error searching artworks:', error);
+      return [];
     }
   },
 };

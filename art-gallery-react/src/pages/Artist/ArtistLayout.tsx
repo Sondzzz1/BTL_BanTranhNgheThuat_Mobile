@@ -1,6 +1,6 @@
 // Artist Layout - Layout cho trang họa sĩ (Giống Admin)
 import React, { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import '../Admin/Admin.css'; // Dùng chung CSS với Admin
 
@@ -18,7 +18,7 @@ const ArtistLayout: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/');
+    navigate('/login');
   };
 
   if (!user || !isAuthor) {
@@ -48,6 +48,12 @@ const ArtistLayout: React.FC = () => {
             </li>
           </NavLink>
 
+          <NavLink to="/artist/artworks/deleted">
+            <li className={location.pathname === '/artist/artworks/deleted' ? 'active' : ''}>
+              <i className="ti-trash"></i> Tác Phẩm Đã Xóa
+            </li>
+          </NavLink>
+
           <NavLink to="/artist/articles">
             <li className={location.pathname === '/artist/articles' ? 'active' : ''}>
               <i className="ti-write"></i> Bài Viết
@@ -60,11 +66,11 @@ const ArtistLayout: React.FC = () => {
             </li>
           </NavLink>
 
-          <Link to="/">
+          <a href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
             <li className="sidebar-link">
               <i className="ti-world"></i> Về Trang Chủ
             </li>
-          </Link>
+          </a>
 
           <li className="logout-btn" onClick={handleLogout}>
             <i className="ti-power-off"></i> Đăng Xuất

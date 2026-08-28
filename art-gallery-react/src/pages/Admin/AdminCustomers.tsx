@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { customerService, ThongTinKhachHangResponse } from '../../services/customerService';
+import { adminService } from '../../services/adminService';
 
 const AdminCustomers: React.FC = () => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [customers, setCustomers] = useState<ThongTinKhachHangResponse[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [keyword, setKeyword] = useState('');
 
-    // Load customers khi component mount
     useEffect(() => {
         loadCustomers();
     }, []);
@@ -24,93 +24,106 @@ const AdminCustomers: React.FC = () => {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('vi-VN');
+    const handleToggleLock = async (c: ThongTinKhachHangResponse) => {
+        const isActive = c.trangThai !== false;
+        const msg = isActive
+            ? `Khóa tài khoản của "${c.hoTen}"?`
+            : `Mở khóa tài khoản của "${c.hoTen}"?`;
+        if (!window.confirm(msg)) return;
+        try {
+            if (isActive) {
+                await adminService.khoaKhachHang(c.id);
+            } else {
+                await adminService.moKhoaKhachHang(c.id);
+            }
+            await loadCustomers();
+        } catch (error: any) {
+            alert(error?.response?.data?.message || 'Cập nhật trạng thái thất bại');
+        }
     };
+
+    const filtered = customers.filter((c) => {
+        if (!keyword.trim()) return true;
+        const k = keyword.toLowerCase();
+        return (
+            c.hoTen.toLowerCase().includes(k) ||
+            (c.email || '').toLowerCase().includes(k) ||
+            (c.soDienThoai || '').toLowerCase().includes(k)
+        );
+    });
 
     return (
         <div id="customers" className="page">
-            <div className="customer-header">
+            <div className="page-header">
                 <h4><i className="ti-user"></i> Quản lý Khách hàng</h4>
-                <div>
-                    <button 
-                        className="btn-refresh" 
-                        onClick={loadCustomers}
-                        style={{ marginRight: '10px', padding: '8px 15px' }}
-                    >
-                        <i className="ti-reload"></i> Làm mới
-                    </button>
-                    <button className="add-btn" onClick={() => setIsModalOpen(true)}>
-                        <i className="ti-plus"></i> Thêm khách hàng
-                    </button>
+                <button className="btn-refresh" onClick={loadCustomers}>
+                    <i className="ti-reload"></i> Làm mới
+                </button>
+            </div>
+
+            <div className="filter-bar" style={{ marginTop: 15 }}>
+                <div className="filter-item" style={{ flex: 1 }}>
+                    <input
+                        type="text"
+                        placeholder="Tìm theo tên, email, số điện thoại..."
+                        value={keyword}
+                        onChange={(e) => setKeyword(e.target.value)}
+                    />
                 </div>
             </div>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
+                <div style={{ textAlign: 'center', padding: 40 }}>
                     <p>Đang tải dữ liệu...</p>
                 </div>
-            ) : customers.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                    <p>Chưa có khách hàng nào.</p>
+            ) : filtered.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 40 }}>
+                    <p>Không tìm thấy khách hàng nào.</p>
                 </div>
             ) : (
-                <table className="customer-table">
-                    <thead>
-                        <tr>
-                            <th>Tên khách hàng</th>
-                            <th>Số điện thoại</th>
-                            <th>Email</th>
-                            <th>Địa chỉ</th>
-                            <th>Hành động</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {customers.map((customer) => (
-                            <tr key={customer.id}>
-                                <td>{customer.hoTen}</td>
-                                <td>{customer.soDienThoai || 'N/A'}</td>
-                                <td>{customer.email || 'N/A'}</td>
-                                <td>{customer.diaChi || 'Chưa cập nhật'}</td>
-                                <td>
-                                    <button className="edit-btn" title="Sửa">
-                                        <i className="ti-pencil"></i>
-                                    </button>
-                                    <button className="delete-btn" title="Xóa">
-                                        <i className="ti-trash"></i>
-                                    </button>
-                                </td>
+                <div className="table-container">
+                    <table className="styled-table">
+                        <thead>
+                            <tr>
+                                <th>Mã</th>
+                                <th>Tên khách hàng</th>
+                                <th>Số điện thoại</th>
+                                <th>Email</th>
+                                <th>Địa chỉ</th>
+                                <th>Trạng thái</th>
+                                <th>Hành động</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            )}
-
-            {isModalOpen && (
-                <div id="customerModal" className="modal show" style={{ display: 'flex' }}>
-                    <div className="modal-content">
-                        <span className="close" onClick={() => setIsModalOpen(false)}>&times;</span>
-                        <h3>Thêm Khách Hàng Mới</h3>
-                        <form id="customerForm">
-                            <label>Tên khách hàng:</label>
-                            <input type="text" id="tenKhachHang" placeholder="Nhập tên khách hàng" required />
-
-                            <label>Số điện thoại:</label>
-                            <input type="text" id="sdtKhachHang" placeholder="Nhập số điện thoại" required />
-
-                            <label>Email:</label>
-                            <input type="email" id="emailKhachHang" placeholder="Nhập địa chỉ email" required />
-
-                            <label>Địa chỉ:</label>
-                            <input type="text" id="diaChiKhachHang" placeholder="Nhập địa chỉ" required />
-
-                            <div className="modal-buttons">
-                                <button type="button" onClick={() => setIsModalOpen(false)}>Lưu</button>
-                                <button type="button" className="cancel" onClick={() => setIsModalOpen(false)}>Hủy</button>
-                            </div>
-                        </form>
-                    </div>
+                        </thead>
+                        <tbody>
+                            {filtered.map((customer) => {
+                                const isActive = customer.trangThai !== false;
+                                return (
+                                    <tr key={customer.id}>
+                                        <td>{customer.id}</td>
+                                        <td><strong>{customer.hoTen}</strong></td>
+                                        <td>{customer.soDienThoai || '-'}</td>
+                                        <td>{customer.email || '-'}</td>
+                                        <td>{customer.diaChi || 'Chưa cập nhật'}</td>
+                                        <td>
+                                            <span className={`status ${isActive ? 'success' : 'canceled'}`}>
+                                                {isActive ? 'Hoạt động' : 'Đang khóa'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <button
+                                                onClick={() => handleToggleLock(customer)}
+                                                title={isActive ? 'Khóa' : 'Mở khóa'}
+                                                style={{ color: isActive ? '#dc3545' : '#28a745' }}
+                                            >
+                                                <i className={isActive ? 'ti-lock' : 'ti-unlock'}></i>{' '}
+                                                {isActive ? 'Khóa' : 'Mở khóa'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             )}
         </div>

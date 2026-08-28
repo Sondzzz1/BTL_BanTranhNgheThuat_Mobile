@@ -35,8 +35,8 @@ const ApiTest: React.FC = () => {
         
         <div className="test-info">
           <h3>Thông tin Backend:</h3>
-          <p><strong>API URL:</strong> {process.env.REACT_APP_API_URL || 'https://localhost:7001/api'}</p>
-          <p><strong>Endpoint:</strong> /Tranh/get-all</p>
+          <p><strong>API URL:</strong> {process.env.REACT_APP_API_URL || 'http://localhost:5273/api'}</p>
+          <p><strong>Endpoint kiểm tra:</strong> /tranh</p>
         </div>
 
         <button 
@@ -68,20 +68,19 @@ const ApiTest: React.FC = () => {
         <div className="instructions">
           <h3>📋 Hướng dẫn:</h3>
           <ol>
-            <li>Đảm bảo backend đang chạy tại <code>https://localhost:7001</code></li>
+            <li>Đảm bảo backend đang chạy tại <code>http://localhost:5273</code></li>
             <li>Kiểm tra database đã có dữ liệu chưa</li>
             <li>Mở DevTools (F12) → Console để xem log chi tiết</li>
             <li>Nếu lỗi CORS, kiểm tra cấu hình CORS trong backend</li>
-            <li>Nếu lỗi SSL, chạy: <code>dotnet dev-certs https --trust</code></li>
           </ol>
         </div>
 
         <div className="quick-links">
           <h3>🔗 Quick Links:</h3>
-          <a href="https://localhost:7001/swagger" target="_blank" rel="noopener noreferrer">
+          <a href="http://localhost:5273/swagger" target="_blank" rel="noopener noreferrer">
             Swagger UI
           </a>
-          <a href="https://localhost:7001/api/Tranh/get-all" target="_blank" rel="noopener noreferrer">
+          <a href="http://localhost:5273/api/tranh" target="_blank" rel="noopener noreferrer">
             Test API Direct
           </a>
           <a href="/">Về Trang Chủ</a>

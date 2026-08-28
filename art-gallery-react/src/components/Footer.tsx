@@ -30,7 +30,6 @@ const Footer: React.FC = () => {
             <h3>Hỗ trợ</h3>
             <ul>
               <li><Link to="/user">Tài khoản</Link></li>
-              <li><Link to="/wishlist">Sản phẩm yêu thích</Link></li>
               <li><Link to="/cart">Giỏ hàng</Link></li>
             </ul>
           </div>
@@ -38,11 +37,11 @@ const Footer: React.FC = () => {
           <div className="footer-section">
             <h3>Hướng dẫn</h3>
             <ul>
-              <li><Link to="/guide/payment">Mua hàng và thanh toán</Link></li>
-              <li><Link to="/guide/return">Chính sách đổi trả & lưu kho</Link></li>
-              <li><Link to="/guide/terms">Điều khoản dịch vụ</Link></li>
-              <li><Link to="/guide/shipping">Chính sách giao hàng & vận chuyển</Link></li>
-              <li><Link to="/guide/warranty">Chính sách bảo hành</Link></li>
+              <li><span className="footer-static-link">Mua hàng và thanh toán</span></li>
+              <li><span className="footer-static-link">Chính sách đổi trả &amp; lưu kho</span></li>
+              <li><span className="footer-static-link">Điều khoản dịch vụ</span></li>
+              <li><span className="footer-static-link">Chính sách giao hàng &amp; vận chuyển</span></li>
+              <li><span className="footer-static-link">Chính sách bảo hành</span></li>
             </ul>
           </div>
 

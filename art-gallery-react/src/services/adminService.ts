@@ -10,9 +10,11 @@ export interface DashboardResponse {
   tongDoanhThu: number;
   tongDonHang: number;
   tongKhachHang: number;
+  tongHoaSi: number;
   tongTacPham: number;
-  doanhThuThang: number;
-  donHangMoi: number;
+  donHangChoXuLy: number;
+  tacPhamChoDuyet: number;
+  baiVietChoDuyet: number;
 }
 
 export interface ThongKeTongQuanResponse {
@@ -26,9 +28,13 @@ export interface ThongKeTongQuanResponse {
 
 export interface ThongKeNhanhResponse {
   ngay: string;
-  doanhThu: number;
-  soDonHang: number;
-  soKhachHangMoi: number;
+  donHangMoi: number;
+  donHangHoanThanh: number;
+  doanhThuNgay: number;
+  khachHangMoi: number;
+  tacPhamMoi: number;
+  donHangChoXuLy: number;
+  tyLeHoanThanh: number;
 }
 
 export interface ThongKeSoSanhResponse {
@@ -59,17 +65,27 @@ export interface DonHangAdminResponse {
 }
 
 export interface DonHangResponse {
-  id: number;
-  maHD: string;
-  tenKH: string;
-  email: string;
-  phone: string;
-  address: string;
-  ngayLap: string;
-  trangThai: number;
+  maDonHang: number;
+  ngayDat: string;
   tongTien: number;
-  items: any[];
-  ghiChu?: string;
+  tenNguoiNhan: string;
+  soDienThoai: string;
+  diaChiGiao: string;
+  trangThai: number;
+  trangThaiText: string;
+  trangThaiThanhToan?: string;
+  lyDoHuy?: string;
+  chiTiet: ChiTietDonHangResponse[];
+}
+
+export interface ChiTietDonHangResponse {
+  maTacPham: number;
+  tenTacPham: string;
+  tenHoaSi: string;
+  soLuong: number;
+  donGia: number;
+  thanhTien: number;
+  hinhAnh?: string;
 }
 
 export interface CapNhatTrangThaiDonHangRequest {
@@ -124,6 +140,7 @@ export interface HoSoHoaSiResponse {
   email: string;
   soDienThoai: string;
   tieuSu?: string;
+  anhDaiDien?: string;
   soTacPham: number;
   doanhThu: number;
   trangThai: boolean;
@@ -137,10 +154,14 @@ export interface TacPhamHoaSiResponse {
   soLuong: number;
   moTa?: string;
   hinhAnh?: string;
+  kichThuoc?: string;
+  chatLieu?: string;
+  chatLieuKhung?: string;
   trangThai: number;
   trangThaiText: string;
   ngayTao: string;
   tenHoaSi?: string;
+  lyDo?: string;
 }
 
 export interface HoaSiXepHangResponse {
@@ -250,11 +271,11 @@ export interface DoanhThuTheoThangResponse {
 }
 
 export interface DoanhThuTheoHoaSiResponse {
-  hoaSiId: number;
+  maHoaSi: number;
   tenHoaSi: string;
-  doanhThu: number;
-  soDonHang: number;
   soTacPham: number;
+  soLuongBan: number;
+  doanhThu: number;
 }
 
 export interface TacPhamBanChayResponse {
@@ -420,6 +441,23 @@ export const adminService = {
   // QUẢN LÝ HỌA SĨ
   // ================================================================
 
+  async taoTaiKhoanHoaSi(payload: {
+    tenDangNhap: string;
+    matKhau: string;
+    tenHoaSi: string;
+    email?: string;
+    dienThoai?: string;
+    diaChi?: string;
+  }): Promise<{ success: boolean; message?: string; maTaiKhoan?: number; maHoaSi?: number }> {
+    try {
+      const response = await apiClient.post('/admin/hoa-si/create', payload);
+      return response.data;
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Tạo tài khoản họa sĩ thất bại';
+      return { success: false, message };
+    }
+  },
+
   async getAllHoaSi(): Promise<HoSoHoaSiResponse[]> {
     const response = await apiClient.get('/admin/hoa-si/get-all');
     return response.data;
@@ -479,6 +517,14 @@ export const adminService = {
 
   async xoaTacPham(id: number): Promise<void> {
     await apiClient.delete(`/admin/tac-pham/${id}/delete`);
+  },
+
+  async hideTacPham(id: number): Promise<void> {
+    await apiClient.put(`/admin/tac-pham/${id}/hide`);
+  },
+
+  async showTacPham(id: number): Promise<void> {
+    await apiClient.put(`/admin/tac-pham/${id}/show`);
   },
 
   async timKiemTacPham(params: {

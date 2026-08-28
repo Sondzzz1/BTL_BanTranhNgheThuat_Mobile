@@ -8,10 +8,11 @@ import '../assets/css/Checkout.css';
 
 const Checkout: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
-  const { cart, cartTotal, clearCart } = useCart();
+  const { cart, cartTotal, reload } = useCart();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  
+  const [submitError, setSubmitError] = useState('');
+
   const [formData, setFormData] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
@@ -38,18 +39,34 @@ const Checkout: React.FC = () => {
       ...formData,
       [e.target.name]: e.target.value,
     });
+    setSubmitError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setSubmitError('');
+
     if (!user?.id) {
-      alert('Không tìm thấy thông tin người dùng!');
+      setSubmitError('Không tìm thấy thông tin người dùng!');
       return;
     }
 
     if (cart.length === 0) {
-      alert('Giỏ hàng trống!');
+      setSubmitError('Giỏ hàng trống!');
+      return;
+    }
+
+    if (!formData.name.trim()) {
+      setSubmitError('Vui lòng nhập họ tên người nhận');
+      return;
+    }
+    const phonePattern = /^[0-9]{9,11}$/;
+    if (!phonePattern.test(formData.phone.trim())) {
+      setSubmitError('Số điện thoại không hợp lệ');
+      return;
+    }
+    if (!formData.address.trim()) {
+      setSubmitError('Vui lòng nhập địa chỉ giao hàng');
       return;
     }
 
@@ -58,20 +75,21 @@ const Checkout: React.FC = () => {
       await orderService.createOrder(
         parseInt(user.id),
         {
-          name: formData.name,
-          phone: formData.phone,
-          address: formData.address,
+          name: formData.name.trim(),
+          phone: formData.phone.trim(),
+          address: formData.address.trim(),
         },
         cart,
         paymentMethod
       );
 
+      // Backend đã tự ClearGioHang, chỉ cần reload state cart trên FE.
+      await reload();
       alert('Đặt hàng thành công! Cảm ơn bạn đã mua hàng.');
-      clearCart();
       navigate('/user/orders');
     } catch (error: any) {
       console.error('Checkout error:', error);
-      alert(error.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại!');
+      setSubmitError(error?.message || 'Có lỗi xảy ra khi đặt hàng. Vui lòng thử lại!');
     } finally {
       setLoading(false);
     }
@@ -100,6 +118,15 @@ const Checkout: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit}>
+              {submitError && (
+                <div style={{
+                  background: '#fee', color: '#c0392b', padding: '10px 12px',
+                  borderRadius: '6px', marginBottom: '15px', fontSize: '14px',
+                  borderLeft: '4px solid #e74c3c'
+                }}>
+                  {submitError}
+                </div>
+              )}
               <div className="form-group">
                 <label>
                   Họ tên <span className="required">*</span>

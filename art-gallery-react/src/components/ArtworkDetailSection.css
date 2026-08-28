@@ -1,0 +1,541 @@
+/* ArtworkDetailSection.css - Bố cục hợp lý cho chi tiết tác phẩm */
+
+.artwork-detail-section-wrapper {
+  margin-top: 40px;
+  margin-bottom: 50px;
+  font-family: inherit;
+}
+
+/* Loading state */
+.artwork-detail-section-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  background: #fdfdfd;
+  border-radius: 12px;
+  border: 1px dashed #dee2e6;
+  gap: 15px;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.spinner-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.spinner-dots div {
+  width: 10px;
+  height: 10px;
+  background-color: #3498db;
+  border-radius: 50%;
+  animation: spinner-dots-bounce 1.4s infinite ease-in-out both;
+}
+
+.spinner-dots div:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.spinner-dots div:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes spinner-dots-bounce {
+  0%, 80%, 100% { 
+    transform: scale(0);
+  } 40% { 
+    transform: scale(1.0);
+  }
+}
+
+/* Section Divider */
+.section-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 35px;
+  gap: 20px;
+}
+
+.divider-line {
+  flex-grow: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(226,232,240,0.1) 0%, rgba(226,232,240,1) 50%, rgba(226,232,240,0.1) 100%);
+}
+
+.divider-icon {
+  width: 40px;
+  height: 40px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #3498db;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  font-size: 16px;
+}
+
+.detail-section-title {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a202c;
+  margin-bottom: 35px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Basic Description Section - Mô tả ngắn từ artwork */
+.artwork-basic-description {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 30px;
+  margin-bottom: 30px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+}
+
+.artwork-basic-description .original-description {
+  margin-bottom: 20px;
+}
+
+.artwork-basic-description .original-description p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #4a5568;
+  margin: 0;
+}
+
+.artwork-basic-description .additional-contents {
+  margin-top: 20px;
+}
+
+.artwork-basic-description .content-item {
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed #edf2f7;
+}
+
+.artwork-basic-description .content-item:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.artwork-basic-description .content-item h4 {
+  margin: 0 0 10px 0;
+  color: #2d3748;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.artwork-basic-description .content-item p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #4a5568;
+}
+
+/* Grid Layout - Bố cục 2 cột hợp lý */
+.detail-section-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+@media (max-width: 991px) {
+  .detail-section-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Column: Narratives - Phần nội dung chính */
+.detail-section-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.detail-narratives {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.detail-specifications {
+  width: 100%;
+}
+
+.narrative-card,
+.specs-card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.narrative-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+}
+
+.narrative-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.03);
+}
+
+.narrative-card h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #edf2f7;
+  padding-bottom: 10px;
+}
+
+.narrative-card.story h3 i { color: #8e44ad; }
+.narrative-card.meaning h3 i { color: #e74c3c; }
+.narrative-card.technique h3 i { color: #3498db; }
+.narrative-card.inspiration h3 i { color: #f1c40f; }
+.narrative-card.additional h3 i { color: #16a085; }
+
+.narrative-text {
+  font-size: 16px;
+  color: #4a5568;
+  line-height: 1.8;
+  margin: 0;
+  white-space: pre-line;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Right Column: Specs Panel - Thông tin kỹ thuật */
+.detail-specifications {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+}
+
+.specs-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+}
+
+.specs-card h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #edf2f7;
+  padding-bottom: 10px;
+}
+
+.specs-card h3 i {
+  color: #7f8c8d;
+}
+
+.specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #f1f5f9;
+}
+
+.spec-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.spec-label {
+  font-size: 14px;
+  color: #718096;
+  font-weight: 500;
+}
+
+.spec-value {
+  font-size: 14px;
+  color: #1a202c;
+  font-weight: 600;
+  text-align: right;
+  max-width: 60%;
+  word-wrap: break-word;
+}
+
+/* Painter Card Info */
+.painter-quick-card {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background-color: #f7fafc;
+  border-radius: 10px;
+  padding: 15px;
+  border: 1px solid #edf2f7;
+}
+
+.painter-avatar {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  background-color: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.painter-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  font-weight: bold;
+  font-size: 16px;
+  text-transform: uppercase;
+}
+
+.painter-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.painter-role {
+  font-size: 11px;
+  color: #a0aec0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.painter-name {
+  font-size: 14px;
+  color: #2d3748;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Supplementary Gallery Section */
+.supplementary-gallery-wrapper {
+  margin-top: 40px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #edf2f7;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+}
+
+.gallery-title {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 2px solid #edf2f7;
+  padding-bottom: 10px;
+}
+
+.gallery-title i {
+  color: #3498db;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.gallery-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+}
+
+.gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.item-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: #ffffff;
+  gap: 6px;
+}
+
+.item-overlay i {
+  font-size: 20px;
+  transform: translateY(10px);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.item-overlay span {
+  font-size: 12px;
+  font-weight: 500;
+  transform: translateY(10px);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gallery-item:hover img {
+  transform: scale(1.08);
+}
+
+.gallery-item:hover .item-overlay {
+  opacity: 1;
+}
+
+.gallery-item:hover .item-overlay i,
+.gallery-item:hover .item-overlay span {
+  transform: translateY(0);
+}
+
+/* Lightbox overlay */
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  animation: lightbox-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  cursor: default;
+}
+
+.lightbox-content img {
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+  animation: lightbox-scale-up 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -45px;
+  right: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 24px;
+  cursor: pointer;
+  transition: color 0.2s;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-close:hover {
+  color: #ffffff;
+}
+
+@keyframes lightbox-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lightbox-scale-up {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Responsive cho mobile */
+@media (max-width: 768px) {
+  .detail-section-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .detail-specifications {
+    position: static;
+  }
+  
+  .gallery-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+  }
+  
+  .narrative-card {
+    padding: 20px;
+  }
+  
+  .narrative-card h3 {
+    font-size: 16px;
+  }
+  
+  .narrative-text {
+    font-size: 15px;
+  }
+}

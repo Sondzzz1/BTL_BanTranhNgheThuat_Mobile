@@ -71,5 +71,15 @@ export const cartService = {
       console.error('Error removing from cart:', error);
       throw new Error(error.response?.data?.message || 'Lỗi khi xóa khỏi giỏ hàng');
     }
+  },
+
+  // Xoá toàn bộ giỏ hàng trên server
+  async clearCart(): Promise<void> {
+    try {
+      await apiClient.delete('/gio-hang/xoa-toan-bo');
+    } catch (error: any) {
+      console.error('Error clearing cart:', error);
+      throw new Error(error.response?.data?.message || 'Lỗi khi xoá toàn bộ giỏ hàng');
+    }
   }
 };

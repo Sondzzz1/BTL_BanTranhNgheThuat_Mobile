@@ -59,20 +59,27 @@ apiClient.interceptors.response.use(
     });
 
     if (error.response?.status === 401) {
-      // Unauthorized - Xóa token và redirect về login
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('user');
+      // Unauthorized - Chỉ xóa token và redirect nếu token thực sự invalid
+      const currentPath = window.location.pathname;
       
-      // Chỉ redirect nếu không phải đang ở trang login
-      if (!window.location.pathname.includes('/login')) {
+      // Không redirect nếu đang ở trang public hoặc đã ở trang login
+      const publicPaths = ['/', '/login', '/register', '/about', '/artworks', '/news', '/contact'];
+      const isPublicPath = publicPaths.some(path => currentPath === path || currentPath.startsWith('/artworks/'));
+      
+      if (!isPublicPath && !currentPath.includes('/login')) {
+        console.warn('401 Unauthorized - Clearing auth and redirecting to login');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('user');
         window.location.href = '/login';
+      } else {
+        console.warn('401 Unauthorized on public page - Not redirecting');
       }
     }
 
     if (error.response?.status === 403) {
       // Forbidden - Không có quyền truy cập
-      alert('Bạn không có quyền truy cập chức năng này!');
+      console.warn('403 Forbidden - Access denied');
     }
 
     if (error.response?.status === 404) {
