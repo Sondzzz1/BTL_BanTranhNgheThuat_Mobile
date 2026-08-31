@@ -1,48 +1,43 @@
-// Favorite Service - API Yêu thích (Đồng bộ với Web)
-import apiClient from './api';
-import { FavoriteItem } from '../types';
+// Favorite Service - Kết nối với YeuThich API
+
+import api from './api';
+import { FavoriteWithProduct, AddFavoriteRequest, FavoriteCheckResponse } from '../types/favorite';
 
 export const favoriteService = {
   // Lấy danh sách yêu thích
-  getFavorites: async (): Promise<FavoriteItem[]> => {
-    try {
-      const response = await apiClient.get<FavoriteItem[]>('/yeuthich');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching favorites:', error);
-      return [];
-    }
+  getMyFavorites: async (): Promise<FavoriteWithProduct[]> => {
+    const response = await api.get('/yeuthich');
+    return response.data;
   },
 
   // Thêm vào yêu thích
-  addFavorite: async (artworkId: number, note?: string) => {
-    try {
-      const response = await apiClient.post(`/yeuthich/${artworkId}`, { ghiChu: note });
-      return response.data;
-    } catch (error: any) {
-      console.error('Error adding favorite:', error);
-      throw new Error(error.response?.data?.message || 'Lỗi khi thêm yêu thích');
-    }
+  addFavorite: async (maTacPham: number, request?: AddFavoriteRequest): Promise<{ message: string; maYeuThich: number }> => {
+    const response = await api.post(`/yeuthich/${maTacPham}`, request || {});
+    return response.data;
   },
 
   // Xóa khỏi yêu thích
-  removeFavorite: async (artworkId: number) => {
-    try {
-      const response = await apiClient.delete(`/yeuthich/${artworkId}`);
-      return response.data;
-    } catch (error: any) {
-      console.error('Error removing favorite:', error);
-      throw new Error(error.response?.data?.message || 'Lỗi khi xóa yêu thích');
-    }
+  removeFavorite: async (maTacPham: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/yeuthich/${maTacPham}`);
+    return response.data;
   },
 
   // Kiểm tra đã yêu thích chưa
-  checkFavorite: async (artworkId: number): Promise<boolean> => {
-    try {
-      const response = await apiClient.get<{ isLiked: boolean }>(`/yeuthich/kiem-tra/${artworkId}`);
-      return response.data.isLiked;
-    } catch (error) {
+  checkFavorite: async (maTacPham: number): Promise<boolean> => {
+    const response = await api.get<FavoriteCheckResponse>(`/yeuthich/kiem-tra/${maTacPham}`);
+    return response.data.isLiked;
+  },
+
+  // Toggle favorite (thêm nếu chưa có, xóa nếu đã có)
+  toggleFavorite: async (maTacPham: number, isCurrentlyLiked: boolean): Promise<boolean> => {
+    if (isCurrentlyLiked) {
+      await favoriteService.removeFavorite(maTacPham);
       return false;
+    } else {
+      await favoriteService.addFavorite(maTacPham);
+      return true;
     }
   },
 };
+
+export default favoriteService;

@@ -2,21 +2,19 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   StyleSheet,
+  FlatList,
   TouchableOpacity,
   Image,
-  RefreshControl,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '../../context/AuthContext';
 import { favoriteService } from '../../services/favoriteService';
-import { FavoriteItem } from '../../types';
+import { FavoriteWithProduct } from '../../types/favorite';
 import Loading from '../../components/Loading';
+import ErrorMessage from '../../components/ErrorMessage';
 import EmptyState from '../../components/EmptyState';
-import Footer from '../../components/Footer';
-import AppHeader from '../../components/AppHeader';
 import Colors from '../../constants/colors';
 
 interface FavoritesScreenProps {
@@ -24,36 +22,26 @@ interface FavoritesScreenProps {
 }
 
 export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
-  const { user } = useAuth();
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteWithProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      if (user) {
-        loadFavorites();
-      } else {
-        setIsLoading(false);
-        setFavorites([]);
-      }
-    }, [user])
+      loadFavorites();
+    }, [])
   );
 
   const loadFavorites = async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
     try {
+      setError(null);
       setIsLoading(true);
-      const data = await favoriteService.getFavorites();
+      const data = await favoriteService.getMyFavorites();
       setFavorites(data);
-    } catch (error: any) {
-      console.error('Error loading favorites:', error);
-      if (error.response?.status === 401) {
-        setFavorites([]);
-      }
+    } catch (err: any) {
+      console.error('Error loading favorites:', err);
+      setError(err.message || 'Không thể tải danh sách yêu thích');
     } finally {
       setIsLoading(false);
     }
@@ -65,17 +53,30 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
     setRefreshing(false);
   };
 
-  const handleRemoveFavorite = async (artworkId: number) => {
-    try {
-      await favoriteService.removeFavorite(artworkId);
-      setFavorites(prev => prev.filter(item => item.tacPham.maTacPham !== artworkId));
-    } catch (error: any) {
-      Alert.alert('Lỗi', error.message || 'Không thể xóa khỏi danh sách yêu thích');
-    }
+  const handleRemove = (favorite: FavoriteWithProduct) => {
+    Alert.alert(
+      'Xác nhận',
+      'Bạn có chắc muốn xóa khỏi danh sách yêu thích?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await favoriteService.removeFavorite(favorite.tacPham.maTacPham);
+              await loadFavorites();
+            } catch (err: any) {
+              Alert.alert('Lỗi', err.message || 'Không thể xóa');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const handleItemPress = (artworkId: number) => {
-    navigation.navigate('ProductDetail', { id: artworkId });
+  const handleProductPress = (favorite: FavoriteWithProduct) => {
+    navigation.navigate('ProductDetail', { id: favorite.tacPham.maTacPham });
   };
 
   const formatPrice = (price: number): string => {
@@ -85,92 +86,98 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
     }).format(price);
   };
 
-  if (!user) {
-    return (
-      <View style={styles.container}>
-        <AppHeader navigation={navigation} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <Text style={{ fontSize: 64, marginBottom: 16 }}>❤️</Text>
-          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 8, textAlign: 'center' }}>
-            Bạn chưa đăng nhập
-          </Text>
-          <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
-            Đăng nhập ngay để xem và quản lý danh sách tác phẩm yêu thích của bạn.
-          </Text>
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN');
+  };
+
+  const renderItem = ({ item }: { item: FavoriteWithProduct }) => (
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => handleProductPress(item)}
+      activeOpacity={0.7}
+    >
+      <View style={styles.imageContainer}>
+        {item.tacPham.anhTranh ? (
+          <Image
+            source={{ uri: item.tacPham.anhTranh }}
+            style={styles.image}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Text style={styles.imagePlaceholderText}>🖼️</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.info}>
+        <Text style={styles.title} numberOfLines={2}>
+          {item.tacPham.tenTacPham}
+        </Text>
+        <Text style={styles.artist} numberOfLines={1}>
+          {item.tacPham.tenHoaSi}
+        </Text>
+        <Text style={styles.category} numberOfLines={1}>
+          {item.tacPham.tenDanhMuc}
+        </Text>
+        <View style={styles.footer}>
+          <View>
+            <Text style={styles.price}>{formatPrice(item.tacPham.gia)}</Text>
+            <Text style={styles.dateAdded}>
+              Thêm {formatDate(item.ngayThem)}
+            </Text>
+          </View>
           <TouchableOpacity
-            style={{ backgroundColor: '#ea580c', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 10 }}
-            onPress={() => navigation.navigate('Login')}
+            style={styles.removeButton}
+            onPress={() => handleRemove(item)}
           >
-            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Đăng nhập / Đăng ký</Text>
+            <Text style={styles.removeButtonText}>Xóa</Text>
           </TouchableOpacity>
         </View>
       </View>
-    );
+    </TouchableOpacity>
+  );
+
+  if (isLoading) {
+    return <Loading message="Đang tải danh sách yêu thích..." />;
   }
 
-  if (isLoading && !refreshing) {
-    return (
-      <View style={styles.container}>
-        <AppHeader navigation={navigation} />
-        <Loading message="Đang tải danh sách yêu thích..." />
-      </View>
-    );
+  if (error) {
+    return <ErrorMessage message={error} onRetry={loadFavorites} />;
   }
 
   if (favorites.length === 0) {
     return (
       <View style={styles.container}>
-        <AppHeader navigation={navigation} />
         <EmptyState
-          title="Chưa có tác phẩm yêu thích"
-          message="Hãy khám phá các tác phẩm nghệ thuật và thêm vào danh sách yêu thích của bạn!"
-          actionText="Khám phá ngay"
-          onAction={() => navigation.navigate('Products')}
+          message="Chưa có sản phẩm yêu thích"
+          description="Hãy thêm sản phẩm yêu thích bằng cách nhấn ❤️"
         />
+        <TouchableOpacity
+          style={styles.browseButton}
+          onPress={() => navigation.navigate('Products')}
+        >
+          <Text style={styles.browseButtonText}>Xem sản phẩm</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <AppHeader navigation={navigation} />
       <FlatList
         data={favorites}
         keyExtractor={(item) => item.maYeuThich.toString()}
+        renderItem={renderItem}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            colors={[Colors.primary]}
+          />
         }
-        ListFooterComponent={<Footer navigation={navigation} />}
-        contentContainerStyle={styles.listContainer}
-        renderItem={({ item }) => {
-          const artwork = item.tacPham;
-          return (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => handleItemPress(artwork.maTacPham)}
-              activeOpacity={0.8}
-            >
-              {artwork.hinhAnh ? (
-                <Image source={{ uri: artwork.hinhAnh }} style={styles.image} resizeMode="cover" />
-              ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Text style={{ fontSize: 32 }}>🖼️</Text>
-                </View>
-              )}
-              <View style={styles.info}>
-                <Text style={styles.title} numberOfLines={2}>{artwork.tenTacPham}</Text>
-                <Text style={styles.artist}>👨‍🎨 {artwork.tenHoaSi}</Text>
-                <Text style={styles.price}>{formatPrice(artwork.gia)}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.removeButton}
-                onPress={() => handleRemoveFavorite(artwork.maTacPham)}
-              >
-                <Text style={styles.removeButtonText}>❤️</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          );
-        }}
       />
     </View>
   );
@@ -181,60 +188,95 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  listContainer: {
+  listContent: {
     padding: 16,
   },
   card: {
     flexDirection: 'row',
     backgroundColor: Colors.white,
     borderRadius: 12,
-    padding: 12,
     marginBottom: 12,
-    alignItems: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  imageContainer: {
+    width: 120,
+    height: 120,
+    backgroundColor: Colors.backgroundLight,
   },
   image: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: '100%',
+    height: '100%',
   },
   imagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    backgroundColor: Colors.backgroundLight,
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  imagePlaceholderText: {
+    fontSize: 40,
   },
   info: {
     flex: 1,
-    marginLeft: 12,
-    justifyContent: 'center',
+    padding: 12,
+    justifyContent: 'space-between',
   },
   title: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: Colors.darkGray,
     marginBottom: 4,
   },
   artist: {
-    fontSize: 13,
+    fontSize: 14,
     color: Colors.gray,
-    marginBottom: 4,
+    marginBottom: 2,
+  },
+  category: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginBottom: 8,
+  },
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
   },
   price: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: 'bold',
     color: Colors.primary,
+    marginBottom: 4,
+  },
+  dateAdded: {
+    fontSize: 11,
+    color: Colors.gray,
   },
   removeButton: {
-    padding: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: Colors.errorDark,
+    borderRadius: 8,
   },
   removeButtonText: {
-    fontSize: 20,
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  browseButton: {
+    margin: 16,
+    backgroundColor: Colors.primary,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  browseButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
