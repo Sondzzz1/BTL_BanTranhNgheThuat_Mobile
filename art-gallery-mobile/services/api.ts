@@ -38,6 +38,14 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Unauthorized callback listener
+type UnauthorizedCallback = () => void;
+let unauthorizedCallback: UnauthorizedCallback | null = null;
+
+export const setUnauthorizedCallback = (callback: UnauthorizedCallback | null) => {
+  unauthorizedCallback = callback;
+};
+
 // Response Interceptor - Xử lý lỗi chung
 apiClient.interceptors.response.use(
   (response) => {
@@ -55,11 +63,17 @@ apiClient.interceptors.response.use(
       url: error.config?.url,
     });
 
-    // 401 Unauthorized - Token hết hạn hoặc không hợp lệ
+    // 401 Unauthorized - Token hết hạn hoặc không hợp lệ / Chưa đăng nhập
     if (error.response?.status === 401) {
-      console.warn('401 Unauthorized - Clearing auth token');
-      await AsyncStorage.multiRemove(['authToken', 'refreshToken', 'currentUser']);
-      // Có thể trigger navigation về Login screen ở đây
+      console.warn('401 Unauthorized - Clearing auth token and resetting state');
+      try {
+        await AsyncStorage.multiRemove(['authToken', 'refreshToken', 'currentUser']);
+      } catch (e) {
+        console.error('Error removing auth storage:', e);
+      }
+      if (unauthorizedCallback) {
+        unauthorizedCallback();
+      }
     }
 
     // 403 Forbidden - Không có quyền

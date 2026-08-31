@@ -554,3 +554,15 @@ const styles = StyleSheet.create({
   },
   bankInfo: {
     backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  bankInfoText: {
+    fontSize: 13,
+    color: '#92400e',
+    lineHeight: 20,
+  },
+});

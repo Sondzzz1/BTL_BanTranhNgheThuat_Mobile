@@ -15,6 +15,7 @@ import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
 import EmptyState from '../../components/EmptyState';
 import Footer from '../../components/Footer';
+import AppHeader from '../../components/AppHeader';
 
 interface OrdersScreenProps {
   navigation: any;
@@ -38,18 +39,26 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
   );
 
   const loadOrders = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     try {
       setError(null);
       setIsLoading(true);
       const ordersData = await orderService.getMyOrders();
       // Sort by date descending (newest first)
-      const sortedOrders = ordersData.sort(
+      const sortedOrders = (ordersData || []).sort(
         (a, b) => new Date(b.ngayDat).getTime() - new Date(a.ngayDat).getTime()
       );
       setOrders(sortedOrders);
     } catch (err: any) {
       console.error('Error loading orders:', err);
-      setError(err.message || 'Không thể tải danh sách đơn hàng');
+      if (err.response?.status === 401) {
+        setOrders([]);
+      } else {
+        setError(err.message || 'Không thể tải danh sách đơn hàng');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -74,97 +83,104 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
   };
 
   const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getStatusColor = (status: number): string => {
-    switch (status) {
-      case 0: return '#f59e0b'; // Pending - Orange
-      case 1: return '#3b82f6'; // Confirmed - Blue
-      case 2: return '#8b5cf6'; // Shipping - Purple
-      case 3: return '#10b981'; // Completed - Green
-      case 4: return '#ef4444'; // Cancelled - Red
-      default: return '#6b7280'; // Default - Gray
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return dateString;
     }
   };
 
-  const renderOrderItem = ({ item }: { item: Order }) => (
-    <TouchableOpacity
-      style={styles.orderCard}
-      onPress={() => handleOrderPress(item)}
-      activeOpacity={0.7}
-    >
-      {/* Header */}
-      <View style={styles.orderHeader}>
-        <View>
-          <Text style={styles.orderCode}>Đơn hàng #{item.maDonHang}</Text>
-          <Text style={styles.orderDate}>{formatDate(item.ngayDat)}</Text>
-        </View>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: getStatusColor(item.trangThai) },
-          ]}
-        >
-          <Text style={styles.statusText}>
-            {ORDER_STATUS_TEXT[item.trangThai] || 'Không xác định'}
-          </Text>
-        </View>
-      </View>
+  const renderOrderItem = ({ item }: { item: Order }) => {
+    const statusLabel = ORDER_STATUS_TEXT[item.trangThai] || 'Không xác định';
+    const statusStyles: Record<number, { color: string; bgColor: string }> = {
+      0: { color: '#d97706', bgColor: '#fef3c7' },
+      1: { color: '#2563eb', bgColor: '#dbeafe' },
+      2: { color: '#7c3aed', bgColor: '#ede9fe' },
+      3: { color: '#16a34a', bgColor: '#dcfce7' },
+      4: { color: '#dc2626', bgColor: '#fee2e2' },
+    };
+    const { color: statusColor, bgColor } = statusStyles[item.trangThai] ?? { color: '#6b7280', bgColor: '#f3f4f6' };
 
-      {/* Items Summary */}
-      {(() => {
-        const chiTietList = item.chiTiet || [];
-        return (
-          <View style={styles.orderBody}>
-            <Text style={styles.itemsLabel}>
-              {chiTietList.length} sản phẩm
-            </Text>
-            {chiTietList.slice(0, 2).map((detail, index) => (
-              <Text key={index} style={styles.itemName} numberOfLines={1}>
-                • {detail.tenTacPham || 'Tác phẩm'} (x{detail.soLuong || 1})
-              </Text>
-            ))}
-            {chiTietList.length > 2 && (
-              <Text style={styles.moreItems}>
-                và {chiTietList.length - 2} sản phẩm khác
-              </Text>
-            )}
+    return (
+      <TouchableOpacity
+        style={styles.orderCard}
+        onPress={() => handleOrderPress(item)}
+        activeOpacity={0.7}
+      >
+        {/* Header */}
+        <View style={styles.orderHeader}>
+          <View>
+            <Text style={styles.orderCode}>Đơn hàng #{item.maDonHang}</Text>
+            <Text style={styles.orderDate}>{formatDate(item.ngayDat)}</Text>
           </View>
-        );
-      })()}
-
-      {/* Footer */}
-      <View style={styles.orderFooter}>
-        <View>
-          <Text style={styles.totalLabel}>Tổng tiền:</Text>
-          <Text style={styles.totalAmount}>{formatPrice(item.tongTien)}</Text>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: bgColor },
+            ]}
+          >
+            <Text style={[styles.statusText, { color: statusColor }]}>
+              {statusLabel}
+            </Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.detailButton}>
-          <Text style={styles.detailButtonText}>Chi tiết →</Text>
-        </TouchableOpacity>
-      </View>
 
-      {/* Cancelled reason */}
-      {item.trangThai === 4 && item.lyDoHuy && (
-        <View style={styles.cancelledNote}>
-          <Text style={styles.cancelledLabel}>Lý do hủy:</Text>
-          <Text style={styles.cancelledText}>{item.lyDoHuy}</Text>
+
+        {/* Items Summary */}
+        {(() => {
+          const chiTietList = item.chiTiet || [];
+          return (
+            <View style={styles.orderBody}>
+              <Text style={styles.itemsLabel}>
+                {chiTietList.length} sản phẩm
+              </Text>
+              {chiTietList.slice(0, 2).map((detail, index) => (
+                <Text key={index} style={styles.itemName} numberOfLines={1}>
+                  • {detail.tenTacPham || 'Tác phẩm'} (x{detail.soLuong || 1})
+                </Text>
+              ))}
+              {chiTietList.length > 2 && (
+                <Text style={styles.moreItems}>
+                  và {chiTietList.length - 2} sản phẩm khác
+                </Text>
+              )}
+            </View>
+          );
+        })()}
+
+        {/* Footer */}
+        <View style={styles.orderFooter}>
+          <View>
+            <Text style={styles.totalLabel}>Tổng tiền:</Text>
+            <Text style={styles.totalAmount}>{formatPrice(item.tongTien)}</Text>
+          </View>
+          <TouchableOpacity style={styles.detailButton}>
+            <Text style={styles.detailButtonText}>Chi tiết →</Text>
+          </TouchableOpacity>
         </View>
-      )}
-    </TouchableOpacity>
-  );
+
+        {/* Cancelled reason */}
+        {item.trangThai === 4 && item.lyDoHuy && (
+          <View style={styles.cancelledNote}>
+            <Text style={styles.cancelledLabel}>Lý do hủy:</Text>
+            <Text style={styles.cancelledText}>{item.lyDoHuy}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   if (!user) {
     return (
       <View style={styles.container}>
+        <AppHeader navigation={navigation} />
         <EmptyState
           title="Bạn chưa đăng nhập"
           message="Vui lòng đăng nhập để xem lịch sử đơn hàng của bạn."
@@ -176,20 +192,33 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
     );
   }
 
-  if (isLoading) {
-    return <Loading message="Đang tải đơn hàng..." />;
+  if (isLoading && !refreshing) {
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <Loading message="Đang tải đơn hàng..." />
+      </View>
+    );
   }
 
   if (error) {
-    return <ErrorMessage message={error} onRetry={loadOrders} />;
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <ErrorMessage message={error} onRetry={loadOrders} />
+      </View>
+    );
   }
 
   if (!orders || orders.length === 0) {
     return (
       <View style={styles.container}>
+        <AppHeader navigation={navigation} />
         <EmptyState
           message="Chưa có đơn hàng nào"
           description="Các đơn hàng của bạn sẽ hiển thị ở đây"
+          actionText="Khám phá ngay"
+          onAction={() => navigation.navigate('Products')}
         />
       </View>
     );
@@ -197,6 +226,7 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
 
   return (
     <View style={styles.container}>
+      <AppHeader navigation={navigation} />
       <FlatList
         data={orders}
         keyExtractor={(item) => item.maDonHang.toString()}

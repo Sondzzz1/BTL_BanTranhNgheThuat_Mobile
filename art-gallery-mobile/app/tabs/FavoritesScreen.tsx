@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,11 +9,14 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 import { favoriteService } from '../../services/favoriteService';
 import { FavoriteItem } from '../../types';
 import Loading from '../../components/Loading';
 import EmptyState from '../../components/EmptyState';
 import Footer from '../../components/Footer';
+import AppHeader from '../../components/AppHeader';
 import Colors from '../../constants/colors';
 
 interface FavoritesScreenProps {
@@ -21,21 +24,36 @@ interface FavoritesScreenProps {
 }
 
 export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
+  const { user } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadFavorites();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadFavorites();
+      } else {
+        setIsLoading(false);
+        setFavorites([]);
+      }
+    }, [user])
+  );
 
   const loadFavorites = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       const data = await favoriteService.getFavorites();
       setFavorites(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading favorites:', error);
+      if (error.response?.status === 401) {
+        setFavorites([]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -67,23 +85,55 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
     }).format(price);
   };
 
-  if (isLoading) {
-    return <Loading message="Đang tải danh sách yêu thích..." />;
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 64, marginBottom: 16 }}>❤️</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 8, textAlign: 'center' }}>
+            Bạn chưa đăng nhập
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+            Đăng nhập ngay để xem và quản lý danh sách tác phẩm yêu thích của bạn.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#ea580c', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 10 }}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Đăng nhập / Đăng ký</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  if (isLoading && !refreshing) {
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <Loading message="Đang tải danh sách yêu thích..." />
+      </View>
+    );
   }
 
   if (favorites.length === 0) {
     return (
-      <EmptyState
-        title="Chưa có tác phẩm yêu thích"
-        message="Hãy khám phá các tác phẩm nghệ thuật và thêm vào danh sách yêu thích của bạn!"
-        actionText="Khám phá ngay"
-        onAction={() => navigation.navigate('Products')}
-      />
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <EmptyState
+          title="Chưa có tác phẩm yêu thích"
+          message="Hãy khám phá các tác phẩm nghệ thuật và thêm vào danh sách yêu thích của bạn!"
+          actionText="Khám phá ngay"
+          onAction={() => navigation.navigate('Products')}
+        />
+      </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <AppHeader navigation={navigation} />
       <FlatList
         data={favorites}
         keyExtractor={(item) => item.maYeuThich.toString()}

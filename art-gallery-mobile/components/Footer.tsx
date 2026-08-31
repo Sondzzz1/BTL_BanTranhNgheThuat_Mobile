@@ -13,10 +13,9 @@ import Colors from '../constants/colors';
 
 interface FooterProps {
   navigation?: any;
-  showReviews?: boolean;
 }
 
-export default function Footer({ navigation, showReviews = true }: FooterProps) {
+export default function Footer({ navigation }: FooterProps) {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -49,24 +48,11 @@ export default function Footer({ navigation, showReviews = true }: FooterProps) 
 
   return (
     <View style={styles.footerContainer}>
-      {/* 1. KHÁCH HÀNG NHẬN XÉT VỀ CHÚNG TÔI */}
-      {showReviews && (
-        <View style={styles.reviewSection}>
-          <Text style={styles.reviewTitle}>KHÁCH HÀNG NHẬN XÉT VỀ CHÚNG TÔI</Text>
-          <View style={styles.reviewCard}>
-            <Text style={styles.starsText}>⭐⭐⭐⭐⭐</Text>
-            <Text style={styles.reviewText}>
-              "Chất lượng tranh rất tốt, giao hàng nhanh!"
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* 2. MAIN FOOTER WITH ART GALLERY BACKGROUND IMAGE */}
+      {/* MAIN FOOTER WITH ART GALLERY BACKGROUND IMAGE */}
       <ImageBackground
         source={require('../assets/images/footer_bg.png')}
         style={styles.backgroundImageContainer}
-        resizeMode="cover"
+        resizeMode="stretch"
       >
         <View style={styles.darkOverlay}>
           {/* Newsletter Signup */}
@@ -193,45 +179,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: 24,
   },
-  /* Review Section */
-  reviewSection: {
-    backgroundColor: '#7c52b5',
-    paddingVertical: 28,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  reviewTitle: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginBottom: 14,
-    textAlign: 'center',
-  },
-  reviewCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  starsText: {
-    fontSize: 16,
-    marginBottom: 6,
-  },
-  reviewText: {
-    fontSize: 13,
-    color: '#334155',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
+
   /* Background Image & Overlay */
   backgroundImageContainer: {
     width: '100%',

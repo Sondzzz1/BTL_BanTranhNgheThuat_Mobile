@@ -5,9 +5,16 @@ import { Product } from '../types/product';
 interface ProductCardProps {
   product: Product;
   onPress: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-export default function ProductCard({ product, onPress }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  onPress,
+  isFavorite = false,
+  onToggleFavorite,
+}: ProductCardProps) {
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -21,10 +28,10 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
     <TouchableOpacity
       style={styles.container}
       onPress={onPress}
-      activeOpacity={0.7}
+      activeOpacity={0.8}
       disabled={isOutOfStock}
     >
-      {/* Image */}
+      {/* Artwork Image Box */}
       <View style={styles.imageContainer}>
         {product.hinhAnh ? (
           <Image
@@ -37,6 +44,18 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
             <Text style={styles.imagePlaceholderText}>🖼️</Text>
           </View>
         )}
+
+        {/* Favorite Icon Button on top right */}
+        <TouchableOpacity
+          style={styles.favoriteButton}
+          onPress={onToggleFavorite ? onToggleFavorite : onPress}
+          activeOpacity={0.7}
+        >
+          <View style={styles.favoriteCircle}>
+            <Text style={styles.favoriteIconText}>{isFavorite ? '❤️' : '🤍'}</Text>
+          </View>
+        </TouchableOpacity>
+
         {isOutOfStock && (
           <View style={styles.outOfStockBadge}>
             <Text style={styles.outOfStockText}>Hết hàng</Text>
@@ -44,25 +63,20 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
         )}
       </View>
 
-      {/* Info */}
+      {/* Artwork Info below Image */}
       <View style={styles.info}>
+        <Text style={styles.category} numberOfLines={1}>
+          {(product.tenDanhMuc || 'TRANH SƠN DẦU').toUpperCase()}
+        </Text>
         <Text style={styles.title} numberOfLines={2}>
           {product.tenTacPham}
         </Text>
-        <Text style={styles.artist} numberOfLines={1}>
-          {product.tenHoaSi}
-        </Text>
-        {product.tenDanhMuc && (
-          <Text style={styles.category} numberOfLines={1}>
-            {product.tenDanhMuc}
+        {product.tenHoaSi && (
+          <Text style={styles.artist} numberOfLines={1}>
+            {product.tenHoaSi}
           </Text>
         )}
-        <View style={styles.footer}>
-          <Text style={styles.price}>{formatPrice(product.gia)}</Text>
-          {!isOutOfStock && (
-            <Text style={styles.stock}>Còn {product.soLuong}</Text>
-          )}
-        </View>
+        <Text style={styles.price}>{formatPrice(product.gia)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -70,21 +84,25 @@ export default function ProductCard({ product, onPress }: ProductCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
     overflow: 'hidden',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 200,
-    backgroundColor: '#f3f4f6',
+    aspectRatio: 1,
+    backgroundColor: '#2d3748',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   image: {
     width: '100%',
@@ -96,54 +114,68 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   imagePlaceholderText: {
-    fontSize: 48,
+    fontSize: 40,
+  },
+  favoriteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 2,
+  },
+  favoriteCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  favoriteIconText: {
+    fontSize: 14,
   },
   outOfStockBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    bottom: 8,
+    left: 8,
     backgroundColor: 'rgba(220, 38, 38, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
   },
   outOfStockText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#ffffff',
+    fontSize: 11,
+    fontWeight: '700',
   },
   info: {
-    padding: 12,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  artist: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 4,
+    padding: 10,
+    backgroundColor: '#ffffff',
   },
   category: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginBottom: 8,
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#64748b',
+    letterSpacing: 0.5,
+    marginBottom: 3,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  title: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#1e293b',
+    lineHeight: 18,
+    marginBottom: 4,
+    minHeight: 36,
+  },
+  artist: {
+    fontSize: 11.5,
+    color: '#64748b',
+    marginBottom: 4,
   },
   price: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  stock: {
-    fontSize: 12,
-    color: '#059669',
-    fontWeight: '500',
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#ea580c',
   },
 });

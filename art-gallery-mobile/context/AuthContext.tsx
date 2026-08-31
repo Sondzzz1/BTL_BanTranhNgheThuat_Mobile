@@ -1,6 +1,6 @@
-// Authentication Context
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { setUnauthorizedCallback } from '../services/api';
 import { User } from '../types/auth';
 
 interface AuthContextType {
@@ -26,9 +26,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user từ AsyncStorage khi app khởi động
+  // Load user từ AsyncStorage khi app khởi động và lắng nghe 401
   useEffect(() => {
+    setUnauthorizedCallback(() => {
+      setUser(null);
+    });
+
     loadUser();
+
+    return () => {
+      setUnauthorizedCallback(null);
+    };
   }, []);
 
   const loadUser = async () => {

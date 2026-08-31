@@ -29,35 +29,72 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        headerShown: true,
-        tabBarActiveTintColor: '#2563eb',
+        headerShown: false,
+        tabBarActiveTintColor: '#ea580c',
         tabBarInactiveTintColor: '#9ca3af',
+        tabBarStyle: {
+          backgroundColor: '#ffffff',
+          borderTopColor: '#e5e7eb',
+          borderTopWidth: 1,
+          height: 60,
+          paddingBottom: 8,
+          paddingTop: 4,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+        },
       }}
     >
       <Tab.Screen 
         name="Home" 
         component={HomeScreen}
-        options={{ title: 'Trang chủ' }}
+        options={{ 
+          title: 'Trang chủ',
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: size - 4, color }}>🏠</Text>
+          ),
+        }}
       />
       <Tab.Screen 
         name="Products" 
         component={ProductsScreen}
-        options={{ title: 'Sản phẩm' }}
+        options={{ 
+          title: 'Tác phẩm',
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: size - 4, color }}>🖼️</Text>
+          ),
+        }}
       />
       <Tab.Screen 
         name="Cart" 
         component={CartScreen}
-        options={{ title: 'Giỏ hàng' }}
+        options={{ 
+          title: 'Giỏ hàng',
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: size - 4, color }}>🛍️</Text>
+          ),
+        }}
       />
       <Tab.Screen 
         name="Orders" 
         component={OrdersScreen}
-        options={{ title: 'Đơn hàng' }}
+        options={{ 
+          title: 'Đơn hàng',
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: size - 4, color }}>📦</Text>
+          ),
+        }}
       />
       <Tab.Screen 
         name="Profile" 
         component={ProfileScreen}
-        options={{ title: 'Tài khoản' }}
+        options={{ 
+          title: 'Tài khoản',
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: size - 4, color }}>👤</Text>
+          ),
+        }}
       />
     </Tab.Navigator>
   );

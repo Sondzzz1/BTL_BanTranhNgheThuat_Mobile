@@ -18,6 +18,7 @@ import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
 import EmptyState from '../../components/EmptyState';
 import Footer from '../../components/Footer';
+import AppHeader from '../../components/AppHeader';
 
 interface CartScreenProps {
   navigation: any;
@@ -44,6 +45,10 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   );
 
   const loadCart = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     try {
       setError(null);
       setIsLoading(true);
@@ -51,7 +56,11 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       setCart(cartData);
     } catch (err: any) {
       console.error('Error loading cart:', err);
-      setError(err.message || 'Không thể tải giỏ hàng');
+      if (err.response?.status === 401) {
+        setCart(null);
+      } else {
+        setError(err.message || 'Không thể tải giỏ hàng');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -241,6 +250,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   if (!user) {
     return (
       <View style={styles.container}>
+        <AppHeader navigation={navigation} />
         <EmptyState
           title="Bạn chưa đăng nhập"
           message="Vui lòng đăng nhập để xem và quản lý giỏ hàng của bạn."
@@ -253,11 +263,21 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   }
 
   if (isLoading && !refreshing) {
-    return <Loading message="Đang tải giỏ hàng..." />;
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <Loading message="Đang tải giỏ hàng..." />
+      </View>
+    );
   }
 
   if (error) {
-    return <ErrorMessage message={error} onRetry={loadCart} />;
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <ErrorMessage message={error} onRetry={loadCart} />
+      </View>
+    );
   }
 
   const items = cart?.danhSachSanPham || [];
@@ -265,6 +285,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   if (items.length === 0) {
     return (
       <View style={styles.container}>
+        <AppHeader navigation={navigation} />
         <EmptyState
           message="Giỏ hàng trống"
           description="Hãy thêm các tác phẩm nghệ thuật bạn yêu thích vào giỏ hàng"
@@ -281,6 +302,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
   return (
     <View style={styles.container}>
+      <AppHeader navigation={navigation} />
       {/* Header Info Bar */}
       <View style={styles.cartHeaderBar}>
         <Text style={styles.cartCountText}>

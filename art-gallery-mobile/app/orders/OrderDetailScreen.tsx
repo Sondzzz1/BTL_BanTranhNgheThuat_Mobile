@@ -180,8 +180,8 @@ export default function OrderDetailScreen({
           return (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Sản phẩm ({chiTietList.length})</Text>
-              {chiTietList.map((item) => (
-                <View key={item.maChiTietDH} style={styles.orderItem}>
+              {chiTietList.map((item, index) => (
+                <View key={item.maChiTietDH || item.maTacPham || index} style={styles.orderItem}>
                   <View style={styles.itemInfo}>
                     <Text style={styles.itemName} numberOfLines={2}>
                       {item.tenTacPham || 'Tác phẩm'}

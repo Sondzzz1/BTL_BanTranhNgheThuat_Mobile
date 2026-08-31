@@ -141,6 +141,11 @@ export const authService = {
   // Lấy thông tin user hiện tại từ AsyncStorage
   async getCurrentUser(): Promise<User | null> {
     try {
+      const token = await AsyncStorage.getItem('authToken');
+      if (!token) {
+        await AsyncStorage.multiRemove(['authToken', 'refreshToken', 'currentUser']);
+        return null;
+      }
       const userStr = await AsyncStorage.getItem('currentUser');
       if (!userStr) return null;
       return JSON.parse(userStr);

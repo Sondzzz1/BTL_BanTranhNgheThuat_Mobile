@@ -8,17 +8,20 @@ import {
   Image,
   Dimensions,
   RefreshControl,
+  Linking,
+  Alert,
 } from 'react-native';
 import { productService } from '../../services/productService';
 import { Product, Category } from '../../types/product';
 import ProductCard from '../../components/ProductCard';
+import AppHeader from '../../components/AppHeader';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
 import Footer from '../../components/Footer';
 import Colors from '../../constants/colors';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2; // 2 columns with padding
+const CARD_WIDTH = (width - 36) / 2;
 
 interface HomeScreenProps {
   navigation: any;
@@ -30,6 +33,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -73,6 +77,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     navigation.navigate('Products');
   };
 
+  const handleSupportPress = () => {
+    Alert.alert(
+      'Hỗ trợ khách hàng',
+      'Hotline: 094 888 3535 - 094 886 3535\nEmail: lanvugallery@gmail.com',
+      [
+        { text: 'Đóng', style: 'cancel' },
+        {
+          text: 'Gọi ngay',
+          onPress: () => Linking.openURL('tel:0948883535'),
+        },
+      ]
+    );
+  };
+
   if (isLoading) {
     return <Loading message="Đang tải dữ liệu..." />;
   }
@@ -86,368 +104,431 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     .sort((a, b) => b.maTacPham - a.maTacPham)
     .slice(0, 6);
 
-  // Best selling products (highest price 6 - placeholder)
+  // Best selling products (highest price 6)
   const bestSellingProducts = products
     .sort((a, b) => b.gia - a.gia)
     .slice(0, 6);
 
-  // Stats
-  const totalProducts = products.length;
-  const totalCategories = categories.length;
-  const inStockProducts = products.filter(p => p.soLuong > 0).length;
-
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
-      }
-    >
-      {/* Hero Banner */}
-      <View style={styles.heroBanner}>
-        <Image
-          source={require('../../assets/images/slide1.jpg')}
-          style={styles.heroBackgroundImage}
-          resizeMode="cover"
-        />
-        <View style={styles.heroGradient}>
+    <View style={styles.mainContainer}>
+      {/* Branded Top Header */}
+      <AppHeader navigation={navigation} />
+
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* 1. Hero Promo Banner */}
+        <View style={styles.heroBannerContainer}>
           <Image
-            source={require('../../assets/images/logo.png')}
-            style={styles.brandLogo}
-            resizeMode="contain"
+            source={require('../../assets/images/slide1.jpg')}
+            style={styles.heroBannerImage}
+            resizeMode="cover"
           />
-          <Text style={styles.heroSubtitle}>🎨 Tranh Nghệ Thuật Cao Cấp</Text>
-          <Text style={styles.heroDescription}>
-            Sơn dầu nhập khẩu • Độ bền hơn 100 năm
-          </Text>
-        </View>
-      </View>
-
-      {/* Features */}
-      <View style={styles.featuresContainer}>
-        <View style={styles.featureCard}>
-          <Text style={styles.featureNumber}>01</Text>
-          <Text style={styles.featureTitle}>CAO CẤP</Text>
-          <Text style={styles.featureDesc}>Tranh sơn dầu độc bản</Text>
-        </View>
-        <View style={styles.featureCard}>
-          <Text style={styles.featureNumber}>02</Text>
-          <Text style={styles.featureTitle}>KHÁC BIỆT</Text>
-          <Text style={styles.featureDesc}>Sang trọng & tinh tế</Text>
-        </View>
-        <View style={styles.featureCard}>
-          <Text style={styles.featureNumber}>03</Text>
-          <Text style={styles.featureTitle}>TƯ VẤN</Text>
-          <Text style={styles.featureDesc}>Chuyên nghiệp hàng đầu</Text>
-        </View>
-      </View>
-
-      {/* Categories */}
-      {categories.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Danh Mục</Text>
+          <View style={styles.bannerOverlay}>
+            <View style={styles.bannerLogoBox}>
+              <View style={styles.roofIconMini} />
+              <Text style={styles.bannerLogoText}>LANVU GALLERY</Text>
+            </View>
+            <Text style={styles.bannerPromoTitle}>THÁNG TRI ÂN{'\n'}KHÁCH HÀNG</Text>
+            <View style={styles.bannerDiscountRow}>
+              <Text style={styles.bannerDiscountLabel}>ƯU ĐÃI ĐẾN</Text>
+              <Text style={styles.bannerDiscountValue}>40%</Text>
+            </View>
+            <Text style={styles.bannerDateText}>01.08 - 31.08.2026</Text>
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoriesContainer}
-          >
-            {categories.map((category) => (
-              <TouchableOpacity
-                key={category.maDanhMuc}
-                style={styles.categoryCard}
-                onPress={() => handleCategoryPress(category)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.categoryIconContainer}>
-                  <Text style={styles.categoryIcon}>🎨</Text>
-                </View>
-                <Text style={styles.categoryName} numberOfLines={2}>
-                  {category.tenDanhMuc}
-                </Text>
+
+          {/* Dots Indicator */}
+          <View style={styles.dotsContainer}>
+            <View style={[styles.dot, styles.dotActive]} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+          </View>
+        </View>
+
+        {/* 2. Feature Highlights (Dark Charcoal / Black Box Theme) */}
+        <View style={styles.featuresDarkSection}>
+          <View style={styles.featureDarkCard}>
+            <View style={styles.featureHeaderRow}>
+              <Text style={styles.featureBigNum}>01.</Text>
+              <Text style={styles.featureCardTitle}>TRANH SÁNG TÁC ĐỘC BẢN</Text>
+            </View>
+            <Text style={styles.featureCardDesc}>
+              Hàng ngàn tác phẩm sáng tác độc bản, đa dạng chất liệu
+            </Text>
+          </View>
+
+          <View style={styles.featureDarkCard}>
+            <View style={styles.featureHeaderRow}>
+              <Text style={styles.featureBigNum}>02.</Text>
+              <Text style={styles.featureCardTitle}>SỰ KHÁC BIỆT</Text>
+            </View>
+            <Text style={styles.featureCardDesc}>
+              Sang trọng - tinh tế - kiến tạo không gian hiện đại
+            </Text>
+          </View>
+
+          <View style={styles.featureDarkCard}>
+            <View style={styles.featureHeaderRow}>
+              <Text style={styles.featureBigNum}>03.</Text>
+              <Text style={styles.featureCardTitle}>TƯ VẤN CHUYÊN NGHIỆP</Text>
+            </View>
+            <Text style={styles.featureCardDesc}>
+              Đội ngũ chuyên gia hàng đầu trong lĩnh vực nghệ thuật
+            </Text>
+          </View>
+        </View>
+
+        {/* 3. Categories Horizontal Carousel */}
+        {categories.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Danh Mục Tranh</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoriesContainer}
+            >
+              {categories.map((category) => (
+                <TouchableOpacity
+                  key={category.maDanhMuc}
+                  style={styles.categoryCard}
+                  onPress={() => handleCategoryPress(category)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.categoryIconContainer}>
+                    <Text style={styles.categoryIcon}>🎨</Text>
+                  </View>
+                  <Text style={styles.categoryName} numberOfLines={2}>
+                    {category.tenDanhMuc}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 4. Featured Artworks Grid */}
+        {featuredProducts.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.badgeText}>✨ MỚI NHẤT</Text>
+                <Text style={styles.sectionTitle}>Tác Phẩm Nổi Bật</Text>
+              </View>
+              <TouchableOpacity onPress={handleViewAllProducts} style={styles.viewAllButton}>
+                <Text style={styles.viewAllText}>Xem tất cả →</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Featured Products */}
-      {featuredProducts.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <View>
-              <Text style={styles.badgeText}>✨ MỚI NHẤT</Text>
-              <Text style={styles.sectionTitle}>Tác Phẩm Nổi Bật</Text>
             </View>
-            <TouchableOpacity onPress={handleViewAllProducts} style={styles.viewAllButton}>
-              <Text style={styles.viewAllText}>Xem tất cả →</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.productsGrid}>
-            {featuredProducts.map((product) => (
-              <View key={product.maTacPham} style={styles.productGridItem}>
-                <ProductCard
-                  product={product}
-                  onPress={() => handleProductPress(product)}
-                />
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Stats Cards */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{totalProducts}</Text>
-          <Text style={styles.statLabel}>Tác phẩm</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{totalCategories}</Text>
-          <Text style={styles.statLabel}>Danh mục</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{inStockProducts}</Text>
-          <Text style={styles.statLabel}>Còn hàng</Text>
-        </View>
-      </View>
-
-      {/* Best Selling Products */}
-      {bestSellingProducts.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <View>
-              <Text style={styles.badgeTextSelling}>🔥 HOT</Text>
-              <Text style={styles.sectionTitle}>Tác Phẩm Bán Chạy</Text>
+            
+            <View style={styles.productsGrid}>
+              {featuredProducts.map((product) => (
+                <View key={product.maTacPham} style={styles.productGridItem}>
+                  <ProductCard
+                    product={product}
+                    onPress={() => handleProductPress(product)}
+                  />
+                </View>
+              ))}
             </View>
           </View>
-          
-          <View style={styles.productsGrid}>
-            {bestSellingProducts.map((product) => (
-              <View key={product.maTacPham} style={styles.productGridItem}>
-                <ProductCard
-                  product={product}
-                  onPress={() => handleProductPress(product)}
-                />
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
+        )}
 
-      {/* Footer */}
-      <Footer navigation={navigation} />
-    </ScrollView>
+        {/* 5. Best Selling Artworks Grid */}
+        {bestSellingProducts.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <View>
+                <Text style={styles.badgeTextSelling}>🔥 HOT</Text>
+                <Text style={styles.sectionTitle}>Tác Phẩm Bán Chạy</Text>
+              </View>
+            </View>
+            
+            <View style={styles.productsGrid}>
+              {bestSellingProducts.map((product) => (
+                <View key={product.maTacPham} style={styles.productGridItem}>
+                  <ProductCard
+                    product={product}
+                    onPress={() => handleProductPress(product)}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Footer */}
+        <Footer navigation={navigation} />
+      </ScrollView>
+
+      {/* Floating Support Button at bottom left */}
+      <TouchableOpacity
+        style={styles.floatingSupportButton}
+        onPress={handleSupportPress}
+        activeOpacity={0.85}
+      >
+        <Text style={styles.floatingSupportIcon}>🎧</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
-  heroBanner: {
-    height: 220,
+  /* Hero Promo Banner */
+  heroBannerContainer: {
+    width: '100%',
+    height: 240,
     position: 'relative',
+    backgroundColor: '#000',
   },
-  heroBackgroundImage: {
-    ...StyleSheet.absoluteFillObject,
+  heroBannerImage: {
     width: '100%',
     height: '100%',
   },
-  heroGradient: {
-    flex: 1,
-    backgroundColor: 'rgba(30, 41, 59, 0.75)',
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 20,
+  },
+  bannerLogoBox: {
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  roofIconMini: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderBottomWidth: 7,
+    borderStyle: 'solid',
+    backgroundColor: 'transparent',
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderBottomColor: '#ea580c',
+    marginBottom: 1,
+  },
+  bannerLogoText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1,
+  },
+  bannerPromoTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#fef08a',
+    textAlign: 'right',
+    letterSpacing: 0.5,
+    lineHeight: 24,
+  },
+  bannerDiscountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: 4,
+  },
+  bannerDiscountLabel: {
+    fontSize: 11,
+    color: '#ffffff',
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  bannerDiscountValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#fbbf24',
+  },
+  bannerDateText: {
+    fontSize: 10,
+    color: '#e2e8f0',
+    marginTop: 2,
+  },
+  dotsContainer: {
+    position: 'absolute',
+    bottom: 12,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    gap: 6,
   },
-  brandLogo: {
-    width: 180,
-    height: 50,
-    marginBottom: 8,
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
-  heroTitle: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: Colors.white,
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+  dotActive: {
+    backgroundColor: '#ffffff',
+    width: 8,
+    height: 8,
   },
-  heroSubtitle: {
-    fontSize: 18,
-    color: Colors.white,
-    marginBottom: 8,
-    opacity: 0.95,
-  },
-  heroDescription: {
-    fontSize: 14,
-    color: Colors.white,
-    opacity: 0.9,
-    textAlign: 'center',
-  },
-  featuresContainer: {
-    flexDirection: 'row',
+  /* Dark Feature Section */
+  featuresDarkSection: {
+    backgroundColor: '#1e1e1e',
+    paddingVertical: 20,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
+    gap: 14,
   },
-  featureCard: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
+  featureDarkCard: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#3f3f46',
+    borderRadius: 4,
     padding: 16,
+  },
+  featureHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  featureNumber: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  featureTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.darkGray,
-    marginBottom: 4,
-    letterSpacing: 0.5,
-  },
-  featureDesc: {
-    fontSize: 10,
-    color: Colors.gray,
-    textAlign: 'center',
-  },
-  section: {
-    marginTop: 16,
     marginBottom: 8,
+  },
+  featureBigNum: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#d4d4d8',
+    marginRight: 6,
+  },
+  featureCardTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#f4f4f5',
+    letterSpacing: 0.5,
+    flex: 1,
+  },
+  featureCardDesc: {
+    fontSize: 12,
+    color: '#a1a1aa',
+    lineHeight: 18,
+  },
+  /* Sections */
+  section: {
+    marginTop: 20,
+    marginBottom: 4,
   },
   sectionHeader: {
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.accent,
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#ea580c',
+    marginBottom: 2,
     letterSpacing: 0.5,
   },
   badgeTextSelling: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#f5576c',
-    marginBottom: 4,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#dc2626',
+    marginBottom: 2,
     letterSpacing: 0.5,
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
-    color: Colors.darkGray,
-    letterSpacing: -0.5,
+    color: '#0f172a',
+    letterSpacing: -0.3,
   },
   viewAllButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   viewAllText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '600',
+    fontSize: 13,
+    color: '#ea580c',
+    fontWeight: '700',
   },
   categoriesContainer: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 10,
   },
   categoryCard: {
-    width: 100,
-    backgroundColor: Colors.white,
-    borderRadius: 12,
+    width: 96,
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
     padding: 12,
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#f1f5f9',
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   categoryIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.backgroundLight,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#f8fafc',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   categoryIcon: {
-    fontSize: 28,
+    fontSize: 24,
   },
   categoryName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.darkGray,
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#334155',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: 15,
   },
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
+    justifyContent: 'space-between',
   },
   productGridItem: {
     width: CARD_WIDTH,
-    padding: 8,
+    marginBottom: 12,
   },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.white,
-    padding: 16,
-    borderRadius: 12,
+  /* Floating Support Button */
+  floatingSupportButton: {
+    position: 'absolute',
+    bottom: 24,
+    left: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#ea580c',
+    justifyContent: 'center',
     alignItems: 'center',
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    borderLeftWidth: 3,
-    borderLeftColor: Colors.secondary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 5,
+    zIndex: 99,
   },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: Colors.gray,
-    fontWeight: '500',
-  },
-  footer: {
-    height: 32,
+  floatingSupportIcon: {
+    fontSize: 22,
   },
 });

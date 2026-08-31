@@ -15,6 +15,7 @@ import { customerService, ProfileInfo } from '../../services/customerService';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
 import Footer from '../../components/Footer';
+import AppHeader from '../../components/AppHeader';
 
 interface ProfileScreenProps {
   navigation: any;
@@ -38,11 +39,20 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
   useFocusEffect(
     useCallback(() => {
-      loadProfile();
-    }, [])
+      if (user) {
+        loadProfile();
+      } else {
+        setIsLoading(false);
+        setProfile(null);
+      }
+    }, [user])
   );
 
   const loadProfile = async () => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
     try {
       setError(null);
       setIsLoading(true);
@@ -56,7 +66,11 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       });
     } catch (err: any) {
       console.error('Error loading profile:', err);
-      setError(err.message || 'Không thể tải thông tin cá nhân');
+      if (err.response?.status === 401) {
+        setProfile(null);
+      } else {
+        setError(err.message || 'Không thể tải thông tin cá nhân');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -135,39 +149,54 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
   if (!user) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-        <Text style={{ fontSize: 64, marginBottom: 16 }}>👤</Text>
-        <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 8, textAlign: 'center' }}>
-          Bạn chưa đăng nhập
-        </Text>
-        <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
-          Đăng nhập ngay để quản lý thông tin cá nhân, xem lịch sử đơn hàng và lưu danh sách tác phẩm yêu thích.
-        </Text>
-        <TouchableOpacity
-          style={{ backgroundColor: '#2563eb', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 10 }}
-          onPress={() => navigation.navigate('Login')}
-        >
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Đăng nhập / Đăng ký</Text>
-        </TouchableOpacity>
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Text style={{ fontSize: 64, marginBottom: 16 }}>👤</Text>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 8, textAlign: 'center' }}>
+            Bạn chưa đăng nhập
+          </Text>
+          <Text style={{ fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+            Đăng nhập ngay để quản lý thông tin cá nhân, xem lịch sử đơn hàng và lưu danh sách tác phẩm yêu thích.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#ea580c', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 10 }}
+            onPress={() => navigation.navigate('Login')}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Đăng nhập / Đăng ký</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
-  if (isLoading) {
-    return <Loading message="Đang tải thông tin..." />;
+  if (isLoading && !refreshing) {
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <Loading message="Đang tải thông tin..." />
+      </View>
+    );
   }
 
   if (error) {
-    return <ErrorMessage message={error} onRetry={loadProfile} />;
+    return (
+      <View style={styles.container}>
+        <AppHeader navigation={navigation} />
+        <ErrorMessage message={error} onRetry={loadProfile} />
+      </View>
+    );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <View style={styles.container}>
+      <AppHeader navigation={navigation} />
+      <ScrollView
+        style={{ flex: 1 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.avatar}>
@@ -302,6 +331,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       {/* Footer */}
       <Footer navigation={navigation} />
     </ScrollView>
+    </View>
   );
 }
 
