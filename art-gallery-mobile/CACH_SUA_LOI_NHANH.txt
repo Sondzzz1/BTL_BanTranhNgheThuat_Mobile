@@ -1,0 +1,57 @@
+========================================
+CÁCH SỬA LỖI TurboModuleRegistry NHANH
+========================================
+
+Mở Command Prompt (cmd) và chạy từng lệnh:
+
+1. cd C:\Users\huanp\Downloads\BTL_Mobile\art-gallery-mobile
+
+2. Chạy file fix tự động:
+   fix-dependencies.cmd
+
+3. Sau khi xong, chạy:
+   npx expo start -c --clear
+
+4. Scan QR code lại
+
+========================================
+HOẶC CÁCH THỦ CÔNG:
+========================================
+
+1. cd C:\Users\huanp\Downloads\BTL_Mobile\art-gallery-mobile
+
+2. rmdir /s /q node_modules .expo
+
+3. del package-lock.json
+
+4. npm cache clean --force
+
+5. npm install --legacy-peer-deps
+
+6. npx expo start -c --clear
+
+========================================
+NẾU VẪN LỖI - THỬ EXPO GO WEB:
+========================================
+
+Thay vì dùng điện thoại, thử chạy trên web browser:
+
+1. npx expo start -c
+
+2. Nhấn phím "w" để mở web browser
+
+3. Test app trên browser trước
+
+========================================
+NẾU VẪN LỖI - GỠ EXPO GO:
+========================================
+
+1. Gỡ Expo Go app khỏi điện thoại
+
+2. Cài lại Expo Go từ Play Store
+
+3. Mở Expo Go → Settings → Clear cache
+
+4. Scan QR code lại
+
+========================================

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\huanp\\Downloads\\DoAn_2\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj": {}
+    "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj": {}
   },
   "projects": {
-    "C:\\Users\\huanp\\Downloads\\DoAn_2\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj": {
+    "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\huanp\\Downloads\\DoAn_2\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
+        "projectUniqueName": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
         "projectName": "DoAn2_BackEnd",
-        "projectPath": "C:\\Users\\huanp\\Downloads\\DoAn_2\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
+        "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
         "packagesPath": "C:\\Users\\huanp\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\huanp\\Downloads\\DoAn_2\\DoAn3_BackEnd\\DoAn2_BackEnd\\obj\\",
+        "outputPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\huanp\\AppData\\Roaming\\NuGet\\NuGet.Config",
