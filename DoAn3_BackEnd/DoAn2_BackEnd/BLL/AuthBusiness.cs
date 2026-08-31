@@ -147,23 +147,34 @@ public class AuthBusiness : IAuthBusiness
             DienThoai = request.DienThoai?.Trim(),
             DiaChi = request.DiaChi?.Trim()
         };
-        var maNguoiDung = await _nguoiDungRepo.Create(nguoiDung);
-
-        // Tạo giỏ hàng cho người dùng mới
-        await _gioHangRepo.CreateGioHang(maNguoiDung);
-
-        var userInfo = await GetUserInfo(taiKhoan);
-        var token = GenerateJwtToken(taiKhoan, userInfo);
-        var refreshToken = GenerateRefreshToken();
-
-        return new DangNhapResponse
+        try
         {
-            Success = true,
-            Message = "Đăng ký thành công",
-            Token = token,
-            RefreshToken = refreshToken,
-            User = userInfo
-        };
+            var maNguoiDung = await _nguoiDungRepo.Create(nguoiDung);
+
+            // Tạo giỏ hàng cho người dùng mới
+            await _gioHangRepo.CreateGioHang(maNguoiDung);
+
+            var userInfo = await GetUserInfo(taiKhoan);
+            var token = GenerateJwtToken(taiKhoan, userInfo);
+            var refreshToken = GenerateRefreshToken();
+
+            return new DangNhapResponse
+            {
+                Success = true,
+                Message = "Đăng ký thành công",
+                Token = token,
+                RefreshToken = refreshToken,
+                User = userInfo
+            };
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2627 || ex.Number == 2601 || ex.Message.Contains("UNIQUE KEY") || ex.Message.Contains("UQ__NguoiDun"))
+        {
+            return new DangNhapResponse
+            {
+                Success = false,
+                Message = "Số điện thoại hoặc Email này đã được đăng ký bởi tài khoản khác. Vui lòng thử số điện thoại khác."
+            };
+        }
     }
 
     public async Task<bool> DangXuat(int maTaiKhoan)

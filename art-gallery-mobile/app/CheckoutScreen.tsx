@@ -93,7 +93,7 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
       return;
     }
 
-    if (!cart || cart.chiTiet.length === 0) {
+    if (!cart || !cart.chiTiet || cart.chiTiet.length === 0) {
       Alert.alert('Lỗi', 'Giỏ hàng trống');
       return;
     }
@@ -143,7 +143,7 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
     return <Loading message="Đang tải thông tin..." />;
   }
 
-  if (!cart || cart.chiTiet.length === 0) {
+  if (!cart || !cart.chiTiet || cart.chiTiet.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>Giỏ hàng trống</Text>

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Linking,
+  ImageBackground,
 } from 'react-native';
 import Colors from '../constants/colors';
 
@@ -61,122 +62,128 @@ export default function Footer({ navigation, showReviews = true }: FooterProps) 
         </View>
       )}
 
-      {/* 2. ĐĂNG KÝ EMAIL & MAIN FOOTER */}
-      <View style={styles.darkFooter}>
-        {/* Newsletter Signup */}
-        <View style={styles.newsletterSection}>
-          <Text style={styles.newsletterTitle}>ĐĂNG KÝ EMAIL</Text>
-          <Text style={styles.newsletterSubtitle}>
-            Để nhận tin nhắn thông tin và khuyến mãi từ chúng tôi
-          </Text>
+      {/* 2. MAIN FOOTER WITH ART GALLERY BACKGROUND IMAGE */}
+      <ImageBackground
+        source={require('../assets/images/footer_bg.png')}
+        style={styles.backgroundImageContainer}
+        resizeMode="cover"
+      >
+        <View style={styles.darkOverlay}>
+          {/* Newsletter Signup */}
+          <View style={styles.newsletterSection}>
+            <Text style={styles.newsletterTitle}>ĐĂNG KÝ EMAIL</Text>
+            <Text style={styles.newsletterSubtitle}>
+              Để nhận tin nhắn thông tin và khuyến mãi từ chúng tôi
+            </Text>
 
-          <View style={styles.emailInputRow}>
-            <TextInput
-              style={styles.emailInput}
-              placeholder="Your Email (required)"
-              placeholderTextColor="#94a3b8"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <TouchableOpacity
-              style={styles.signUpButton}
-              onPress={handleSubscribe}
-              activeOpacity={0.8}
-              disabled={isSubmitting}
-            >
-              <Text style={styles.signUpButtonText}>
-                {isSubmitting ? '...' : 'Sign Up'}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.emailInputRow}>
+              <TextInput
+                style={styles.emailInput}
+                placeholder="Your Email (required)"
+                placeholderTextColor="#94a3b8"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                style={styles.signUpButton}
+                onPress={handleSubscribe}
+                activeOpacity={0.8}
+                disabled={isSubmitting}
+              >
+                <Text style={styles.signUpButtonText}>
+                  {isSubmitting ? '...' : 'Sign Up'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          {/* Footer Columns */}
+          <View style={styles.columnsContainer}>
+            {/* Column 1: Brand Info */}
+            <View style={styles.column}>
+              <Text style={styles.columnTitle}>LANVU GALLERY</Text>
+              <View style={styles.contactItem}>
+                <Text style={styles.iconText}>📍</Text>
+                <Text style={styles.infoText}>
+                  56 Nguyễn Phong Sắc, Dịch Vọng, Cầu Giấy, Hà Nội
+                </Text>
+              </View>
+              <View style={styles.contactItem}>
+                <Text style={styles.iconText}>📞</Text>
+                <Text style={styles.infoText}>094 888 3535 - 094 886 3535</Text>
+              </View>
+              <View style={styles.contactItem}>
+                <Text style={styles.iconText}>✉️</Text>
+                <Text style={styles.infoText}>lanvugallery@gmail.com</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.contactItem}
+                onPress={() => handleOpenLink('https://facebook.com/lanvugallery123')}
+              >
+                <Text style={styles.iconText}>🌐</Text>
+                <Text style={[styles.infoText, styles.linkText]}>
+                  facebook.com/lanvugallery123
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Column 2: HỖ TRỢ */}
+            <View style={styles.column}>
+              <Text style={styles.columnTitle}>HỖ TRỢ</Text>
+              <TouchableOpacity
+                style={styles.linkItem}
+                onPress={() => handleNavigate('Profile')}
+              >
+                <Text style={styles.linkItemText}>• Tài khoản</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.linkItem}
+                onPress={() => handleNavigate('Favorites')}
+              >
+                <Text style={styles.linkItemText}>• Sản phẩm yêu thích</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.linkItem}
+                onPress={() => handleNavigate('Cart')}
+              >
+                <Text style={styles.linkItemText}>• Giỏ hàng</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Column 3: HƯỚNG DẪN */}
+            <View style={styles.column}>
+              <Text style={styles.columnTitle}>HƯỚNG DẪN</Text>
+              <Text style={styles.linkItemText}>• Mua hàng và thanh toán</Text>
+              <Text style={styles.linkItemText}>• Chính sách đổi trả & lưu kho</Text>
+              <Text style={styles.linkItemText}>• Điều khoản dịch vụ</Text>
+              <Text style={styles.linkItemText}>• Chính sách giao hàng & vận chuyển</Text>
+              <Text style={styles.linkItemText}>• Chính sách bảo hành</Text>
+            </View>
+
+            {/* Column 4: FANPAGE */}
+            <View style={styles.column}>
+              <Text style={styles.columnTitle}>FANPAGE</Text>
+              <TouchableOpacity
+                style={styles.fanpageCard}
+                onPress={() => handleOpenLink('https://facebook.com/lanvugallery123')}
+              >
+                <Text style={styles.fanpageTitle}>LanVu Gallery</Text>
+                <Text style={styles.fanpageSubtitle}>51,628 người theo dõi</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.bottomBar}>
+            <Text style={styles.copyrightText}>
+              © 2026 ART GALLERY / LANVU GALLERY. All rights reserved.
+            </Text>
           </View>
         </View>
-
-        <View style={styles.divider} />
-
-        {/* Footer Columns */}
-        <View style={styles.columnsContainer}>
-          {/* Column 1: Brand Info */}
-          <View style={styles.column}>
-            <Text style={styles.columnTitle}>LANVU GALLERY</Text>
-            <View style={styles.contactItem}>
-              <Text style={styles.iconText}>📍</Text>
-              <Text style={styles.infoText}>
-                56 Nguyễn Phong Sắc, Dịch Vọng, Cầu Giấy, Hà Nội
-              </Text>
-            </View>
-            <View style={styles.contactItem}>
-              <Text style={styles.iconText}>📞</Text>
-              <Text style={styles.infoText}>094 888 3535 - 094 886 3535</Text>
-            </View>
-            <View style={styles.contactItem}>
-              <Text style={styles.iconText}>✉️</Text>
-              <Text style={styles.infoText}>lanvugallery@gmail.com</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.contactItem}
-              onPress={() => handleOpenLink('https://facebook.com/lanvugallery123')}
-            >
-              <Text style={styles.iconText}>🌐</Text>
-              <Text style={[styles.infoText, styles.linkText]}>
-                facebook.com/lanvugallery123
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Column 2: HỖ TRỢ */}
-          <View style={styles.column}>
-            <Text style={styles.columnTitle}>HỖ TRỢ</Text>
-            <TouchableOpacity
-              style={styles.linkItem}
-              onPress={() => handleNavigate('Profile')}
-            >
-              <Text style={styles.linkItemText}>• Tài khoản</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.linkItem}
-              onPress={() => handleNavigate('Favorites')}
-            >
-              <Text style={styles.linkItemText}>• Sản phẩm yêu thích</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.linkItem}
-              onPress={() => handleNavigate('Cart')}
-            >
-              <Text style={styles.linkItemText}>• Giỏ hàng</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Column 3: HƯỚNG DẪN */}
-          <View style={styles.column}>
-            <Text style={styles.columnTitle}>HƯỚNG DẪN</Text>
-            <Text style={styles.linkItemText}>• Mua hàng và thanh toán</Text>
-            <Text style={styles.linkItemText}>• Chính sách đổi trả & lưu kho</Text>
-            <Text style={styles.linkItemText}>• Điều khoản dịch vụ</Text>
-            <Text style={styles.linkItemText}>• Chính sách giao hàng & vận chuyển</Text>
-            <Text style={styles.linkItemText}>• Chính sách bảo hành</Text>
-          </View>
-
-          {/* Column 4: FANPAGE */}
-          <View style={styles.column}>
-            <Text style={styles.columnTitle}>FANPAGE</Text>
-            <TouchableOpacity
-              style={styles.fanpageCard}
-              onPress={() => handleOpenLink('https://facebook.com/lanvugallery123')}
-            >
-              <Text style={styles.fanpageTitle}>LanVu Gallery</Text>
-              <Text style={styles.fanpageSubtitle}>51,628 người theo dõi</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.bottomBar}>
-          <Text style={styles.copyrightText}>
-            © 2026 ART GALLERY / LANVU GALLERY. All rights reserved.
-          </Text>
-        </View>
-      </View>
+      </ImageBackground>
     </View>
   );
 }
@@ -225,9 +232,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  /* Dark Footer Section */
-  darkFooter: {
-    backgroundColor: '#111827',
+  /* Background Image & Overlay */
+  backgroundImageContainer: {
+    width: '100%',
+  },
+  darkOverlay: {
+    backgroundColor: 'rgba(10, 15, 30, 0.88)',
     paddingTop: 28,
     paddingBottom: 20,
   },
@@ -245,7 +255,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   newsletterSubtitle: {
-    color: '#94a3b8',
+    color: '#cbd5e1',
     fontSize: 12,
     marginBottom: 16,
     textAlign: 'center',
@@ -280,7 +290,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     marginVertical: 16,
     marginHorizontal: 16,
   },
@@ -309,7 +319,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   infoText: {
-    color: '#cbd5e1',
+    color: '#e2e8f0',
     fontSize: 12,
     flex: 1,
     lineHeight: 18,
@@ -322,16 +332,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   linkItemText: {
-    color: '#cbd5e1',
+    color: '#e2e8f0',
     fontSize: 12,
     lineHeight: 22,
   },
   fanpageCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     borderRadius: 8,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   fanpageTitle: {
     color: '#ffffff',
@@ -340,19 +350,19 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   fanpageSubtitle: {
-    color: '#94a3b8',
+    color: '#cbd5e1',
     fontSize: 11,
   },
   bottomBar: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#1e293b',
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center',
     paddingHorizontal: 16,
   },
   copyrightText: {
-    color: '#64748b',
+    color: '#94a3b8',
     fontSize: 11,
     textAlign: 'center',
   },

@@ -175,14 +175,17 @@ export default function OrderDetailScreen({
         </View>
 
         {/* Order Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sản phẩm ({order.chiTiet.length})</Text>
-          {order.chiTiet.map((item) => (
-            <View key={item.maChiTietDH} style={styles.orderItem}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName} numberOfLines={2}>
-                  {item.tenTacPham}
-                </Text>
+        {(() => {
+          const chiTietList = order.chiTiet || [];
+          return (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Sản phẩm ({chiTietList.length})</Text>
+              {chiTietList.map((item) => (
+                <View key={item.maChiTietDH} style={styles.orderItem}>
+                  <View style={styles.itemInfo}>
+                    <Text style={styles.itemName} numberOfLines={2}>
+                      {item.tenTacPham || 'Tác phẩm'}
+                    </Text>
                 <Text style={styles.itemQuantity}>x{item.soLuong}</Text>
               </View>
               <View style={styles.itemPrices}>
@@ -198,6 +201,8 @@ export default function OrderDetailScreen({
             <Text style={styles.totalAmount}>{formatPrice(order.tongTien)}</Text>
           </View>
         </View>
+        );
+      })()}
 
         {/* Cancel Reason */}
         {order.trangThai === 4 && order.lyDoHuy && (

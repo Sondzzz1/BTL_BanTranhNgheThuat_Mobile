@@ -110,7 +110,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   };
 
   const handleCheckout = () => {
-    if (!cart || cart.chiTiet.length === 0) {
+    if (!cart || !cart.chiTiet || cart.chiTiet.length === 0) {
       Alert.alert('Thông báo', 'Giỏ hàng của bạn đang trống');
       return;
     }
@@ -220,7 +220,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
     return <ErrorMessage message={error} onRetry={loadCart} />;
   }
 
-  if (!cart || cart.chiTiet.length === 0) {
+  if (!cart || !cart.chiTiet || cart.chiTiet.length === 0) {
     return (
       <View style={styles.container}>
         <EmptyState

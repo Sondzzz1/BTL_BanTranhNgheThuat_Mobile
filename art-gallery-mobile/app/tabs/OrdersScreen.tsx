@@ -120,21 +120,26 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
       </View>
 
       {/* Items Summary */}
-      <View style={styles.orderBody}>
-        <Text style={styles.itemsLabel}>
-          {item.chiTiet.length} sản phẩm
-        </Text>
-        {item.chiTiet.slice(0, 2).map((detail, index) => (
-          <Text key={index} style={styles.itemName} numberOfLines={1}>
-            • {detail.tenTacPham} (x{detail.soLuong})
-          </Text>
-        ))}
-        {item.chiTiet.length > 2 && (
-          <Text style={styles.moreItems}>
-            và {item.chiTiet.length - 2} sản phẩm khác
-          </Text>
-        )}
-      </View>
+      {(() => {
+        const chiTietList = item.chiTiet || [];
+        return (
+          <View style={styles.orderBody}>
+            <Text style={styles.itemsLabel}>
+              {chiTietList.length} sản phẩm
+            </Text>
+            {chiTietList.slice(0, 2).map((detail, index) => (
+              <Text key={index} style={styles.itemName} numberOfLines={1}>
+                • {detail.tenTacPham || 'Tác phẩm'} (x{detail.soLuong || 1})
+              </Text>
+            ))}
+            {chiTietList.length > 2 && (
+              <Text style={styles.moreItems}>
+                và {chiTietList.length - 2} sản phẩm khác
+              </Text>
+            )}
+          </View>
+        );
+      })()}
 
       {/* Footer */}
       <View style={styles.orderFooter}>
@@ -179,7 +184,7 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
     return <ErrorMessage message={error} onRetry={loadOrders} />;
   }
 
-  if (orders.length === 0) {
+  if (!orders || orders.length === 0) {
     return (
       <View style={styles.container}>
         <EmptyState
