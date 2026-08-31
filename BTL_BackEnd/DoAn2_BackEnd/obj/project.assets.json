@@ -1804,11 +1804,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
+      "projectUniqueName": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
       "projectName": "DoAn2_BackEnd",
-      "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
+      "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
       "packagesPath": "C:\\Users\\huanp\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\obj\\",
+      "outputPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\DoAn2_BackEnd\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\huanp\\AppData\\Roaming\\NuGet\\NuGet.Config",

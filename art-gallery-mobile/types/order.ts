@@ -1,15 +1,19 @@
 // Order Types
 
 export interface CreateOrderRequest {
-  tenNguoiNhan?: string;
-  soDienThoai?: string;
-  diaChiGiao?: string;
+  tenNguoiNhan: string;
+  soDienThoai: string;
+  diaChiGiao: string;
+  phuongThucThanhToan?: string;
+  phuongThucTT?: string;
+  ghiChu?: string;
 }
 
 export interface OrderItem {
-  maChiTietDH: number;
+  maChiTietDH?: number;
   maTacPham: number;
   tenTacPham?: string;
+  tenHoaSi?: string;
   hinhAnh?: string;
   soLuong: number;
   donGia: number;

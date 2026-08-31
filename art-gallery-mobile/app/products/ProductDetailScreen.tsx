@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useAuth } from '../../context/AuthContext';
 import { productService } from '../../services/productService';
 import { cartService } from '../../services/cartService';
 import { Product } from '../../types/product';
@@ -25,6 +26,7 @@ export default function ProductDetailScreen({
   route,
   navigation,
 }: ProductDetailScreenProps) {
+  const { user, isAuthenticated } = useAuth();
   const productId = route.params?.id;
   const [product, setProduct] = useState<Product | null>(null);
   const [suggestions, setSuggestions] = useState<Product[]>([]);
@@ -73,6 +75,30 @@ export default function ProductDetailScreen({
     }
   };
 
+  const checkAuthCanBuy = (): boolean => {
+    if (!isAuthenticated || !user) {
+      Alert.alert(
+        'Yêu cầu đăng nhập',
+        'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng!',
+        [
+          { text: 'Hủy', style: 'cancel' },
+          {
+            text: 'Đăng nhập',
+            onPress: () => navigation.navigate('Login'),
+          },
+        ]
+      );
+      return false;
+    }
+
+    if (user.role === 'admin' || user.role === 'author') {
+      Alert.alert('Thông báo', 'Tài khoản Quản trị / Họa sĩ không thể mua hàng');
+      return false;
+    }
+
+    return true;
+  };
+
   const handleAddToCart = async () => {
     if (!product) return;
 
@@ -81,20 +107,44 @@ export default function ProductDetailScreen({
       return;
     }
 
+    if (!checkAuthCanBuy()) return;
+
     try {
       setIsAddingToCart(true);
       await cartService.addToCart(product.maTacPham, quantity);
       Alert.alert(
         'Thành công',
-        'Đã thêm vào giỏ hàng',
+        'Đã thêm sản phẩm vào giỏ hàng!',
         [
-          { text: 'Tiếp tục mua', style: 'cancel' },
+          { text: 'Tiếp tục xem', style: 'cancel' },
           {
             text: 'Xem giỏ hàng',
             onPress: () => navigation.navigate('MainTabs', { screen: 'Cart' }),
           },
         ]
       );
+    } catch (err: any) {
+      Alert.alert('Lỗi', err.message || 'Không thể thêm vào giỏ hàng');
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  // Mua ngay: thêm vào giỏ rồi navigate thẳng đến Checkout (giống React web)
+  const handleBuyNow = async () => {
+    if (!product) return;
+
+    if (product.soLuong === 0) {
+      Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
+      return;
+    }
+
+    if (!checkAuthCanBuy()) return;
+
+    try {
+      setIsAddingToCart(true);
+      await cartService.addToCart(product.maTacPham, quantity);
+      navigation.navigate('Checkout');
     } catch (err: any) {
       Alert.alert('Lỗi', err.message || 'Không thể thêm vào giỏ hàng');
     } finally {
@@ -237,7 +287,7 @@ export default function ProductDetailScreen({
         <Footer navigation={navigation} />
       </ScrollView>
 
-      {/* Bottom Bar - Add to Cart */}
+      {/* Bottom Bar - Buy Now & Add to Cart */}
       {!isOutOfStock && (
         <View style={styles.bottomBar}>
           {/* Quantity Selector */}
@@ -262,18 +312,34 @@ export default function ProductDetailScreen({
             </View>
           </View>
 
-          {/* Add to Cart Button */}
-          <TouchableOpacity
-            style={[styles.addToCartButton, isAddingToCart && styles.addToCartButtonDisabled]}
-            onPress={handleAddToCart}
-            disabled={isAddingToCart}
-          >
-            {isAddingToCart ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.addToCartButtonText}>Thêm vào giỏ</Text>
-            )}
-          </TouchableOpacity>
+          {/* Action Buttons - Mua ngay & Thêm vào giỏ */}
+          <View style={styles.actionButtonsRow}>
+            {/* Mua ngay */}
+            <TouchableOpacity
+              style={[styles.buyNowButton, isAddingToCart && styles.buttonDisabled]}
+              onPress={handleBuyNow}
+              disabled={isAddingToCart}
+            >
+              {isAddingToCart ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buyNowButtonText}>🛍️ Mua ngay</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Thêm vào giỏ */}
+            <TouchableOpacity
+              style={[styles.addToCartButton, isAddingToCart && styles.buttonDisabled]}
+              onPress={handleAddToCart}
+              disabled={isAddingToCart}
+            >
+              {isAddingToCart ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.addToCartButtonText}>🛒 Thêm vào giỏ</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -476,17 +542,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   addToCartButton: {
+    flex: 1,
     backgroundColor: '#2563eb',
-    padding: 16,
+    padding: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
-  addToCartButtonDisabled: {
-    backgroundColor: '#93c5fd',
+  buttonDisabled: {
+    opacity: 0.6,
   },
   addToCartButtonText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  buyNowButton: {
+    flex: 1,
+    backgroundColor: '#ea580c',
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  buyNowButtonText: {
+    color: '#fff',
+    fontSize: 15,
     fontWeight: '600',
   },
 });

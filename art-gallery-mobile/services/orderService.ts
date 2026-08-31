@@ -6,24 +6,31 @@ import { Order, CreateOrderRequest, CancelOrderRequest } from '../types/order';
 export const orderService = {
   // Tạo đơn hàng mới
   async createOrder(
-    tenNguoiNhan?: string,
-    soDienThoai?: string,
-    diaChiGiao?: string
+    tenNguoiNhan: string,
+    soDienThoai: string,
+    diaChiGiao: string,
+    phuongThucThanhToan: string = 'COD',
+    ghiChu?: string
   ): Promise<{ message: string; maDonHang: number }> {
     try {
       const request: CreateOrderRequest = {
         tenNguoiNhan,
         soDienThoai,
         diaChiGiao,
+        phuongThucThanhToan,
+        phuongThucTT: phuongThucThanhToan,
+        ghiChu,
       };
       const response = await apiClient.post<{ message: string; maDonHang: number }>(
         API_ENDPOINTS.ORDER_CREATE,
         request
       );
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating order:', error);
-      throw error;
+      const serverError = error.response?.data;
+      const errorMessage = serverError?.error || serverError?.message || error.message || 'Lỗi khi tạo đơn hàng';
+      throw new Error(errorMessage);
     }
   },
 

@@ -28,7 +28,9 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
     tenNguoiNhan: '',
     soDienThoai: '',
     diaChiGiao: '',
+    ghiChu: '',
   });
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'BankTransfer'>('COD');
 
   useEffect(() => {
     loadData();
@@ -49,6 +51,7 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
         tenNguoiNhan: profileData.ten || '',
         soDienThoai: profileData.dienThoai || '',
         diaChiGiao: profileData.diaChi || '',
+        ghiChu: '',
       });
     } catch (err: any) {
       console.error('Error loading checkout data:', err);
@@ -93,14 +96,17 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
       return;
     }
 
-    if (!cart || !cart.chiTiet || cart.chiTiet.length === 0) {
+    const items = cart?.danhSachSanPham || [];
+    if (items.length === 0) {
       Alert.alert('Lỗi', 'Giỏ hàng trống');
       return;
     }
 
+    const paymentLabel = paymentMethod === 'COD' ? 'Tiền mặt khi nhận hàng (COD)' : 'Chuyển khoản ngân hàng';
+
     Alert.alert(
       'Xác nhận đặt hàng',
-      `Tổng tiền: ${formatPrice(calculateTotal())}\n\nBạn có chắc muốn đặt hàng?`,
+      `Tổng tiền: ${formatPrice(calculateTotal())}\nThanh toán: ${paymentLabel}\n\nBạn có chắc muốn đặt hàng?`,
       [
         { text: 'Hủy', style: 'cancel' },
         {
@@ -111,7 +117,9 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
               const result = await orderService.createOrder(
                 formData.tenNguoiNhan.trim(),
                 formData.soDienThoai.trim(),
-                formData.diaChiGiao.trim()
+                formData.diaChiGiao.trim(),
+                paymentMethod,
+                formData.ghiChu.trim() || undefined
               );
               
               // Navigate to success screen
@@ -131,19 +139,25 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND',
-    }).format(price);
+    }).format(price || 0);
   };
 
   const calculateTotal = (): number => {
     if (!cart) return 0;
-    return cart.chiTiet.reduce((sum, item) => sum + item.thanhTien, 0);
+    if (cart.tongTien && cart.tongTien > 0) return cart.tongTien;
+    return (cart.danhSachSanPham || []).reduce(
+      (sum, item) => sum + (item.thanhTien || item.gia * item.soLuong),
+      0
+    );
   };
 
   if (isLoading) {
     return <Loading message="Đang tải thông tin..." />;
   }
 
-  if (!cart || !cart.chiTiet || cart.chiTiet.length === 0) {
+  const items = cart?.danhSachSanPham || [];
+
+  if (items.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>Giỏ hàng trống</Text>
@@ -162,8 +176,8 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
       <ScrollView style={styles.scrollView}>
         {/* Order Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Đơn hàng của bạn</Text>
-          {cart.chiTiet.map((item) => (
+          <Text style={styles.sectionTitle}>Đơn hàng của bạn ({items.length} sản phẩm)</Text>
+          {items.map((item) => (
             <View key={item.maChiTietGH} style={styles.orderItem}>
               <View style={styles.orderItemInfo}>
                 <Text style={styles.orderItemName} numberOfLines={2}>
@@ -172,7 +186,7 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
                 <Text style={styles.orderItemQuantity}>x{item.soLuong}</Text>
               </View>
               <Text style={styles.orderItemPrice}>
-                {formatPrice(item.thanhTien)}
+                {formatPrice(item.thanhTien || item.gia * item.soLuong)}
               </Text>
             </View>
           ))}
@@ -221,6 +235,73 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
               editable={!isSubmitting}
             />
           </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Ghi chú (tùy chọn)</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Ghi chú cho đơn hàng của bạn"
+              value={formData.ghiChu}
+              onChangeText={(text) => handleInputChange('ghiChu', text)}
+              multiline
+              numberOfLines={3}
+              editable={!isSubmitting}
+            />
+          </View>
+        </View>
+
+        {/* Payment Method */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Phương thức thanh toán</Text>
+
+          <TouchableOpacity
+            style={[
+              styles.paymentOption,
+              paymentMethod === 'COD' && styles.paymentOptionActive,
+            ]}
+            onPress={() => setPaymentMethod('COD')}
+            disabled={isSubmitting}
+          >
+            <View style={styles.paymentOptionLeft}>
+              <View style={[styles.radioCircle, paymentMethod === 'COD' && styles.radioCircleActive]}>
+                {paymentMethod === 'COD' && <View style={styles.radioInner} />}
+              </View>
+              <View>
+                <Text style={styles.paymentOptionTitle}>💵 Tiền mặt khi nhận hàng (COD)</Text>
+                <Text style={styles.paymentOptionDesc}>Thanh toán trực tiếp khi nhận hàng</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.paymentOption,
+              paymentMethod === 'BankTransfer' && styles.paymentOptionActive,
+            ]}
+            onPress={() => setPaymentMethod('BankTransfer')}
+            disabled={isSubmitting}
+          >
+            <View style={styles.paymentOptionLeft}>
+              <View style={[styles.radioCircle, paymentMethod === 'BankTransfer' && styles.radioCircleActive]}>
+                {paymentMethod === 'BankTransfer' && <View style={styles.radioInner} />}
+              </View>
+              <View>
+                <Text style={styles.paymentOptionTitle}>🏦 Chuyển khoản ngân hàng</Text>
+                <Text style={styles.paymentOptionDesc}>STK: 123456789 - MBBank</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+
+          {paymentMethod === 'BankTransfer' && (
+            <View style={styles.bankInfo}>
+              <Text style={styles.bankInfoText}>
+                📋 Thông tin chuyển khoản:{'\n'}
+                Số tài khoản: 123456789{'\n'}
+                Ngân hàng: MBBank{'\n'}
+                Nội dung: [Mã đơn hàng của bạn]
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Note */}
@@ -425,4 +506,51 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-});
+  // Payment method styles
+  paymentOption: {
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  paymentOptionActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+  },
+  paymentOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioCircleActive: {
+    borderColor: '#2563eb',
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#2563eb',
+  },
+  paymentOptionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  paymentOptionDesc: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  bankInfo: {
+    backgroundColor: '#fef3c7',

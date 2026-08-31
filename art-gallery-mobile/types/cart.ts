@@ -1,21 +1,23 @@
-// Cart Types
+// Cart Types - Khớp với GioHangResponse và ChiTietGioHangResponse từ Backend ASP.NET Core
 
 export interface CartItem {
   maChiTietGH: number;
-  maGioHang: number;
+  maGioHang?: number;
   maTacPham: number;
-  tenTacPham?: string;
+  tenTacPham: string;
+  tenHoaSi?: string;
   gia: number;
-  hinhAnh?: string;
   soLuong: number;
-  soLuongTon: number;
   thanhTien: number;
+  hinhAnh?: string;
+  soLuongTon?: number;
 }
 
 export interface Cart {
   maGioHang: number;
-  maNguoiDung: number;
-  chiTiet: CartItem[];
+  maNguoiDung?: number;
+  danhSachSanPham: CartItem[];
+  tongTien: number;
 }
 
 export interface AddToCartRequest {
@@ -26,3 +28,4 @@ export interface AddToCartRequest {
 export interface UpdateCartRequest {
   soLuong: number;
 }
+

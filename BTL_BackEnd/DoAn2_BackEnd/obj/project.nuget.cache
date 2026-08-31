@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "dXkjL/Etbf0=",
+  "dgSpecHash": "mlrLdf8ypsA=",
   "success": true,
-  "projectFilePath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\DoAn3_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
+  "projectFilePath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\DoAn2_BackEnd\\DoAn2_BackEnd.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\huanp\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\huanp\\.nuget\\packages\\azure.identity\\1.11.3\\azure.identity.1.11.3.nupkg.sha512",
