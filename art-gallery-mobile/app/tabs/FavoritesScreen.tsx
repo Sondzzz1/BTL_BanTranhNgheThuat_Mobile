@@ -10,6 +10,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 import { favoriteService } from '../../services/favoriteService';
 import { FavoriteWithProduct } from '../../types/favorite';
 import Loading from '../../components/Loading';
@@ -22,6 +23,7 @@ interface FavoritesScreenProps {
 }
 
 export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
+  const { isAuthenticated } = useAuth();
   const [favorites, setFavorites] = useState<FavoriteWithProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +31,14 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
 
   useFocusEffect(
     useCallback(() => {
-      loadFavorites();
-    }, [])
+      if (isAuthenticated) {
+        loadFavorites();
+      } else {
+        setIsLoading(false);
+        setError(null);
+        setFavorites([]);
+      }
+    }, [isAuthenticated])
   );
 
   const loadFavorites = async () => {
@@ -141,6 +149,24 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
 
   if (isLoading) {
     return <Loading message="Đang tải danh sách yêu thích..." />;
+  }
+
+  // Kiểm tra đăng nhập
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.container}>
+        <EmptyState
+          message="Vui lòng đăng nhập"
+          description="Bạn cần đăng nhập để xem danh sách yêu thích"
+        />
+        <TouchableOpacity
+          style={styles.browseButton}
+          onPress={() => navigation.navigate('Login')}
+        >
+          <Text style={styles.browseButtonText}>Đăng nhập</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   if (error) {

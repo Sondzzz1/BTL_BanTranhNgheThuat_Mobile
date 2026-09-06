@@ -9,7 +9,7 @@
 // Tìm "IPv4 Address" của card mạng đang dùng (WiFi hoặc Ethernet)
 // Ví dụ: 192.168.1.100
 
-export const API_BASE_URL = 'http://192.168.1.11:5273/api';
+export const API_BASE_URL = 'http://192.168.1.102:5273/api';
 
 // Nếu test trên Web browser thì có thể dùng localhost
 // export const API_BASE_URL = 'http://localhost:5273/api';

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { useAuth } from '../context/AuthContext';
 import { favoriteService } from '../services/favoriteService';
 import Colors from '../constants/colors';
 
@@ -14,13 +15,19 @@ export default function FavoriteButton({
   size = 'medium',
   onToggle 
 }: FavoriteButtonProps) {
+  const { isAuthenticated } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    checkIfLiked();
-  }, [productId]);
+    if (isAuthenticated) {
+      checkIfLiked();
+    } else {
+      setIsChecking(false);
+      setIsLiked(false);
+    }
+  }, [productId, isAuthenticated]);
 
   const checkIfLiked = async () => {
     try {
@@ -36,6 +43,22 @@ export default function FavoriteButton({
 
   const handlePress = async () => {
     if (isLoading) return;
+
+    // Kiểm tra đăng nhập trước
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Yêu cầu đăng nhập',
+        'Vui lòng đăng nhập để thêm sản phẩm vào yêu thích',
+        [
+          { text: 'Để sau', style: 'cancel' },
+          { text: 'Đăng nhập', onPress: () => {
+            // TODO: Navigate to login - cần truyền navigation prop
+            console.log('Navigate to login');
+          }},
+        ]
+      );
+      return;
+    }
 
     try {
       setIsLoading(true);
