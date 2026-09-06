@@ -1,19 +1,16 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Product } from '../types/product';
+import FavoriteButton from './FavoriteButton';
 
 interface ProductCardProps {
   product: Product;
   onPress: () => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: () => void;
 }
 
 export default function ProductCard({
   product,
   onPress,
-  isFavorite = false,
-  onToggleFavorite,
 }: ProductCardProps) {
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {
@@ -45,16 +42,10 @@ export default function ProductCard({
           </View>
         )}
 
-        {/* Favorite Icon Button on top right */}
-        <TouchableOpacity
-          style={styles.favoriteButton}
-          onPress={onToggleFavorite ? onToggleFavorite : onPress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.favoriteCircle}>
-            <Text style={styles.favoriteIconText}>{isFavorite ? '❤️' : '🤍'}</Text>
-          </View>
-        </TouchableOpacity>
+        {/* Favorite Button */}
+        <View style={styles.favoriteButtonContainer}>
+          <FavoriteButton productId={product.maTacPham} size="small" />
+        </View>
 
         {isOutOfStock && (
           <View style={styles.outOfStockBadge}>
@@ -116,24 +107,11 @@ const styles = StyleSheet.create({
   imagePlaceholderText: {
     fontSize: 40,
   },
-  favoriteButton: {
+  favoriteButtonContainer: {
     position: 'absolute',
     top: 8,
     right: 8,
     zIndex: 2,
-  },
-  favoriteCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  favoriteIconText: {
-    fontSize: 14,
   },
   outOfStockBadge: {
     position: 'absolute',

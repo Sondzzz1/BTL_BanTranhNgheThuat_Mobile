@@ -12,10 +12,17 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { productService } from '../../services/productService';
 import { cartService } from '../../services/cartService';
+import { reviewService } from '../../services/reviewService';
 import { Product } from '../../types/product';
+import { Review, ProductReviewSummary } from '../../types/review';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
+import FavoriteButton from '../../components/FavoriteButton';
+import ReviewsList from '../../components/ReviewsList';
+import AddReviewModal from '../../components/AddReviewModal';
+import StarRating from '../../components/StarRating';
 import Footer from '../../components/Footer';
+import Colors from '../../constants/colors';
 
 interface ProductDetailScreenProps {
   route: any;
@@ -35,9 +42,16 @@ export default function ProductDetailScreen({
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
 
+  // Reviews states
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewSummary, setReviewSummary] = useState<ProductReviewSummary | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+
   useEffect(() => {
     if (productId) {
       loadProductDetail();
+      loadReviews();
     }
   }, [productId]);
 
@@ -58,6 +72,22 @@ export default function ProductDetailScreen({
       setError(err.message || 'Không thể tải thông tin sản phẩm');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadReviews = async () => {
+    try {
+      setIsLoadingReviews(true);
+      const [reviewsData, summaryData] = await Promise.all([
+        reviewService.getProductReviews(productId),
+        reviewService.getProductReviewSummary(productId),
+      ]);
+      setReviews(reviewsData);
+      setReviewSummary(summaryData);
+    } catch (err: any) {
+      console.error('Error loading reviews:', err);
+    } finally {
+      setIsLoadingReviews(false);
     }
   };
 
@@ -178,6 +208,11 @@ export default function ProductDetailScreen({
       <ScrollView style={styles.scrollView}>
         {/* Product Image */}
         <View style={styles.imageContainer}>
+          {/* Favorite Button */}
+          <View style={styles.favoriteButtonPosition}>
+            <FavoriteButton productId={product.maTacPham} size="large" />
+          </View>
+          
           {product.hinhAnh ? (
             <Image
               source={{ uri: product.hinhAnh }}
@@ -281,7 +316,40 @@ export default function ProductDetailScreen({
               </ScrollView>
             </View>
           )}
+
+          {/* Reviews Section */}
+          <View style={styles.section}>
+            <View style={styles.reviewsHeader}>
+              <Text style={styles.sectionTitle}>Đánh giá sản phẩm</Text>
+              {reviewSummary && reviewSummary.tongSoDanhGia > 0 && (
+                <View style={styles.ratingSummary}>
+                  <StarRating rating={reviewSummary.diemTrungBinh} size={18} />
+                  <Text style={styles.ratingText}>
+                    {reviewSummary.diemTrungBinh.toFixed(1)} ({reviewSummary.tongSoDanhGia})
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.addReviewButton}
+              onPress={() => setShowReviewModal(true)}
+            >
+              <Text style={styles.addReviewButtonText}>✍️ Viết đánh giá</Text>
+            </TouchableOpacity>
+
+            <ReviewsList reviews={reviews} loading={isLoadingReviews} />
+          </View>
         </View>
+
+        {/* Add Review Modal */}
+        <AddReviewModal
+          visible={showReviewModal}
+          productId={productId}
+          productName={product.tenTacPham}
+          onClose={() => setShowReviewModal(false)}
+          onReviewAdded={() => loadReviews()}
+        />
 
         {/* Footer */}
         <Footer navigation={navigation} />
@@ -493,6 +561,42 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     paddingHorizontal: 8,
     paddingBottom: 8,
+  },
+  favoriteButtonPosition: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    zIndex: 10,
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  ratingSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  addReviewButton: {
+    backgroundColor: '#f3f4f6',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  addReviewButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
   },
   bottomBar: {
     backgroundColor: '#fff',

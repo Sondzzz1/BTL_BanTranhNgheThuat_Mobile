@@ -77,6 +77,16 @@ function MainTabs() {
         }}
       />
       <Tab.Screen 
+        name="FavoritesTab" 
+        component={FavoritesScreen}
+        options={{ 
+          title: 'Yêu thích',
+          tabBarIcon: ({ color, size }) => (
+            <Text style={{ fontSize: size - 4, color }}>❤️</Text>
+          ),
+        }}
+      />
+      <Tab.Screen 
         name="Orders" 
         component={OrdersScreen}
         options={{ 
