@@ -15,11 +15,12 @@ export interface FavoriteWithProduct {
   tacPham: {
     maTacPham: number;
     tenTacPham: string;
-    anhTranh: string;
+    hinhAnh?: string; // Field từ backend
     gia: number;
     soLuong: number;
     tenHoaSi: string;
     tenDanhMuc: string;
+    trangThai: number;
   };
 }
 

@@ -71,26 +71,16 @@ function App() {
         <ScrollToTop />
         <div className="App">
           <Routes>
-            {/* Test Route */}
-            <Route path="/test" element={<TestPage />} />
-            <Route path="/api-test" element={<ApiTest />} />
-            <Route path="/test-auth" element={<TestAuth />} />
-            <Route path="/favorite-test" element={<FavoriteTest />} />
+            {/* ===== ADMIN-ONLY MODE ===== */}
+            {/* Chỉ cho phép Admin và Artist truy cập */}
+            {/* Customer dùng Mobile App */}
             
-            {/* Public Routes */}
-            <Route path="/" element={<Layout><Home /></Layout>} />
-            <Route path="/about" element={<Layout><About /></Layout>} />
-            <Route path="/artworks" element={<Layout><Artworks /></Layout>} />
-            <Route path="/artworks/:id" element={<Layout><ArtworkDetail /></Layout>} />
-            <Route path="/news" element={<Layout><News /></Layout>} />
-            <Route path="/contact" element={<Layout><Contact /></Layout>} />
-            <Route path="/login" element={<Layout><Login /></Layout>} />
-            <Route path="/register" element={<Layout><Register /></Layout>} />
+            {/* Landing page → Login */}
+            <Route path="/" element={<Login />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/change-password" element={<Layout><ChangePassword /></Layout>} />
-            <Route path="/cart" element={<Layout><Cart /></Layout>} />
-            <Route path="/checkout" element={<Layout><Checkout /></Layout>} />
 
-            {/* Admin Routes */}
+            {/* Admin Routes - GIỮ LẠI */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminHome />} />
               <Route path="orders" element={<AdminOrders />} />
@@ -108,7 +98,7 @@ function App() {
               <Route path="test-edits" element={<TestEditsAPI />} />
             </Route>
 
-            {/* Artist Routes */}
+            {/* Artist Routes - GIỮ LẠI */}
             <Route path="/artist" element={<ArtistLayout />}>
               <Route index element={<ArtistDashboard />} />
               <Route path="profile" element={<ArtistProfile />} />
@@ -121,17 +111,37 @@ function App() {
               <Route path="sales" element={<PlaceholderPage title="Báo Cáo Bán Hàng" />} />
             </Route>
 
-            {/* User Routes */}
-            <Route path="/user" element={<UserLayout />}>
-              <Route index element={<UserProfile />} />
-              <Route path="profile" element={<UserProfile />} />
-              <Route path="orders" element={<UserOrders />} />
-              <Route path="orders/:id" element={<UserOrderDetail />} />
-              <Route path="favorites" element={<UserFavorites />} />
-            </Route>
+            {/* ===== CUSTOMER ROUTES - TẮT (Dùng Mobile App) ===== */}
+            {/* Uncomment các routes dưới nếu muốn bật lại phần Customer */}
+            
+            {/* Test Routes - CHỈ DEV */}
+            {/* <Route path="/test" element={<TestPage />} /> */}
+            {/* <Route path="/api-test" element={<ApiTest />} /> */}
+            {/* <Route path="/test-auth" element={<TestAuth />} /> */}
+            {/* <Route path="/favorite-test" element={<FavoriteTest />} /> */}
+            
+            {/* Public Customer Routes - TẮT */}
+            {/* <Route path="/" element={<Layout><Home /></Layout>} /> */}
+            {/* <Route path="/about" element={<Layout><About /></Layout>} /> */}
+            {/* <Route path="/artworks" element={<Layout><Artworks /></Layout>} /> */}
+            {/* <Route path="/artworks/:id" element={<Layout><ArtworkDetail /></Layout>} /> */}
+            {/* <Route path="/news" element={<Layout><News /></Layout>} /> */}
+            {/* <Route path="/contact" element={<Layout><Contact /></Layout>} /> */}
+            {/* <Route path="/register" element={<Layout><Register /></Layout>} /> */}
+            {/* <Route path="/cart" element={<Layout><Cart /></Layout>} /> */}
+            {/* <Route path="/checkout" element={<Layout><Checkout /></Layout>} /> */}
 
-            {/* Fallback Route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* User Dashboard Routes - TẮT */}
+            {/* <Route path="/user" element={<UserLayout />}> */}
+            {/*   <Route index element={<UserProfile />} /> */}
+            {/*   <Route path="profile" element={<UserProfile />} /> */}
+            {/*   <Route path="orders" element={<UserOrders />} /> */}
+            {/*   <Route path="orders/:id" element={<UserOrderDetail />} /> */}
+            {/*   <Route path="favorites" element={<UserFavorites />} /> */}
+            {/* </Route> */}
+
+            {/* Fallback - Redirect về Login */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </div>
       </Router>

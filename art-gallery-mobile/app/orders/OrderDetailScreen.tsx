@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { orderService } from '../../services/orderService';
 import { Order, ORDER_STATUS_TEXT } from '../../types/order';
@@ -182,27 +183,45 @@ export default function OrderDetailScreen({
               <Text style={styles.sectionTitle}>Sản phẩm ({chiTietList.length})</Text>
               {chiTietList.map((item, index) => (
                 <View key={item.maChiTietDH || item.maTacPham || index} style={styles.orderItem}>
-                  <View style={styles.itemInfo}>
+                  {/* Product Image */}
+                  <View style={styles.itemImageContainer}>
+                    {item.hinhAnh ? (
+                      <Image
+                        source={{ uri: item.hinhAnh }}
+                        style={styles.itemImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.itemImagePlaceholder}>
+                        <Text style={styles.itemImagePlaceholderText}>🖼️</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Product Info */}
+                  <View style={styles.itemDetails}>
                     <Text style={styles.itemName} numberOfLines={2}>
                       {item.tenTacPham || 'Tác phẩm'}
                     </Text>
-                <Text style={styles.itemQuantity}>x{item.soLuong}</Text>
-              </View>
-              <View style={styles.itemPrices}>
-                <Text style={styles.itemPrice}>{formatPrice(item.donGia)}</Text>
-                <Text style={styles.itemTotal}>{formatPrice(item.thanhTien)}</Text>
+                    <View style={styles.itemPriceRow}>
+                      <Text style={styles.itemPrice}>{formatPrice(item.donGia)}</Text>
+                      <Text style={styles.itemQuantity}>x{item.soLuong}</Text>
+                    </View>
+                    <Text style={styles.itemTotal}>
+                      Thành tiền: {formatPrice(item.thanhTien)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+              
+              {/* Total */}
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Tổng cộng:</Text>
+                <Text style={styles.totalAmount}>{formatPrice(order.tongTien)}</Text>
               </View>
             </View>
-          ))}
-          
-          {/* Total */}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Tổng cộng:</Text>
-            <Text style={styles.totalAmount}>{formatPrice(order.tongTien)}</Text>
-          </View>
-        </View>
-        );
-      })()}
+          );
+        })()}
 
         {/* Cancel Reason */}
         {order.trangThai === 4 && order.lyDoHuy && (
@@ -315,9 +334,35 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   orderItem: {
+    flexDirection: 'row',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
+    alignItems: 'center',
+  },
+  itemImageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#f3f4f6',
+    marginRight: 12,
+  },
+  itemImage: {
+    width: '100%',
+    height: '100%',
+  },
+  itemImagePlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e5e7eb',
+  },
+  itemImagePlaceholderText: {
+    fontSize: 32,
+  },
+  itemDetails: {
+    flex: 1,
   },
   itemInfo: {
     flexDirection: 'row',
@@ -326,26 +371,34 @@ const styles = StyleSheet.create({
   },
   itemName: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '600',
     color: '#374151',
+    marginBottom: 6,
+  },
+  itemPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   itemQuantity: {
     fontSize: 14,
     color: '#6b7280',
-    marginLeft: 8,
+    fontWeight: '600',
   },
   itemPrices: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   itemPrice: {
-    fontSize: 12,
-    color: '#9ca3af',
+    fontSize: 14,
+    color: '#6b7280',
   },
   itemTotal: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1f2937',
+    color: '#2563eb',
   },
   totalRow: {
     flexDirection: 'row',
