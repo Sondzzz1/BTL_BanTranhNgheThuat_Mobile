@@ -11,6 +11,7 @@ import {
   Linking,
   Alert,
 } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { productService } from '../../services/productService';
 import { reviewService } from '../../services/reviewService';
 import { Product, Category } from '../../types/product';
@@ -285,9 +286,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.commitmentSection}>
           <View style={styles.commitmentCard}>
             <View style={styles.commitmentImageContainer}>
-              {/* TODO: Replace with actual image */}
-              {/* <Image source={require('../../assets/images/delivery.png')} style={styles.commitmentImage} /> */}
-              <Text style={styles.commitmentIcon}>🚚</Text>
+              <Ionicons name="rocket" size={32} color="#ea580c" />
             </View>
             <View style={styles.commitmentTextContainer}>
               <Text style={styles.commitmentTitle}>Giao hàng toàn quốc</Text>
@@ -299,9 +298,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
           <View style={styles.commitmentCard}>
             <View style={styles.commitmentImageContainer}>
-              {/* TODO: Replace with actual image */}
-              {/* <Image source={require('../../assets/images/quality.png')} style={styles.commitmentImage} /> */}
-              <Text style={styles.commitmentIcon}>⭐</Text>
+              <Ionicons name="star" size={32} color="#fbbf24" />
             </View>
             <View style={styles.commitmentTextContainer}>
               <Text style={styles.commitmentTitle}>Chất lượng hàng đầu</Text>
@@ -313,9 +310,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
           <View style={styles.commitmentCard}>
             <View style={styles.commitmentImageContainer}>
-              {/* TODO: Replace with actual image */}
-              {/* <Image source={require('../../assets/images/variety.png')} style={styles.commitmentImage} /> */}
-              <Text style={styles.commitmentIcon}>🎨</Text>
+              <MaterialCommunityIcons name="palette" size={32} color="#ea580c" />
             </View>
             <View style={styles.commitmentTextContainer}>
               <Text style={styles.commitmentTitle}>Sản phẩm đa dạng</Text>
@@ -345,7 +340,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   activeOpacity={0.7}
                 >
                   <View style={styles.categoryIconContainer}>
-                    <Text style={styles.categoryIcon}>🎨</Text>
+                    <MaterialCommunityIcons name="palette" size={28} color="#ea580c" />
                   </View>
                   <Text style={styles.categoryName} numberOfLines={2}>
                     {category.tenDanhMuc}
@@ -361,11 +356,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.badgeText}>✨ MỚI NHẤT</Text>
+                <View style={styles.badgeContainer}>
+                  <Ionicons name="sparkles" size={14} color="#ea580c" />
+                  <Text style={styles.badgeText}>MỚI NHẤT</Text>
+                </View>
                 <Text style={styles.sectionTitle}>Tác Phẩm Nổi Bật</Text>
               </View>
               <TouchableOpacity onPress={handleViewAllProducts} style={styles.viewAllButton}>
-                <Text style={styles.viewAllText}>Xem tất cả →</Text>
+                <Text style={styles.viewAllText}>Xem tất cả</Text>
+                <Ionicons name="arrow-forward" size={16} color="#ea580c" />
               </TouchableOpacity>
             </View>
             
@@ -387,7 +386,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <View>
-                <Text style={styles.badgeTextSelling}>🔥 HOT</Text>
+                <View style={styles.badgeContainer}>
+                  <Ionicons name="flame" size={14} color="#dc2626" />
+                  <Text style={styles.badgeTextSelling}>HOT</Text>
+                </View>
                 <Text style={styles.sectionTitle}>Tác Phẩm Bán Chạy</Text>
               </View>
             </View>
@@ -500,7 +502,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         onPress={handleSupportPress}
         activeOpacity={0.85}
       >
-        <Text style={styles.floatingSupportIcon}>🎧</Text>
+        <Ionicons name="headset" size={24} color="#ea580c" />
       </TouchableOpacity>
     </View>
   );
@@ -969,18 +971,22 @@ reviewWebsiteText: {
     paddingHorizontal: 16,
     marginBottom: 12,
   },
+  badgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 4,
+  },
   badgeText: {
     fontSize: 11,
     fontWeight: '800',
     color: '#ea580c',
-    marginBottom: 2,
     letterSpacing: 0.5,
   },
   badgeTextSelling: {
     fontSize: 11,
     fontWeight: '800',
     color: '#dc2626',
-    marginBottom: 2,
     letterSpacing: 0.5,
   },
   sectionTitle: {
@@ -990,8 +996,11 @@ reviewWebsiteText: {
     letterSpacing: -0.3,
   },
   viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: 4,
     paddingHorizontal: 8,
+    gap: 4,
   },
   viewAllText: {
     fontSize: 13,
@@ -1021,7 +1030,7 @@ reviewWebsiteText: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fff5f5',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
@@ -1065,8 +1074,5 @@ reviewWebsiteText: {
     shadowOpacity: 0.25,
     shadowRadius: 5,
     zIndex: 99,
-  },
-  floatingSupportIcon: {
-    fontSize: 22,
   },
 });

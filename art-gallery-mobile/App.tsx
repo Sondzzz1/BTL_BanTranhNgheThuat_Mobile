@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
@@ -55,7 +56,7 @@ function MainTabs() {
         options={{ 
           title: 'Trang chủ',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>🏠</Text>
+            <Ionicons name="home" size={size} color={color} />
           ),
         }}
       />
@@ -65,7 +66,7 @@ function MainTabs() {
         options={{ 
           title: 'Tác phẩm',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>🖼️</Text>
+            <Ionicons name="images" size={size} color={color} />
           ),
         }}
       />
@@ -75,7 +76,7 @@ function MainTabs() {
         options={{ 
           title: 'Giỏ hàng',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>🛍️</Text>
+            <Ionicons name="cart" size={size} color={color} />
           ),
         }}
       />
@@ -85,7 +86,7 @@ function MainTabs() {
         options={{ 
           title: 'Yêu thích',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>❤️</Text>
+            <Ionicons name="heart" size={size} color={color} />
           ),
         }}
       />
@@ -95,7 +96,7 @@ function MainTabs() {
         options={{ 
           title: 'Đơn hàng',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>📦</Text>
+            <Ionicons name="receipt" size={size} color={color} />
           ),
         }}
       />
@@ -105,7 +106,7 @@ function MainTabs() {
         options={{ 
           title: 'Tài khoản',
           tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size - 4, color }}>👤</Text>
+            <Ionicons name="person-circle" size={size} color={color} />
           ),
         }}
       />

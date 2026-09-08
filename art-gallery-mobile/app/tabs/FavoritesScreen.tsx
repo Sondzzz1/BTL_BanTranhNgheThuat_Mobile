@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   View,
   Text,
@@ -125,9 +126,12 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
           
           {/* Heart Icon Overlay */}
           <View style={styles.heartOverlay}>
-            <Text style={styles.heartIcon}>❤️</Text>
-          </View>
-
+              <Ionicons
+               name="heart"
+               size={20}
+               color="#ec0d0dff"
+              />
+            </View>
           {/* Out of Stock Badge */}
           {isOutOfStock && (
             <View style={styles.outOfStockBadge}>
@@ -168,9 +172,16 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
           {/* Footer with Date and Remove Button */}
           <View style={styles.footer}>
             <View style={styles.dateContainer}>
-              <Text style={styles.dateIcon}>📅</Text>
-              <Text style={styles.dateAdded}>{formatDate(item.ngayThem)}</Text>
-            </View>
+  <Ionicons
+    name="calendar-outline"
+    size={14}
+    color="#9ca3af"
+  />
+
+  <Text style={styles.dateAdded}>
+    {formatDate(item.ngayThem)}
+  </Text>
+</View>
             <TouchableOpacity
               style={styles.removeButton}
               onPress={(e) => {
