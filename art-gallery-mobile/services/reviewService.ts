@@ -1,6 +1,7 @@
 // Review Service - Placeholder (waiting for backend API)
 
 import { Review, AddReviewRequest, ProductReviewSummary } from '../types/review';
+import { orderService } from './orderService';
 
 // Mock data for now - will connect to backend later
 const mockReviews: { [key: number]: Review[] } = {
@@ -27,6 +28,25 @@ const mockReviews: { [key: number]: Review[] } = {
 };
 
 export const reviewService = {
+  // Kiểm tra xem user đã mua sản phẩm này chưa
+  checkUserPurchased: async (maTacPham: number): Promise<boolean> => {
+    try {
+      const orders = await orderService.getMyOrders();
+      
+      // Kiểm tra xem có đơn hàng nào chứa sản phẩm này không
+      // Chỉ tính các đơn đã hoàn thành (trangThai = 3)
+      const hasPurchased = orders.some(order => 
+        order.trangThai === 3 && // Đã giao hàng
+        order.danhSachSanPham?.some(item => item.maTacPham === maTacPham)
+      );
+      
+      return hasPurchased;
+    } catch (error) {
+      console.error('Error checking user purchase:', error);
+      return false;
+    }
+  },
+
   // Lấy danh sách đánh giá của sản phẩm
   getProductReviews: async (maTacPham: number): Promise<Review[]> => {
     // TODO: Connect to backend when API is ready

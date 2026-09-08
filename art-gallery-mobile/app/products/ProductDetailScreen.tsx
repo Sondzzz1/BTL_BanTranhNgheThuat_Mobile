@@ -47,13 +47,16 @@ export default function ProductDetailScreen({
   const [reviewSummary, setReviewSummary] = useState<ProductReviewSummary | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
+  const [canReview, setCanReview] = useState(false);
+  const [isCheckingPurchase, setIsCheckingPurchase] = useState(false);
 
   useEffect(() => {
     if (productId) {
       loadProductDetail();
       loadReviews();
+      checkPurchaseStatus();
     }
-  }, [productId]);
+  }, [productId, isAuthenticated]);
 
   const loadProductDetail = async () => {
     try {
@@ -89,6 +92,52 @@ export default function ProductDetailScreen({
     } finally {
       setIsLoadingReviews(false);
     }
+  };
+
+  const checkPurchaseStatus = async () => {
+    if (!isAuthenticated || !user) {
+      setCanReview(false);
+      return;
+    }
+
+    try {
+      setIsCheckingPurchase(true);
+      const hasPurchased = await reviewService.checkUserPurchased(productId);
+      setCanReview(hasPurchased);
+    } catch (error) {
+      console.error('Error checking purchase status:', error);
+      setCanReview(false);
+    } finally {
+      setIsCheckingPurchase(false);
+    }
+  };
+
+  const handleAddReviewPress = () => {
+    if (!isAuthenticated || !user) {
+      Alert.alert(
+        'Yêu cầu đăng nhập',
+        'Vui lòng đăng nhập để viết đánh giá!',
+        [
+          { text: 'Hủy', style: 'cancel' },
+          {
+            text: 'Đăng nhập',
+            onPress: () => navigation.navigate('Login'),
+          },
+        ]
+      );
+      return;
+    }
+
+    if (!canReview) {
+      Alert.alert(
+        'Không thể đánh giá',
+        'Bạn cần mua và nhận sản phẩm này trước khi có thể đánh giá.',
+        [{ text: 'Đã hiểu' }]
+      );
+      return;
+    }
+
+    setShowReviewModal(true);
   };
 
   const handleIncreaseQuantity = () => {
@@ -332,10 +381,30 @@ export default function ProductDetailScreen({
             </View>
 
             <TouchableOpacity
-              style={styles.addReviewButton}
-              onPress={() => setShowReviewModal(true)}
+              style={[
+                styles.addReviewButton,
+                (!isAuthenticated || !canReview) && styles.addReviewButtonDisabled
+              ]}
+              onPress={handleAddReviewPress}
+              disabled={isCheckingPurchase}
             >
-              <Text style={styles.addReviewButtonText}>✍️ Viết đánh giá</Text>
+              {isCheckingPurchase ? (
+                <ActivityIndicator size="small" color="#6b7280" />
+              ) : (
+                <>
+                  <Text style={styles.addReviewButtonText}>
+                    {isAuthenticated 
+                      ? (canReview ? '✍️ Viết đánh giá' : '🔒 Chưa thể đánh giá')
+                      : '🔒 Đăng nhập để đánh giá'
+                    }
+                  </Text>
+                  {isAuthenticated && !canReview && (
+                    <Text style={styles.addReviewButtonSubtext}>
+                      Chỉ khách hàng đã mua sản phẩm mới được đánh giá
+                    </Text>
+                  )}
+                </>
+              )}
             </TouchableOpacity>
 
             <ReviewsList reviews={reviews} loading={isLoadingReviews} />
@@ -348,7 +417,10 @@ export default function ProductDetailScreen({
           productId={productId}
           productName={product.tenTacPham}
           onClose={() => setShowReviewModal(false)}
-          onReviewAdded={() => loadReviews()}
+          onReviewAdded={() => {
+            loadReviews();
+            checkPurchaseStatus();
+          }}
         />
 
         {/* Footer */}
@@ -593,10 +665,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
+  addReviewButtonDisabled: {
+    backgroundColor: '#f9fafb',
+    borderColor: '#e5e7eb',
+    opacity: 0.7,
+  },
   addReviewButtonText: {
     fontSize: 15,
     fontWeight: '600',
     color: '#374151',
+  },
+  addReviewButtonSubtext: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+    textAlign: 'center',
   },
   bottomBar: {
     backgroundColor: '#fff',

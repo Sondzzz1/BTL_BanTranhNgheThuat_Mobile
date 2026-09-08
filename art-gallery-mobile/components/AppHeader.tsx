@@ -57,14 +57,28 @@ export default function AppHeader({ navigation, cartCount: propCartCount }: AppH
   const handleSearch = () => {
     if (searchQuery.trim()) {
       setMenuVisible(false);
-      navigation.navigate('Products', { search: searchQuery.trim() });
+      // Navigate to MainTabs first, then to Products tab with params
+      navigation.navigate('MainTabs', { 
+        screen: 'Products', 
+        params: { search: searchQuery.trim() } 
+      });
       setSearchQuery('');
     }
   };
 
   const handleNav = (screenName: string, params?: any) => {
     setMenuVisible(false);
-    navigation.navigate(screenName, params);
+    
+    // List of screens that are tabs (need to go through MainTabs)
+    const tabScreens = ['Home', 'Products', 'Cart', 'Orders', 'Profile'];
+    
+    if (tabScreens.includes(screenName)) {
+      // Navigate to MainTabs first, then to the specific tab
+      navigation.navigate('MainTabs', { screen: screenName, params });
+    } else {
+      // Direct navigation for stack screens (Login, Favorites, ProductDetail, etc.)
+      navigation.navigate(screenName, params);
+    }
   };
 
   return (

@@ -11,13 +11,13 @@
 
 // ===== CHỌN MỘT TRONG CÁC OPTION SAU =====
 
-// Option 1: Dùng IP mạng (cho thiết bị thật)
-export const API_BASE_URL = 'http://192.168.1.102:5273/api';
+// Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
+export const API_BASE_URL = 'http://10.200.222.115:5273/api';
 
 // Option 2: Dùng cho Android Emulator (10.0.2.2 = localhost của máy host)
 // export const API_BASE_URL = 'http://10.0.2.2:5273/api';
 
-// Option 3: Dùng cho iOS Simulator
+// Option 3: Dùng cho iOS Simulator (localhost) - KHÔNG DÙNG CHO THIẾT BỊ THẬT
 // export const API_BASE_URL = 'http://localhost:5273/api';
 
 // Nếu test trên Web browser thì có thể dùng localhost
