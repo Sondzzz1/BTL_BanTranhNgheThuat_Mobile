@@ -20,6 +20,9 @@ import OrderSuccessScreen from './app/OrderSuccessScreen';
 import OrderDetailScreen from './app/orders/OrderDetailScreen';
 import FavoritesScreen from './app/tabs/FavoritesScreen';
 import ChangePasswordScreen from './app/auth/ChangePasswordScreen';
+import ReturnRequestScreen from './app/orders/ReturnRequestScreen';
+import MyReturnsScreen from './app/orders/MyReturnsScreen';
+import ReturnDetailScreen from './app/orders/ReturnDetailScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -158,10 +161,25 @@ function MainStackNavigator() {
         component={FavoritesScreen}
         options={{ title: 'Tác phẩm yêu thích' }}
       />
-      <Stack.Screen 
-        name="ChangePassword" 
+      <Stack.Screen
+        name="ChangePassword"
         component={ChangePasswordScreen}
         options={{ title: 'Đổi mật khẩu' }}
+      />
+      <Stack.Screen
+        name="ReturnRequest"
+        component={ReturnRequestScreen}
+        options={{ title: 'Yêu cầu hoàn trả' }}
+      />
+      <Stack.Screen
+        name="MyReturns"
+        component={MyReturnsScreen}
+        options={{ title: 'Yêu cầu hoàn trả của tôi' }}
+      />
+      <Stack.Screen
+        name="ReturnDetail"
+        component={ReturnDetailScreen}
+        options={{ title: 'Chi tiết hoàn trả' }}
       />
     </Stack.Navigator>
   );

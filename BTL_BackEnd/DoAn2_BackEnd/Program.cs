@@ -70,6 +70,7 @@ builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 builder.Services.AddScoped<IChiTietTacPhamRepository, ChiTietTacPhamRepository>();
 builder.Services.AddScoped<ITacPhamChinhSuaRepository, TacPhamChinhSuaRepository>();
 builder.Services.AddScoped<IYeuThichRepository, YeuThichRepository>();
+builder.Services.AddScoped<IHoanTraRepository, HoanTraRepository>();
 
 // Register BLL (Business Layer)
 builder.Services.AddScoped<IAuthBusiness, AuthBusiness>();
@@ -78,6 +79,7 @@ builder.Services.AddScoped<IHoaSiBusiness, HoaSiBusiness>();
 builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
 builder.Services.AddScoped<IContentBusiness, ContentBusiness>();
 builder.Services.AddScoped<IChiTietTacPhamBusiness, ChiTietTacPhamBusiness>();
+builder.Services.AddScoped<IHoanTraBusiness, HoanTraBusiness>();
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();

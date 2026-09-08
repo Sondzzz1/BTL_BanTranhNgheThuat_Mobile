@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { orderService } from '../../services/orderService';
 import { Order, ORDER_STATUS_TEXT } from '../../types/order';
@@ -108,6 +109,11 @@ export default function OrderDetailScreen({
   const canCancelOrder = (status: number): boolean => {
     // Có thể hủy nếu đơn hàng đang ở trạng thái: Pending hoặc Confirmed
     return status === 0 || status === 1;
+  };
+
+  // Chỉ hiển thị nút hoàn trả khi đơn hàng đã Hoàn thành (status = 3)
+  const canRequestReturn = (status: number): boolean => {
+    return status === 3;
   };
 
   if (isLoading) {
@@ -239,18 +245,33 @@ export default function OrderDetailScreen({
         </View>
       </ScrollView>
 
-      {/* Cancel Button */}
-      {canCancelOrder(order.trangThai) && (
+      {/* Nút hành động: Hủy đơn hoặc Yêu cầu hoàn trả */}
+      {(canCancelOrder(order.trangThai) || canRequestReturn(order.trangThai)) && (
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.cancelButton, isCancelling && styles.cancelButtonDisabled]}
-            onPress={handleCancelOrder}
-            disabled={isCancelling}
-          >
-            <Text style={styles.cancelButtonText}>
-              {isCancelling ? 'Đang xử lý...' : 'Hủy đơn hàng'}
-            </Text>
-          </TouchableOpacity>
+          {canCancelOrder(order.trangThai) && (
+            <TouchableOpacity
+              style={[styles.cancelButton, isCancelling && styles.cancelButtonDisabled]}
+              onPress={handleCancelOrder}
+              disabled={isCancelling}
+            >
+              <Text style={styles.cancelButtonText}>
+                {isCancelling ? 'Đang xử lý...' : 'Hủy đơn hàng'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {canRequestReturn(order.trangThai) && (
+            <TouchableOpacity
+              style={styles.returnButton}
+              onPress={() =>
+                navigation.navigate('ReturnRequest', {
+                  orderId: order.maDonHang,
+                  orderItems: order.chiTiet || [],
+                })
+              }
+            >
+              <Text style={styles.returnButtonText}>📦 Yêu cầu hoàn trả</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
@@ -467,6 +488,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fca5a5',
   },
   cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  returnButton: {
+    backgroundColor: '#2563eb',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  returnButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

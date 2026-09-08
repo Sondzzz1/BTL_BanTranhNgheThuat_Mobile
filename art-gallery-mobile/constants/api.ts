@@ -65,4 +65,10 @@ export const API_ENDPOINTS = {
   // Blog/News
   NEWS: '/bai-viet',
   NEWS_DETAIL: (id: number) => `/bai-viet/${id}`,
+
+  // Hoàn trả sản phẩm
+  RETURN_CREATE: '/hoan-tra',
+  RETURN_MY: '/hoan-tra/cua-toi',
+  RETURN_DETAIL: (id: number) => `/hoan-tra/${id}`,
+  RETURN_CONFIRM_SHIPPED: (id: number) => `/hoan-tra/${id}/xac-nhan-da-gui`,
 };
