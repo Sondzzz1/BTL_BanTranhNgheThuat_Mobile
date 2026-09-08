@@ -34,12 +34,38 @@ const AdminOrders: React.FC = () => {
         reasonOverride?: string
     ) => {
         const currentOrder = orders.find(o => o.maDonHang === orderId);
-        // Không cho lùi từ Đang giao (2) về Chờ xác nhận (0) / Đã xác nhận (1)
-        if (currentOrder && currentOrder.trangThai === 2 && (newStatus === 0 || newStatus === 1)) {
-            alert('Không thể chuyển trạng thái từ "Đang giao" về "Chờ xác nhận" hoặc "Đã xác nhận".');
+        
+        if (!currentOrder) return;
+
+        const currentStatus = currentOrder.trangThai;
+
+        // KIỂM TRA CÁC TRƯỜNG HỢP KHÔNG HỢP LỆ
+        
+        // 1. Không cho lùi trạng thái (chỉ được tiến lên hoặc hủy)
+        if (newStatus < currentStatus && newStatus !== 5) {
+            alert('Không thể lùi trạng thái đơn hàng. Chỉ có thể chuyển tiến hoặc hủy đơn.');
             return;
         }
 
+        // 2. Không cho nhảy trạng thái (phải đi tuần tự: 0→1→2→3)
+        if (newStatus > currentStatus + 1 && newStatus !== 5) {
+            alert('Không thể nhảy trạng thái. Vui lòng chuyển tuần tự: Chờ xác nhận → Đã xác nhận → Đang giao → Hoàn thành');
+            return;
+        }
+
+        // 3. Đơn đã hoàn thành (3) hoặc đã hủy (5) không được thay đổi
+        if (currentStatus === 3 || currentStatus === 5) {
+            alert('Không thể thay đổi trạng thái đơn hàng đã hoàn thành hoặc đã hủy.');
+            return;
+        }
+
+        // 4. Chỉ được hủy khi đơn hàng chưa giao (status 0, 1, 2)
+        if (newStatus === 5 && currentStatus >= 3) {
+            alert('Không thể hủy đơn hàng đã hoàn thành.');
+            return;
+        }
+
+        // Xử lý lý do hủy
         let reason = '';
         if (newStatus === 5 && requireCancelReason) {
             reason = prompt('Vui lòng nhập lý do hủy đơn hàng:') || '';
@@ -50,6 +76,7 @@ const AdminOrders: React.FC = () => {
         } else if (newStatus === 5 && !requireCancelReason) {
             reason = reasonOverride || '';
         }
+
         try {
             await adminService.updateOrderStatus(orderId, newStatus, reason);
             await loadOrders();
@@ -161,11 +188,30 @@ const AdminOrders: React.FC = () => {
                                                 onChange={(e) => handleStatusChange(order.maDonHang, Number(e.target.value))}
                                                 className={`status status-${order.trangThai}`}
                                             >
-                                                <option value={0} disabled={order.trangThai === 2 || order.trangThai === 3}>Chờ xác nhận</option>
-                                                <option value={1} disabled={order.trangThai === 2 || order.trangThai === 3}>Đã xác nhận</option>
-                                                <option value={2} disabled={order.trangThai === 3 || order.trangThai === 5}>Đang giao</option>
-                                                <option value={3}>Đã giao</option>
-                                                <option value={5}>Đã hủy</option>
+                                                {/* Chờ xác nhận (0) */}
+                                                <option value={0} disabled={order.trangThai !== 0}>
+                                                    Chờ xác nhận
+                                                </option>
+                                                
+                                                {/* Đã xác nhận (1) - chỉ khi đang ở trạng thái 0 hoặc 1 */}
+                                                <option value={1} disabled={order.trangThai !== 0 && order.trangThai !== 1}>
+                                                    Đã xác nhận
+                                                </option>
+                                                
+                                                {/* Đang giao (2) - chỉ khi đang ở trạng thái 1 hoặc 2 */}
+                                                <option value={2} disabled={order.trangThai !== 1 && order.trangThai !== 2}>
+                                                    Đang giao
+                                                </option>
+                                                
+                                                {/* Hoàn thành (3) - chỉ khi đang ở trạng thái 2 */}
+                                                <option value={3} disabled={order.trangThai !== 2}>
+                                                    Hoàn thành
+                                                </option>
+                                                
+                                                {/* Hủy (5) - chỉ khi chưa hoàn thành */}
+                                                <option value={5} disabled={order.trangThai >= 3}>
+                                                    Đã hủy
+                                                </option>
                                             </select>
                                         )}
                                         {order.trangThai === 5 && (

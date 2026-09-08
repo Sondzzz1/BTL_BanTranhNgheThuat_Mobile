@@ -9,15 +9,20 @@ const mockReviews: { [key: number]: Review[] } = {
     {
       maDanhGia: 1,
       maTacPham: 1,
+      tenTacPham: 'Tranh Sơn Dầu Phong Cảnh',
+      hinhAnhTacPham: undefined,
       maNguoiDung: 1,
       tenNguoiDung: 'Nguyễn Văn A',
       danhGia: 5,
-      binhLuan: 'Tranh rất đẹp, chất lượng tuyệt vời!',
+      binhLuan: 'Tranh rất đẹp, chất lượng tuyệt vời! Dịch vụ chuyên nghiệp, giao hàng nhanh chóng.',
+      hinhAnhDanhGia: undefined,
       ngayDanhGia: '2024-01-15',
     },
     {
       maDanhGia: 2,
       maTacPham: 1,
+      tenTacPham: 'Tranh Sơn Dầu Phong Cảnh',
+      hinhAnhTacPham: undefined,
       maNguoiDung: 2,
       tenNguoiDung: 'Trần Thị B',
       danhGia: 4,
@@ -28,6 +33,25 @@ const mockReviews: { [key: number]: Review[] } = {
 };
 
 export const reviewService = {
+  // Lấy tất cả đánh giá 5 sao (cho trang chủ)
+  getAllFiveStarReviews: async (): Promise<Review[]> => {
+    // TODO: Connect to backend when API is ready
+    // const response = await api.get('/danhgia/5-sao');
+    // return response.data;
+    
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Get all 5-star reviews from all products
+        const allFiveStarReviews: Review[] = [];
+        Object.values(mockReviews).forEach(productReviews => {
+          const fiveStarOnly = productReviews.filter(r => r.danhGia === 5);
+          allFiveStarReviews.push(...fiveStarOnly);
+        });
+        resolve(allFiveStarReviews);
+      }, 500);
+    });
+  },
+
   // Kiểm tra xem user đã mua sản phẩm này chưa
   checkUserPurchased: async (maTacPham: number): Promise<boolean> => {
     try {
@@ -37,7 +61,7 @@ export const reviewService = {
       // Chỉ tính các đơn đã hoàn thành (trangThai = 3)
       const hasPurchased = orders.some(order => 
         order.trangThai === 3 && // Đã giao hàng
-        order.danhSachSanPham?.some(item => item.maTacPham === maTacPham)
+        order.chiTiet?.some(item => item.maTacPham === maTacPham)
       );
       
       return hasPurchased;
