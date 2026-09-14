@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { returnService } from '../../services/returnService';
 import { OrderItem } from '../../types/order';
 import { RETURN_REASONS, TaoHoanTraRequest } from '../../types/return';
@@ -20,9 +21,10 @@ interface ReturnRequestScreenProps {
 }
 
 export default function ReturnRequestScreen({ route, navigation }: ReturnRequestScreenProps) {
-  const { orderId, orderItems } = route.params as {
+  const { orderId, orderItems, orderDate } = route.params as {
     orderId: number;
     orderItems: OrderItem[];
+    orderDate: string;
   };
 
   // Form state
@@ -30,6 +32,7 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [description, setDescription] = useState('');
+  const [images, setImages] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sản phẩm được chọn để hoàn trả
@@ -38,7 +41,97 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
   const formatPrice = (price: number): string =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
+  // Kiểm tra xem còn trong thời hạn 7 ngày không
+  const checkReturnEligibility = (): boolean => {
+    const orderTime = new Date(orderDate).getTime();
+    const currentTime = new Date().getTime();
+    const daysDiff = Math.floor((currentTime - orderTime) / (1000 * 60 * 60 * 24));
+    return daysDiff <= 7;
+  };
+
+  const getDaysRemaining = (): number => {
+    const orderTime = new Date(orderDate).getTime();
+    const currentTime = new Date().getTime();
+    const daysDiff = Math.floor((currentTime - orderTime) / (1000 * 60 * 60 * 24));
+    return Math.max(0, 7 - daysDiff);
+  };
+
+  // Chọn ảnh từ thư viện
+  const pickImage = async () => {
+    if (images.length >= 5) {
+      Alert.alert('Thông báo', 'Bạn chỉ có thể tải lên tối đa 5 hình ảnh');
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Cần quyền truy cập', 'Vui lòng cấp quyền truy cập thư viện ảnh');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setImages([...images, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+    }
+  };
+
+  // Chụp ảnh mới
+  const takePhoto = async () => {
+    if (images.length >= 5) {
+      Alert.alert('Thông báo', 'Bạn chỉ có thể tải lên tối đa 5 hình ảnh');
+      return;
+    }
+
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('Cần quyền truy cập', 'Vui lòng cấp quyền sử dụng camera');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      setImages([...images, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+    }
+  };
+
+  // Xóa ảnh
+  const removeImage = (index: number) => {
+    setImages(images.filter((_, i) => i !== index));
+  };
+
+  // Hiển thị tùy chọn chọn ảnh
+  const showImageOptions = () => {
+    Alert.alert(
+      'Thêm hình ảnh',
+      'Chọn nguồn hình ảnh',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        { text: '📷 Chụp ảnh', onPress: takePhoto },
+        { text: '🖼️ Chọn từ thư viện', onPress: pickImage },
+      ]
+    );
+  };
+
   const handleSubmit = async () => {
+    // Kiểm tra thời hạn
+    if (!checkReturnEligibility()) {
+      Alert.alert('Thông báo', 'Đã quá thời hạn 7 ngày để yêu cầu hoàn trả sản phẩm');
+      return;
+    }
+
     // Validate: phải chọn sản phẩm
     if (selectedItem === null || selectedItemIndex === null) {
       Alert.alert('Lỗi', 'Vui lòng chọn sản phẩm cần hoàn trả');
@@ -64,6 +157,7 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
         lyDo: selectedReason,
         lyDoKhac: selectedReason === 'LY_DO_KHAC' ? customReason.trim() : undefined,
         moTa: description.trim() || undefined,
+        hinhAnh: images.length > 0 ? images : undefined,
       };
 
       const result = await returnService.createReturnRequest(request);
@@ -90,6 +184,14 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView} keyboardShouldPersistTaps="handled">
+
+        {/* Cảnh báo thời hạn */}
+        <View style={styles.warningBox}>
+          <Text style={styles.warningTitle}>⏰ Thời hạn hoàn trả</Text>
+          <Text style={styles.warningText}>
+            Bạn còn <Text style={styles.warningDays}>{getDaysRemaining()} ngày</Text> để yêu cầu hoàn trả sản phẩm (trong vòng 7 ngày kể từ khi đơn hàng hoàn thành).
+          </Text>
+        </View>
 
         {/* BƯỚC 1: Chọn sản phẩm */}
         <View style={styles.section}>
@@ -196,6 +298,40 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
             textAlignVertical="top"
           />
           <Text style={styles.charCount}>{description.length}/1000 ký tự</Text>
+        </View>
+
+        {/* BƯỚC 4: Hình ảnh minh chứng */}
+        <View style={styles.section}>
+          <View style={styles.sectionTitleRow}>
+            <Text style={styles.sectionTitle}>4. Hình ảnh sản phẩm</Text>
+            <Text style={styles.optional}>(Tùy chọn, tối đa 5 ảnh)</Text>
+          </View>
+
+          {/* Danh sách ảnh đã chọn */}
+          {images.length > 0 && (
+            <View style={styles.imagesGrid}>
+              {images.map((img, index) => (
+                <View key={index} style={styles.imageItem}>
+                  <Image source={{ uri: img }} style={styles.previewImage} resizeMode="cover" />
+                  <TouchableOpacity
+                    style={styles.removeImageButton}
+                    onPress={() => removeImage(index)}
+                  >
+                    <Text style={styles.removeImageText}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Nút thêm ảnh */}
+          {images.length < 5 && (
+            <TouchableOpacity style={styles.addImageButton} onPress={showImageOptions}>
+              <Text style={styles.addImageIcon}>📸</Text>
+              <Text style={styles.addImageText}>Thêm hình ảnh</Text>
+              <Text style={styles.addImageCount}>({images.length}/5)</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Thông tin thêm */}
@@ -440,5 +576,92 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     letterSpacing: 0.5,
+  },
+  // Warning box
+  warningBox: {
+    backgroundColor: '#fef3c7',
+    margin: 16,
+    padding: 14,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#f59e0b',
+  },
+  warningTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#92400e',
+    marginBottom: 6,
+  },
+  warningText: {
+    fontSize: 13,
+    color: '#92400e',
+    lineHeight: 18,
+  },
+  warningDays: {
+    fontWeight: 'bold',
+    fontSize: 15,
+    color: '#dc2626',
+  },
+  // Image upload
+  imagesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 12,
+  },
+  imageItem: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+    position: 'relative',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 8,
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ef4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  removeImageText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  addImageButton: {
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+  },
+  addImageIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  addImageText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  addImageCount: {
+    fontSize: 12,
+    color: '#9ca3af',
   },
 });

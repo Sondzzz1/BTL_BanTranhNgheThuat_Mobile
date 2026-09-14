@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DoAn2_BackEnd")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3c4de298d2bfd4ca65fd51f1c47189ef50902850")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4219dbe5068301c23eba558d6644fe4e6362d16d")]
 [assembly: System.Reflection.AssemblyProductAttribute("DoAn2_BackEnd")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DoAn2_BackEnd")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

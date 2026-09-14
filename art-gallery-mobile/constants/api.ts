@@ -12,7 +12,7 @@
 // ===== CHỌN MỘT TRONG CÁC OPTION SAU =====
 
 // Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
-export const API_BASE_URL = 'http://10.200.222.115:5273/api';
+export const API_BASE_URL = 'http://192.168.1.106:5273/api';
 
 // Option 2: Dùng cho Android Emulator (10.0.2.2 = localhost của máy host)
 // export const API_BASE_URL = 'http://10.0.2.2:5273/api';
@@ -65,6 +65,18 @@ export const API_ENDPOINTS = {
   // Blog/News
   NEWS: '/bai-viet',
   NEWS_DETAIL: (id: number) => `/bai-viet/${id}`,
+
+  // Favorites
+  FAVORITES: '/yeuthich',
+  FAVORITE_ADD: '/yeuthich/them',
+  FAVORITE_REMOVE: (id: number) => `/yeuthich/xoa/${id}`,
+
+  // Reviews
+  REVIEWS: '/danh-gia',
+  REVIEW_BY_PRODUCT: (productId: number) => `/danh-gia/tac-pham/${productId}`,
+  REVIEW_ADD: '/danh-gia/them',
+  REVIEW_CHECK_PURCHASED: (productId: number) => `/danh-gia/kiem-tra-mua-hang/${productId}`,
+  REVIEW_FIVE_STARS: '/danh-gia/5-sao',
 
   // Hoàn trả sản phẩm
   RETURN_CREATE: '/hoan-tra',

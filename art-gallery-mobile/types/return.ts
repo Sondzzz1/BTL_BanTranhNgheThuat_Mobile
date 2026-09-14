@@ -48,7 +48,7 @@ export interface TaoHoanTraRequest {
   lyDo: string;
   lyDoKhac?: string;
   moTa?: string;
-  hinhAnh?: string[];
+  hinhAnh?: string[]; // Base64 images
 }
 
 export interface TaoHoanTraResponse {

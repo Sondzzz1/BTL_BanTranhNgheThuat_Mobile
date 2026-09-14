@@ -112,8 +112,24 @@ export default function OrderDetailScreen({
   };
 
   // Chỉ hiển thị nút hoàn trả khi đơn hàng đã Hoàn thành (status = 3)
-  const canRequestReturn = (status: number): boolean => {
-    return status === 3;
+  // VÀ trong vòng 7 ngày kể từ ngày hoàn thành
+  const canRequestReturn = (status: number, orderDate: string): boolean => {
+    if (status !== 3) return false;
+    
+    // Tính số ngày từ ngày đặt hàng đến hiện tại
+    const orderTime = new Date(orderDate).getTime();
+    const currentTime = new Date().getTime();
+    const daysDiff = Math.floor((currentTime - orderTime) / (1000 * 60 * 60 * 24));
+    
+    // Chỉ cho phép hoàn trả trong vòng 7 ngày
+    return daysDiff <= 7;
+  };
+
+  const getDaysRemaining = (orderDate: string): number => {
+    const orderTime = new Date(orderDate).getTime();
+    const currentTime = new Date().getTime();
+    const daysDiff = Math.floor((currentTime - orderTime) / (1000 * 60 * 60 * 24));
+    return Math.max(0, 7 - daysDiff);
   };
 
   if (isLoading) {
@@ -246,7 +262,7 @@ export default function OrderDetailScreen({
       </ScrollView>
 
       {/* Nút hành động: Hủy đơn hoặc Yêu cầu hoàn trả */}
-      {(canCancelOrder(order.trangThai) || canRequestReturn(order.trangThai)) && (
+      {(canCancelOrder(order.trangThai) || canRequestReturn(order.trangThai, order.ngayDat)) && (
         <View style={styles.footer}>
           {canCancelOrder(order.trangThai) && (
             <TouchableOpacity
@@ -259,19 +275,34 @@ export default function OrderDetailScreen({
               </Text>
             </TouchableOpacity>
           )}
-          {canRequestReturn(order.trangThai) && (
-            <TouchableOpacity
-              style={styles.returnButton}
-              onPress={() =>
-                navigation.navigate('ReturnRequest', {
-                  orderId: order.maDonHang,
-                  orderItems: order.chiTiet || [],
-                })
-              }
-            >
-              <Text style={styles.returnButtonText}>📦 Yêu cầu hoàn trả</Text>
-            </TouchableOpacity>
+          {canRequestReturn(order.trangThai, order.ngayDat) && (
+            <View>
+              <TouchableOpacity
+                style={styles.returnButton}
+                onPress={() =>
+                  navigation.navigate('ReturnRequest', {
+                    orderId: order.maDonHang,
+                    orderItems: order.chiTiet || [],
+                    orderDate: order.ngayDat,
+                  })
+                }
+              >
+                <Text style={styles.returnButtonText}>📦 Yêu cầu hoàn trả</Text>
+              </TouchableOpacity>
+              <Text style={styles.returnWarning}>
+                ⏰ Còn {getDaysRemaining(order.ngayDat)} ngày để yêu cầu hoàn trả
+              </Text>
+            </View>
           )}
+        </View>
+      )}
+
+      {/* Hiển thị thông báo nếu quá hạn hoàn trả */}
+      {order.trangThai === 3 && !canRequestReturn(order.trangThai, order.ngayDat) && (
+        <View style={styles.expiredFooter}>
+          <Text style={styles.expiredText}>
+            ⚠️ Đã quá thời hạn 7 ngày để yêu cầu hoàn trả sản phẩm
+          </Text>
         </View>
       )}
     </View>
@@ -503,5 +534,24 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  returnWarning: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#dc2626',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  expiredFooter: {
+    backgroundColor: '#fef2f2',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#fecaca',
+  },
+  expiredText: {
+    fontSize: 14,
+    color: '#991b1b',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 });

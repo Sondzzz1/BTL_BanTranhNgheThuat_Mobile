@@ -16,14 +16,24 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.artgallery.mobile"
+      "bundleIdentifier": "com.artgallery.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Ứng dụng cần quyền truy cập camera để chụp ảnh sản phẩm khi yêu cầu hoàn trả",
+        "NSPhotoLibraryUsageDescription": "Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh sản phẩm khi yêu cầu hoàn trả"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#2563eb"
       },
-      "package": "com.artgallery.mobile"
+      "package": "com.artgallery.mobile",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
