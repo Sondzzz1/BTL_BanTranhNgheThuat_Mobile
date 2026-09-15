@@ -28,6 +28,7 @@ import ReturnDetailScreen from './app/orders/ReturnDetailScreen';
 import NewsScreen from './app/NewsScreen';
 import AboutScreen from './app/AboutScreen';
 import ArtistsScreen from './app/ArtistsScreen';
+import ArtistDetailScreen from './app/ArtistDetailScreen';
 import ContactScreen from './app/ContactScreen';
 
 const Stack = createNativeStackNavigator();
@@ -202,6 +203,11 @@ function MainStackNavigator() {
         name="Artists"
         component={ArtistsScreen}
         options={{ title: 'Họa Sĩ' }}
+      />
+      <Stack.Screen
+        name="ArtistDetail"
+        component={ArtistDetailScreen}
+        options={{ title: 'Chi Tiết Họa Sĩ' }}
       />
       <Stack.Screen
         name="Contact"
