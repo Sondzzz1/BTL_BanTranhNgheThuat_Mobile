@@ -315,10 +315,30 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Favorites')}>
           <Text style={styles.actionButtonText}>❤️ Tác phẩm yêu thích</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ChangePassword')}>
-          <Text style={styles.actionButtonText}>📝 Đổi mật khẩu</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('MyReturns')}>
+          <Text style={styles.actionButtonText}>📦 Hoàn trả của tôi</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert('Trợ giúp', 'Liên hệ hotline: 0988 777 888 để được hỗ trợ')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ChangePassword')}>
+          <Text style={styles.actionButtonText}>🔒 Đổi mật khẩu</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Information & Services */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Thông tin & Dịch vụ</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('News')}>
+          <Text style={styles.actionButtonText}>📰 Tin tức & Sự kiện</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Artists')}>
+          <Text style={styles.actionButtonText}>🎨 Họa sĩ</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('About')}>
+          <Text style={styles.actionButtonText}>ℹ️ Giới thiệu</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Contact')}>
+          <Text style={styles.actionButtonText}>📞 Liên hệ</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert('Trợ giúp', 'Hotline: 094 888 3535\nEmail: lanvugallery@gmail.com\n\nGiờ làm việc: 08:00 - 21:00 (T2-CN)')}>
           <Text style={styles.actionButtonText}>❓ Trợ giúp</Text>
         </TouchableOpacity>
       </View>

@@ -24,6 +24,11 @@ import ChangePasswordScreen from './app/auth/ChangePasswordScreen';
 import ReturnRequestScreen from './app/orders/ReturnRequestScreen';
 import MyReturnsScreen from './app/orders/MyReturnsScreen';
 import ReturnDetailScreen from './app/orders/ReturnDetailScreen';
+// New screens
+import NewsScreen from './app/NewsScreen';
+import AboutScreen from './app/AboutScreen';
+import ArtistsScreen from './app/ArtistsScreen';
+import ContactScreen from './app/ContactScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -181,6 +186,27 @@ function MainStackNavigator() {
         name="ReturnDetail"
         component={ReturnDetailScreen}
         options={{ title: 'Chi tiết hoàn trả' }}
+      />
+      {/* New screens */}
+      <Stack.Screen
+        name="News"
+        component={NewsScreen}
+        options={{ title: 'Tin Tức' }}
+      />
+      <Stack.Screen
+        name="About"
+        component={AboutScreen}
+        options={{ title: 'Giới Thiệu' }}
+      />
+      <Stack.Screen
+        name="Artists"
+        component={ArtistsScreen}
+        options={{ title: 'Họa Sĩ' }}
+      />
+      <Stack.Screen
+        name="Contact"
+        component={ContactScreen}
+        options={{ title: 'Liên Hệ' }}
       />
     </Stack.Navigator>
   );
