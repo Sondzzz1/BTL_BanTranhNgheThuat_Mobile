@@ -47,6 +47,24 @@ export const artistService = {
   async getArtistById(id: number): Promise<ArtistDetail> {
     try {
       const response = await apiClient.get<ArtistDetail>(API_ENDPOINTS.ARTIST_DETAIL(id));
+      
+      // Nếu backend không trả về cacTacPham, gọi API riêng để lấy
+      if (!response.data.cacTacPham || response.data.cacTacPham.length === 0) {
+        try {
+          const artworksResponse = await apiClient.get(`/tac-pham?hoaSi=${id}`);
+          response.data.cacTacPham = artworksResponse.data.map((tp: any) => ({
+            maTacPham: tp.maTacPham,
+            tenTacPham: tp.tenTacPham,
+            hinhAnh: tp.hinhAnh,
+            gia: tp.gia,
+            trangThai: tp.soLuong > 0 ? 'available' : 'sold'
+          }));
+        } catch (artworkError) {
+          console.log('Could not fetch artworks separately:', artworkError);
+          response.data.cacTacPham = [];
+        }
+      }
+      
       return response.data;
     } catch (error: any) {
       console.error('Error fetching artist detail:', error);

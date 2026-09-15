@@ -10,12 +10,13 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { artistService, ArtistDetail } from '../services/artistService';
+import { artistService, ArtistDetail, ArtistArtwork } from '../services/artistService';
 import Loading from '../components/Loading';
 import AppHeader from '../components/AppHeader';
 import Footer from '../components/Footer';
 
 const { width } = Dimensions.get('window');
+const cardWidth = (width - 48) / 2; // 2 columns
 
 interface ArtistDetailScreenProps {
   navigation: any;
@@ -51,6 +52,10 @@ export default function ArtistDetailScreen({ navigation, route }: ArtistDetailSc
     setRefreshing(true);
     await loadArtistDetail();
     setRefreshing(false);
+  };
+
+  const handleProductPress = (productId: number) => {
+    navigation.navigate('ProductDetail', { id: productId });
   };
 
   if (isLoading && !refreshing) {
@@ -146,42 +151,51 @@ export default function ArtistDetailScreen({ navigation, route }: ArtistDetailSc
           </View>
         )}
 
-        {/* Artworks */}
-        {artist.cacTacPham && artist.cacTacPham.length > 0 && (
+        {/* Artworks Section */}
+        {artist.cacTacPham && artist.cacTacPham.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tác phẩm ({artist.cacTacPham.length})</Text>
-            <View style={styles.worksGrid}>
+            <Text style={styles.sectionTitle}>
+              Tác phẩm của {artist.tenHoaSi} ({artist.cacTacPham.length})
+            </Text>
+            
+            <View style={styles.productsGrid}>
               {artist.cacTacPham.map((work) => (
                 <TouchableOpacity
                   key={work.maTacPham}
-                  style={styles.workCard}
-                  onPress={() => navigation.navigate('ProductDetail', { id: work.maTacPham })}
+                  style={styles.productCard}
+                  onPress={() => handleProductPress(work.maTacPham)}
                   activeOpacity={0.8}
                 >
-                  <Image
-                    source={{ uri: work.hinhAnh }}
-                    style={styles.workImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.workInfo}>
-                    <Text style={styles.workTitle} numberOfLines={1}>
+                  <View style={styles.imageContainer}>
+                    <Image
+                      source={{ uri: work.hinhAnh }}
+                      style={styles.productImage}
+                      resizeMode="cover"
+                    />
+                    {work.trangThai !== 'available' && (
+                      <View style={styles.soldBadge}>
+                        <Text style={styles.soldText}>Đã bán</Text>
+                      </View>
+                    )}
+                  </View>
+                  
+                  <View style={styles.productInfo}>
+                    <Text style={styles.artistLabel}>{artist.tenHoaSi}</Text>
+                    <Text style={styles.productTitle} numberOfLines={2}>
                       {work.tenTacPham}
                     </Text>
-                    <Text style={styles.workPrice}>
-                      {work.gia.toLocaleString('vi-VN')} ₫
+                    <Text style={styles.productStatus}>
+                      {work.trangThai === 'available' ? 'Liên hệ' : 'Đã bán'}
                     </Text>
-                    <View style={[
-                      styles.workStatus,
-                      work.trangThai === 'available' ? styles.workAvailable : styles.workSold
-                    ]}>
-                      <Text style={styles.workStatusText}>
-                        {work.trangThai === 'available' ? 'Còn hàng' : 'Đã bán'}
-                      </Text>
-                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
             </View>
+          </View>
+        ) : (
+          <View style={styles.emptySection}>
+            <Ionicons name="images-outline" size={48} color="#9ca3af" />
+            <Text style={styles.emptyText}>Họa sĩ chưa có tác phẩm nào</Text>
           </View>
         )}
 
@@ -274,58 +288,77 @@ const styles = StyleSheet.create({
     color: '#4b5563',
     lineHeight: 24,
   },
-  worksGrid: {
+  productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  workCard: {
-    width: (width - 48) / 2,
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
+  productCard: {
+    width: cardWidth,
+    marginBottom: 20,
     backgroundColor: '#fff',
+    borderRadius: 8,
+    overflow: 'hidden',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  workImage: {
+  imageContainer: {
+    position: 'relative',
     width: '100%',
-    height: (width - 48) / 2,
-    backgroundColor: '#e5e7eb',
+    height: cardWidth,
+    backgroundColor: '#4a5568',
   },
-  workInfo: {
-    padding: 12,
+  productImage: {
+    width: '100%',
+    height: '100%',
   },
-  workTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 6,
-  },
-  workPrice: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#ea580c',
-    marginBottom: 8,
-  },
-  workStatus: {
-    alignSelf: 'flex-start',
+  soldBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.9)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 4,
   },
-  workAvailable: {
-    backgroundColor: '#d1fae5',
-  },
-  workSold: {
-    backgroundColor: '#fee2e2',
-  },
-  workStatusText: {
+  soldText: {
+    color: '#fff',
     fontSize: 11,
     fontWeight: '600',
+  },
+  productInfo: {
+    padding: 12,
+  },
+  artistLabel: {
+    fontSize: 11,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  productTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 6,
+    lineHeight: 18,
+  },
+  productStatus: {
+    fontSize: 13,
+    color: '#6b7280',
+  },
+  emptySection: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#6b7280',
+    marginTop: 16,
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,

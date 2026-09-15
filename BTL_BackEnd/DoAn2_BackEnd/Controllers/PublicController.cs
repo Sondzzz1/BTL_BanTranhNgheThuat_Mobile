@@ -239,6 +239,30 @@ public class PublicController : ControllerBase
                 return NotFound(new { message = "Không tìm thấy họa sĩ" });
 
             var tacPhamList = await _tacPhamRepo.GetByHoaSi(hoaSi.MaHoaSi);
+            
+            // Lấy danh sách tác phẩm đã được duyệt và công khai (TrangThai = 1)
+            var cacTacPham = new List<TacPhamCongKhaiResponse>();
+            foreach (var tp in tacPhamList.Where(x => x.TrangThai == 1).OrderByDescending(x => x.NgayTao))
+            {
+                string? tenDanhMuc = null;
+                if (tp.MaDanhMuc.HasValue)
+                {
+                    var dm = await _danhMucRepo.GetById(tp.MaDanhMuc.Value);
+                    tenDanhMuc = dm?.TenDanhMuc;
+                }
+
+                cacTacPham.Add(new TacPhamCongKhaiResponse
+                {
+                    MaTacPham = tp.MaTacPham,
+                    TenTacPham = tp.TenTacPham,
+                    TenDanhMuc = tenDanhMuc,
+                    Gia = tp.Gia,
+                    HinhAnh = tp.HinhAnh,
+                    KichThuoc = tp.KichThuoc,
+                    ChatLieu = tp.ChatLieu,
+                    TrangThai = tp.SoLuong > 0 ? "available" : "sold"
+                });
+            }
 
             var result = new HoaSiPublicResponse
             {
@@ -246,7 +270,12 @@ public class PublicController : ControllerBase
                 TenHoaSi = hoaSi.TenHoaSi,
                 TieuSu = hoaSi.TieuSu,
                 AnhDaiDien = hoaSi.AnhDaiDien,
-                SoTacPham = tacPhamList.Count
+                Email = hoaSi.Email,
+                SoDienThoai = hoaSi.SoDienThoai,
+                DiaChi = hoaSi.DiaChi,
+                Website = hoaSi.Website,
+                SoTacPham = cacTacPham.Count,
+                CacTacPham = cacTacPham
             };
 
             return Ok(result);
@@ -364,13 +393,29 @@ public class TacPhamResponse
     public string? ChatLieuKhung { get; set; }
 }
 
+public class TacPhamCongKhaiResponse
+{
+    public int MaTacPham { get; set; }
+    public string TenTacPham { get; set; } = null!;
+    public string? TenDanhMuc { get; set; }
+    public decimal Gia { get; set; }
+    public string? HinhAnh { get; set; }
+    public string? KichThuoc { get; set; }
+    public string? ChatLieu { get; set; }
+    public string TrangThai { get; set; } = null!; // "available" hoặc "sold"
+}
 public class HoaSiPublicResponse
 {
     public int MaHoaSi { get; set; }
     public string TenHoaSi { get; set; } = null!;
     public string? TieuSu { get; set; }
     public string? AnhDaiDien { get; set; }
+    public string? Email { get; set; }
+    public string? SoDienThoai { get; set; }
+    public string? DiaChi { get; set; }
+    public string? Website { get; set; }
     public int SoTacPham { get; set; }
+    public List<TacPhamCongKhaiResponse>? CacTacPham { get; set; }
 }
 
 public class DanhMucResponse
