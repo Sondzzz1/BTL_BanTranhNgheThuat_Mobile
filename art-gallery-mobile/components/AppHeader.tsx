@@ -183,27 +183,11 @@ export default function AppHeader({ navigation, cartCount: propCartCount }: AppH
 
               <TouchableOpacity
                 style={styles.menuItemRow}
-                onPress={() => toggleSection('gioiThieu')}
+                onPress={() => handleNav('About')}
               >
                 <Text style={styles.menuItemText}>GIỚI THIỆU</Text>
-                <Text style={styles.chevronText}>{expandedSections['gioiThieu'] ? '∧' : '∨'}</Text>
+                <Text style={styles.chevronText}>∨</Text>
               </TouchableOpacity>
-              {expandedSections['gioiThieu'] && (
-                <View style={styles.subMenu}>
-                  <TouchableOpacity
-                    style={styles.subMenuItem}
-                    onPress={() => handleNav('Home')}
-                  >
-                    <Text style={styles.subMenuItemText}>• Về LanVu Gallery</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.subMenuItem}
-                    onPress={() => handleNav('Home')}
-                  >
-                    <Text style={styles.subMenuItemText}>• Tầm nhìn & Sứ mệnh</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
 
               <TouchableOpacity
                 style={styles.menuItemRow}
@@ -215,7 +199,7 @@ export default function AppHeader({ navigation, cartCount: propCartCount }: AppH
 
               <TouchableOpacity
                 style={styles.menuItemRow}
-                onPress={() => handleNav('Products')}
+                onPress={() => handleNav('Artists')}
               >
                 <Text style={styles.menuItemText}>HỌA SĨ</Text>
                 <Text style={styles.chevronText}>∨</Text>
@@ -223,24 +207,18 @@ export default function AppHeader({ navigation, cartCount: propCartCount }: AppH
 
               <TouchableOpacity
                 style={styles.menuItemRow}
-                onPress={() => toggleSection('dichVu')}
+                onPress={() => handleNav('Home')}
               >
                 <Text style={styles.menuItemText}>DỊCH VỤ</Text>
-                <Text style={styles.chevronText}>{expandedSections['dichVu'] ? '∧' : '∨'}</Text>
+                <Text style={styles.chevronText}>∨</Text>
               </TouchableOpacity>
-              {expandedSections['dichVu'] && (
-                <View style={styles.subMenu}>
-                  <Text style={styles.subMenuItemText}>• Tư vấn không gian nghệ thuật</Text>
-                  <Text style={styles.subMenuItemText}>• Đặt vẽ tranh theo yêu cầu</Text>
-                </View>
-              )}
 
               <TouchableOpacity
                 style={styles.menuItemRow}
-                onPress={() => toggleSection('tinTuc')}
+                onPress={() => handleNav('News')}
               >
                 <Text style={styles.menuItemText}>TIN TỨC</Text>
-                <Text style={styles.chevronText}>{expandedSections['tinTuc'] ? '∧' : '∨'}</Text>
+                <Text style={styles.chevronText}>∨</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -259,7 +237,7 @@ export default function AppHeader({ navigation, cartCount: propCartCount }: AppH
 
               <TouchableOpacity
                 style={styles.menuItem}
-                onPress={() => handleNav('Home')}
+                onPress={() => handleNav('Contact')}
               >
                 <Text style={styles.menuItemText}>LIÊN HỆ</Text>
               </TouchableOpacity>

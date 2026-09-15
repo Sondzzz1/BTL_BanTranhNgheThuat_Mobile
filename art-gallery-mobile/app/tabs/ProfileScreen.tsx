@@ -9,7 +9,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { customerService, ProfileInfo } from '../../services/customerService';
 import Loading from '../../components/Loading';
@@ -17,11 +17,8 @@ import ErrorMessage from '../../components/ErrorMessage';
 import Footer from '../../components/Footer';
 import AppHeader from '../../components/AppHeader';
 
-interface ProfileScreenProps {
-  navigation: any;
-}
-
-export default function ProfileScreen({ navigation }: ProfileScreenProps) {
+export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
   const [profile, setProfile] = useState<ProfileInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -161,7 +158,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           </Text>
           <TouchableOpacity
             style={{ backgroundColor: '#ea580c', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 10 }}
-            onPress={() => navigation.navigate('Login')}
+            onPress={() => navigation.getParent()?.navigate('Login')}
           >
             <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Đăng nhập / Đăng ký</Text>
           </TouchableOpacity>
@@ -312,13 +309,13 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
 
       {/* Actions */}
       <View style={styles.section}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Favorites')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('Favorites')}>
           <Text style={styles.actionButtonText}>❤️ Tác phẩm yêu thích</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('MyReturns')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('MyReturns')}>
           <Text style={styles.actionButtonText}>📦 Hoàn trả của tôi</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ChangePassword')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('ChangePassword')}>
           <Text style={styles.actionButtonText}>🔒 Đổi mật khẩu</Text>
         </TouchableOpacity>
       </View>
@@ -326,16 +323,16 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       {/* Information & Services */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin & Dịch vụ</Text>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('News')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('News')}>
           <Text style={styles.actionButtonText}>📰 Tin tức & Sự kiện</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Artists')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('Artists')}>
           <Text style={styles.actionButtonText}>🎨 Họa sĩ</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('About')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('About')}>
           <Text style={styles.actionButtonText}>ℹ️ Giới thiệu</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Contact')}>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('Contact')}>
           <Text style={styles.actionButtonText}>📞 Liên hệ</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert('Trợ giúp', 'Hotline: 094 888 3535\nEmail: lanvugallery@gmail.com\n\nGiờ làm việc: 08:00 - 21:00 (T2-CN)')}>

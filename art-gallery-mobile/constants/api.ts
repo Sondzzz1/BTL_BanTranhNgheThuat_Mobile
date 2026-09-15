@@ -12,7 +12,7 @@
 // ===== CHỌN MỘT TRONG CÁC OPTION SAU =====
 
 // Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
-export const API_BASE_URL = 'http://10.59.67.116:5273/api';
+export const API_BASE_URL = 'http://10.109.101.115:5273/api';
 
 // Option 2: Dùng cho Android Emulator (10.0.2.2 = localhost của máy host)
 // export const API_BASE_URL = 'http://10.0.2.2:5273/api';
