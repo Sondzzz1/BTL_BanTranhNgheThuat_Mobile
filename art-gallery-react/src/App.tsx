@@ -30,6 +30,7 @@ import AdminAuthors from './pages/Admin/AdminAuthors';
 import AdminProfile from './pages/Admin/AdminProfile';
 import AdminArtworkDetails from './pages/Admin/AdminArtworkDetails';
 import AdminArtistArtworks from './pages/Admin/AdminArtistArtworks';
+import ReturnRequests from './pages/Admin/ReturnRequests';
 
 import AdminAuthorRevenue from './pages/Admin/AdminAuthorRevenue';
 import AdminApiTest from './pages/Admin/AdminApiTest';
@@ -94,6 +95,7 @@ function App() {
               <Route path="authors/:id/artworks" element={<AdminArtistArtworks />} />
               <Route path="profile" element={<AdminProfile />} />
               <Route path="revenue" element={<AdminAuthorRevenue />} />
+              <Route path="return-requests" element={<ReturnRequests />} />
               <Route path="api-test" element={<AdminApiTest />} />
               <Route path="test-edits" element={<TestEditsAPI />} />
             </Route>

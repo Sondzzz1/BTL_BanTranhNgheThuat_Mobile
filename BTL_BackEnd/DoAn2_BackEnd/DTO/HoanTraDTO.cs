@@ -46,13 +46,18 @@ public class HoanTraSummaryResponse
 {
     public int MaYeuCau { get; set; }
     public int MaDonHang { get; set; }
+    public int MaNguoiDung { get; set; }
+    public string? TenNguoiDung { get; set; }
     public int MaTacPham { get; set; }
     public string? TenTacPham { get; set; }
     public string? HinhAnhTacPham { get; set; }
     public decimal GiaTacPham { get; set; }
     public string LyDo { get; set; } = string.Empty;
+    public string? LyDoKhac { get; set; }
     public string? MoTa { get; set; }
+    public List<string> HinhAnh { get; set; } = new();
     public string TrangThai { get; set; } = string.Empty;
+    public string? LyDoTuChoi { get; set; }
     public DateTime NgayTao { get; set; }
 }
 

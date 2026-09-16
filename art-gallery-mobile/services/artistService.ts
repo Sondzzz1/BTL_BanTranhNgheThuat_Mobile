@@ -48,17 +48,24 @@ export const artistService = {
     try {
       const response = await apiClient.get<ArtistDetail>(API_ENDPOINTS.ARTIST_DETAIL(id));
       
-      // Nếu backend không trả về cacTacPham, gọi API riêng để lấy
+      // Nếu backend không trả về cacTacPham, gọi API /tranh và filter
       if (!response.data.cacTacPham || response.data.cacTacPham.length === 0) {
         try {
-          const artworksResponse = await apiClient.get(`/tac-pham?hoaSi=${id}`);
-          response.data.cacTacPham = artworksResponse.data.map((tp: any) => ({
-            maTacPham: tp.maTacPham,
-            tenTacPham: tp.tenTacPham,
-            hinhAnh: tp.hinhAnh,
-            gia: tp.gia,
-            trangThai: tp.soLuong > 0 ? 'available' : 'sold'
-          }));
+          const artworksResponse = await apiClient.get('/tranh');
+          const allArtworks = artworksResponse.data;
+          
+          // Filter tác phẩm theo họa sĩ
+          const artistArtworks = allArtworks
+            .filter((tp: any) => tp.tenHoaSi === response.data.tenHoaSi)
+            .map((tp: any) => ({
+              maTacPham: tp.maTacPham,
+              tenTacPham: tp.tenTacPham,
+              hinhAnh: tp.hinhAnh,
+              gia: tp.gia,
+              trangThai: tp.soLuong > 0 ? 'available' : 'sold'
+            }));
+          
+          response.data.cacTacPham = artistArtworks;
         } catch (artworkError) {
           console.log('Could not fetch artworks separately:', artworkError);
           response.data.cacTacPham = [];

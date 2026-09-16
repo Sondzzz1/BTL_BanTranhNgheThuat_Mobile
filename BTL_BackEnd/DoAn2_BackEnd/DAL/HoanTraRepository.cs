@@ -63,8 +63,9 @@ public class HoanTraRepository : IHoanTraRepository
 
         var query = @"
             SELECT 
-                y.MaYeuCau, y.MaDonHang, y.MaTacPham, y.LyDo, y.MoTa, y.TrangThai, y.NgayTao,
-                t.TenTacPham, t.HinhAnh AS HinhAnhTacPham, t.Gia AS GiaTacPham
+                y.MaYeuCau, y.MaDonHang, y.MaNguoiDung, y.MaTacPham, y.LyDo, y.LyDoKhac, y.MoTa, y.HinhAnh, y.TrangThai, y.LyDoTuChoi, y.NgayTao,
+                t.TenTacPham, t.HinhAnh AS HinhAnhTacPham, t.Gia AS GiaTacPham,
+                NULL AS TenNguoiDung
             FROM YeuCauHoanTra y
             LEFT JOIN TacPham t ON y.MaTacPham = t.MaTacPham
             WHERE y.MaNguoiDung = @MaNguoiDung
@@ -208,15 +209,15 @@ public class HoanTraRepository : IHoanTraRepository
         if (tuNgay.HasValue) conditions.Add("y.NgayTao >= @TuNgay");
         if (denNgay.HasValue) conditions.Add("y.NgayTao <= @DenNgay");
         if (!string.IsNullOrEmpty(keyword))
-            conditions.Add("(t.TenTacPham LIKE @Keyword OR nd.HoTen LIKE @Keyword OR CAST(y.MaDonHang AS NVARCHAR) LIKE @Keyword)");
+            conditions.Add("(t.TenTacPham LIKE @Keyword OR nd.Ten LIKE @Keyword OR CAST(y.MaDonHang AS NVARCHAR) LIKE @Keyword)");
 
         var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
 
         var query = $@"
             SELECT 
-                y.MaYeuCau, y.MaDonHang, y.MaTacPham, y.LyDo, y.MoTa, y.TrangThai, y.NgayTao,
+                y.MaYeuCau, y.MaDonHang, y.MaNguoiDung, y.MaTacPham, y.LyDo, y.LyDoKhac, y.MoTa, y.HinhAnh, y.TrangThai, y.LyDoTuChoi, y.NgayTao,
                 t.TenTacPham, t.HinhAnh AS HinhAnhTacPham, t.Gia AS GiaTacPham,
-                nd.HoTen AS TenNguoiDung
+                nd.Ten AS TenNguoiDung
             FROM YeuCauHoanTra y
             LEFT JOIN TacPham t ON y.MaTacPham = t.MaTacPham
             LEFT JOIN NguoiDung nd ON y.MaNguoiDung = nd.MaNguoiDung
@@ -233,9 +234,6 @@ public class HoanTraRepository : IHoanTraRepository
         while (await reader.ReadAsync())
         {
             var item = MapToSummary(reader);
-            // Thêm tên người dùng cho Admin view
-            if (!reader.IsDBNull(reader.GetOrdinal("TenNguoiDung")))
-                item.TenTacPham = $"[{reader["TenNguoiDung"]}] {item.TenTacPham}";
             list.Add(item);
         }
         return list;
@@ -311,17 +309,30 @@ public class HoanTraRepository : IHoanTraRepository
 
     private static HoanTraSummaryResponse MapToSummary(SqlDataReader reader)
     {
+        var hinhAnhJson = reader["HinhAnh"] as string;
+        var hinhAnh = new List<string>();
+        if (!string.IsNullOrEmpty(hinhAnhJson))
+        {
+            try { hinhAnh = JsonSerializer.Deserialize<List<string>>(hinhAnhJson) ?? new(); }
+            catch { /* Bỏ qua lỗi parse */ }
+        }
+
         return new HoanTraSummaryResponse
         {
             MaYeuCau = Convert.ToInt32(reader["MaYeuCau"]),
             MaDonHang = Convert.ToInt32(reader["MaDonHang"]),
+            MaNguoiDung = Convert.ToInt32(reader["MaNguoiDung"]),
+            TenNguoiDung = reader["TenNguoiDung"] as string,
             MaTacPham = Convert.ToInt32(reader["MaTacPham"]),
             TenTacPham = reader["TenTacPham"] as string,
             HinhAnhTacPham = reader["HinhAnhTacPham"] as string,
             GiaTacPham = reader["GiaTacPham"] == DBNull.Value ? 0 : Convert.ToDecimal(reader["GiaTacPham"]),
             LyDo = reader["LyDo"]?.ToString() ?? "",
+            LyDoKhac = reader["LyDoKhac"] as string,
             MoTa = reader["MoTa"] as string,
+            HinhAnh = hinhAnh,
             TrangThai = reader["TrangThai"]?.ToString() ?? "",
+            LyDoTuChoi = reader["LyDoTuChoi"] as string,
             NgayTao = Convert.ToDateTime(reader["NgayTao"]),
         };
     }

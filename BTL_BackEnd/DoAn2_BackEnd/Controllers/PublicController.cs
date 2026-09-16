@@ -271,9 +271,9 @@ public class PublicController : ControllerBase
                 TieuSu = hoaSi.TieuSu,
                 AnhDaiDien = hoaSi.AnhDaiDien,
                 Email = hoaSi.Email,
-                SoDienThoai = hoaSi.SoDienThoai,
+                SoDienThoai = hoaSi.DienThoai,
                 DiaChi = hoaSi.DiaChi,
-                Website = hoaSi.Website,
+                Website = null,
                 SoTacPham = cacTacPham.Count,
                 CacTacPham = cacTacPham
             };

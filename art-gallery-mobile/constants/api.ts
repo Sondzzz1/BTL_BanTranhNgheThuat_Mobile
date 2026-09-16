@@ -1,27 +1,8 @@
-// API Configuration
-// Base URL của Backend API - ASP.NET Core
 
-// QUAN TRỌNG: Thay đổi IP này thành IP máy tính chạy Backend
-// Không dùng localhost vì Mobile emulator/device không truy cập được localhost của máy host
-
-// Cách lấy IP máy tính:
-// Windows: mở CMD và gõ: ipconfig
-// Tìm "IPv4 Address" của card mạng đang dùng (WiFi hoặc Ethernet)
-// Ví dụ: 192.168.1.100
-
-// ===== CHỌN MỘT TRONG CÁC OPTION SAU =====
 
 // Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
-export const API_BASE_URL = 'http://10.109.101.115:5273/api';
+export const API_BASE_URL = 'http://10.59.67.116:5273/api';
 
-// Option 2: Dùng cho Android Emulator (10.0.2.2 = localhost của máy host)
-// export const API_BASE_URL = 'http://10.0.2.2:5273/api';
-
-// Option 3: Dùng cho iOS Simulator (localhost) - KHÔNG DÙNG CHO THIẾT BỊ THẬT
-// export const API_BASE_URL = 'http://localhost:5273/api';
-
-// Nếu test trên Web browser thì có thể dùng localhost
-// export const API_BASE_URL = 'http://localhost:5273/api';
 
 export const API_TIMEOUT = 60000; // 60 seconds (tăng từ 30s)
 

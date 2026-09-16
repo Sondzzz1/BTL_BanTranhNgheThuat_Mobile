@@ -47,6 +47,11 @@ const AdminLayout: React.FC = () => {
                                     <i className="ti-shopping-cart"></i> Đơn hàng
                                 </li>
                             </NavLink>
+                            <NavLink to="/admin/return-requests">
+                                <li className={location.pathname === '/admin/return-requests' ? 'active' : ''}>
+                                    <i className="ti-back-left"></i> Hoàn Trả
+                                </li>
+                            </NavLink>
                             <NavLink to="/admin/customers">
                                 <li className={location.pathname === '/admin/customers' ? 'active' : ''}>
                                     <i className="ti-user"></i> Khách hàng
