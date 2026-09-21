@@ -1,5 +1,6 @@
+using DoAn2_BackEnd.BLL.Interfaces;
 using DoAn2_BackEnd.DTO;
-using DoAn2_BackEnd.Models;
+using DoAn2_BackEnd.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,169 +11,94 @@ namespace DoAn2_BackEnd.Controllers;
 [Authorize]
 public class ConsultationController : ControllerBase
 {
-    private static readonly List<ConsultationBooking> _bookings = new();
-    private static readonly List<ConsultationCriteria> _criteria = new();
-    private static readonly List<ConsultationRecommendation> _recommendations = new();
+    private readonly IConsultationBusiness _consultationBusiness;
+
+    public ConsultationController(IConsultationBusiness consultationBusiness)
+    {
+        _consultationBusiness = consultationBusiness;
+    }
 
     [HttpPost("book")]
-    public ActionResult<ConsultationBookingResponse> DatLichTuVan([FromBody] TaoLichTuVanRequest request)
+    public async Task<ActionResult<ConsultationBookingResponse>> DatLichTuVan([FromBody] TaoLichTuVanRequest request)
     {
-        if (request.Ngay.Date <= DateTime.UtcNow.Date)
-            return BadRequest(new { message = "Ngày tư vấn phải lớn hơn ngày hiện tại" });
-
-        var booking = new ConsultationBooking
+        try
         {
-            MaLichTuVan = _bookings.Count + 1,
-            MaKhachHang = GetCurrentCustomerId(),
-            Ngay = request.Ngay,
-            Gio = request.Gio,
-            DiaChi = request.DiaChi,
-            NhuCau = request.NhuCau,
-            GhiChu = request.GhiChu,
-            KetQuaTuVan = request.KetQuaTuVan,
-            TrangThai = ConsultationStatus.Submitted
-        };
+            var maKhachHang = JwtHelper.GetMaNguoiDung(User);
+            if (maKhachHang == null)
+                return BadRequest(new { message = "Không tìm thấy thông tin khách hàng" });
 
-        _bookings.Add(booking);
-
-        return Ok(new ConsultationBookingResponse
+            var result = await _consultationBusiness.DatLichTuVan(maKhachHang.Value, request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
         {
-            MaLichTuVan = booking.MaLichTuVan,
-            MaKhachHang = booking.MaKhachHang,
-            MaHoaSi = booking.MaHoaSi,
-            MaNhanVien = booking.MaNhanVien,
-            Ngay = booking.Ngay,
-            Gio = booking.Gio,
-            DiaChi = booking.DiaChi,
-            NhuCau = booking.NhuCau,
-            GhiChu = booking.GhiChu,
-            TrangThai = booking.TrangThai.ToString(),
-            KetQuaTuVan = booking.KetQuaTuVan,
-            NgayTao = booking.NgayTao
-        });
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpGet("my-bookings")]
-    public ActionResult<List<ConsultationBookingResponse>> LayLichTuVanCuaToi()
+    public async Task<ActionResult<List<ConsultationBookingResponse>>> LayLichTuVanCuaToi()
     {
-        var result = _bookings
-            .Where(x => x.MaKhachHang == GetCurrentCustomerId())
-            .Select(x => new ConsultationBookingResponse
-            {
-                MaLichTuVan = x.MaLichTuVan,
-                MaKhachHang = x.MaKhachHang,
-                MaHoaSi = x.MaHoaSi,
-                MaNhanVien = x.MaNhanVien,
-                Ngay = x.Ngay,
-                Gio = x.Gio,
-                DiaChi = x.DiaChi,
-                NhuCau = x.NhuCau,
-                GhiChu = x.GhiChu,
-                TrangThai = x.TrangThai.ToString(),
-                KetQuaTuVan = x.KetQuaTuVan,
-                NgayTao = x.NgayTao
-            })
-            .ToList();
+        var maKhachHang = JwtHelper.GetMaNguoiDung(User);
+        if (maKhachHang == null)
+            return BadRequest(new { message = "Không tìm thấy thông tin khách hàng" });
 
+        var result = await _consultationBusiness.LayLichTuVanCuaToi(maKhachHang.Value);
         return Ok(result);
     }
 
     [HttpGet("all")]
     [Authorize(Roles = "Admin,HoaSi")]
-    public ActionResult<List<ConsultationBookingResponse>> LayTatCaLichTuVan()
+    public async Task<ActionResult<List<ConsultationBookingResponse>>> LayTatCaLichTuVan()
     {
-        var result = _bookings
-            .Select(x => new ConsultationBookingResponse
-            {
-                MaLichTuVan = x.MaLichTuVan,
-                MaKhachHang = x.MaKhachHang,
-                MaHoaSi = x.MaHoaSi,
-                MaNhanVien = x.MaNhanVien,
-                Ngay = x.Ngay,
-                Gio = x.Gio,
-                DiaChi = x.DiaChi,
-                NhuCau = x.NhuCau,
-                GhiChu = x.GhiChu,
-                TrangThai = x.TrangThai.ToString(),
-                KetQuaTuVan = x.KetQuaTuVan,
-                NgayTao = x.NgayTao
-            })
-            .ToList();
-
+        var result = await _consultationBusiness.LayTatCaLichTuVan();
         return Ok(result);
     }
 
     [HttpPost("assign/{id}")]
     [Authorize(Roles = "Admin,HoaSi")]
-    public ActionResult GanHoaSiChoLichTuVan(int id)
+    public async Task<ActionResult> GanHoaSiChoLichTuVan(int id)
     {
-        var booking = _bookings.FirstOrDefault(x => x.MaLichTuVan == id);
-        if (booking == null)
-            return NotFound(new { message = "Không tìm thấy lịch tư vấn" });
+        var maHoaSi = JwtHelper.GetMaHoaSi(User);
+        if (maHoaSi == null)
+            return BadRequest(new { message = "Không tìm thấy thông tin họa sĩ" });
 
-        booking.MaHoaSi = GetCurrentArtistId();
-        booking.TrangThai = ConsultationStatus.Confirmed;
-
+        var success = await _consultationBusiness.GanHoaSiChoLichTuVan(id, maHoaSi.Value);
+        if (!success) return NotFound(new { message = "Không tìm thấy lịch tư vấn" });
         return Ok(new { message = "Đã gán họa sĩ cho lịch tư vấn" });
     }
 
     [HttpPost("result")]
     [Authorize(Roles = "Admin,HoaSi")]
-    public ActionResult ThemKetQuaTuVan([FromBody] TaoKetQuaTuVanRequest request)
+    public async Task<ActionResult> ThemKetQuaTuVan([FromBody] TaoKetQuaTuVanRequest request)
     {
-        var booking = _bookings.FirstOrDefault(x => x.MaLichTuVan == request.MaLichTuVan);
-        if (booking == null)
-            return NotFound(new { message = "Lịch tư vấn không tồn tại" });
-
-        booking.KetQuaTuVan = request.KetQuaTuVan;
-        booking.TrangThai = ConsultationStatus.Completed;
-
+        var success = await _consultationBusiness.ThemKetQuaTuVan(request.MaLichTuVan, request.KetQuaTuVan);
+        if (!success) return NotFound(new { message = "Lịch tư vấn không tồn tại" });
         return Ok(new { message = "Đã ghi nhận kết quả tư vấn" });
     }
 
     [HttpPost("recommendation")]
     [Authorize(Roles = "Admin,HoaSi")]
-    public ActionResult ThemDeXuat([FromBody] TaoDeXuatTranhRequest request)
+    public async Task<ActionResult> ThemDeXuat([FromBody] TaoDeXuatTranhRequest request)
     {
-        var booking = _bookings.FirstOrDefault(x => x.MaLichTuVan == request.MaLichTuVan);
-        if (booking == null)
-            return NotFound(new { message = "Lịch tư vấn không tồn tại" });
-
-        var recommendation = new ConsultationRecommendation
-        {
-            MaDeXuat = _recommendations.Count + 1,
-            MaLichTuVan = request.MaLichTuVan,
-            MaTacPham = request.MaTacPham,
-            GiaDeXuat = request.GiaDeXuat,
-            GhiChu = request.GhiChu,
-            TrangThai = "Pending"
-        };
-
-        _recommendations.Add(recommendation);
-        booking.TrangThai = ConsultationStatus.InProgress;
-
+        var success = await _consultationBusiness.ThemDeXuat(request.MaLichTuVan, request);
+        if (!success) return NotFound(new { message = "Lịch tư vấn không tồn tại" });
         return Ok(new { message = "Đã đề xuất sản phẩm phù hợp" });
     }
 
     [HttpPost("criteria")]
     [Authorize(Roles = "Admin,HoaSi")]
-    public ActionResult ThemTieuChiTuVan([FromBody] ConsultationCriteria criteria)
+    public async Task<ActionResult> ThemTieuChiTuVan([FromBody] ConsultationCriteria criteria)
     {
-        var booking = _bookings.FirstOrDefault(x => x.MaLichTuVan == criteria.MaLichTuVan);
-        if (booking == null)
-            return NotFound(new { message = "Lịch tư vấn không tồn tại" });
-
-        _criteria.Add(criteria);
-        return Ok(new { message = "Đã lưu tiêu chí tư vấn" });
-    }
-
-    private static int GetCurrentCustomerId()
-    {
-        return 1;
-    }
-
-    private static int GetCurrentArtistId()
-    {
-        return 2;
+        try
+        {
+            var success = await _consultationBusiness.ThemTieuChiTuVan(criteria);
+            if (!success) return NotFound(new { message = "Lịch tư vấn không tồn tại" });
+            return Ok(new { message = "Đã lưu tiêu chí tư vấn" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

@@ -80,6 +80,8 @@ builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
 builder.Services.AddScoped<IContentBusiness, ContentBusiness>();
 builder.Services.AddScoped<IChiTietTacPhamBusiness, ChiTietTacPhamBusiness>();
 builder.Services.AddScoped<IHoanTraBusiness, HoanTraBusiness>();
+builder.Services.AddScoped<ICustomArtBusiness, CustomArtBusiness>();
+builder.Services.AddScoped<IConsultationBusiness, ConsultationBusiness>();
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();
