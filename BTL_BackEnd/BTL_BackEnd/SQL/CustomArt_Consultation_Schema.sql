@@ -1,0 +1,109 @@
+CREATE TABLE YeuCauVeTranh (
+    MaYeuCau INT IDENTITY(1,1) PRIMARY KEY,
+    MaKhachHang INT NOT NULL,
+    MaHoaSi INT NULL,
+    TieuDe NVARCHAR(255) NOT NULL,
+    LoaiTranh NVARCHAR(100) NOT NULL,
+    KichThuoc NVARCHAR(100) NOT NULL,
+    ChuDe NVARCHAR(255) NULL,
+    MauSac NVARCHAR(255) NULL,
+    PhongCach NVARCHAR(255) NULL,
+    ChatLieu NVARCHAR(255) NULL,
+    MoTa NVARCHAR(MAX) NULL,
+    AnhThamKhao NVARCHAR(MAX) NULL,
+    TienDatCoc DECIMAL(18,2) NOT NULL DEFAULT 0,
+    GiaDuKien DECIMAL(18,2) NOT NULL DEFAULT 0,
+    TrangThai INT NOT NULL DEFAULT 1,
+    NgayTao DATETIME NOT NULL DEFAULT GETDATE(),
+    NgayCapNhat DATETIME NULL,
+    NgayHoanThanhDuKien DATETIME NULL,
+);
+
+CREATE TABLE BaoGiaVeTranh (
+    MaBaoGia INT IDENTITY(1,1) PRIMARY KEY,
+    MaYeuCau INT NOT NULL,
+    MaHoaSi INT NOT NULL,
+    GiaBaoGia DECIMAL(18,2) NOT NULL,
+    ThoiGianHoanThanh NVARCHAR(100) NOT NULL,
+    GhiChu NVARCHAR(MAX) NULL,
+    IsActive BIT NOT NULL DEFAULT 1,
+    NgayTao DATETIME NOT NULL DEFAULT GETDATE(),
+    TrangThai NVARCHAR(50) NOT NULL DEFAULT 'PendingCustomerApproval'
+);
+
+CREATE TABLE TienDoVeTranh (
+    MaTienDo INT IDENTITY(1,1) PRIMARY KEY,
+    MaYeuCau INT NOT NULL,
+    TieuDe NVARCHAR(255) NOT NULL,
+    MoTa NVARCHAR(MAX) NOT NULL,
+    AnhPreview NVARCHAR(MAX) NULL,
+    TrangThai NVARCHAR(50) NOT NULL DEFAULT 'InProgress',
+    NgayTao DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE PhanHoiVeTranh (
+    MaPhanHoi INT IDENTITY(1,1) PRIMARY KEY,
+    MaYeuCau INT NOT NULL,
+    MaKhachHang INT NOT NULL,
+    MaHoaSi INT NOT NULL,
+    NoiDung NVARCHAR(MAX) NOT NULL,
+    LoaiPhanHoi NVARCHAR(50) NOT NULL DEFAULT 'ChinhSua',
+    NgayTao DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE ThanhToanYeuCau (
+    MaThanhToan INT IDENTITY(1,1) PRIMARY KEY,
+    MaYeuCau INT NOT NULL,
+    LoaiThanhToan NVARCHAR(50) NOT NULL DEFAULT 'DatCoc',
+    SoTien DECIMAL(18,2) NOT NULL,
+    PhuongThuc NVARCHAR(100) NOT NULL DEFAULT 'ChuyenKhoan',
+    TrangThai NVARCHAR(50) NOT NULL DEFAULT 'Pending',
+    NgayThanhToan DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE LichTuVan (
+    MaLichTuVan INT IDENTITY(1,1) PRIMARY KEY,
+    MaKhachHang INT NOT NULL,
+    MaHoaSi INT NULL,
+    MaNhanVien INT NULL,
+    Ngay DATETIME NOT NULL,
+    Gio TIME NOT NULL,
+    DiaChi NVARCHAR(255) NOT NULL,
+    NhuCau NVARCHAR(MAX) NOT NULL,
+    GhiChu NVARCHAR(MAX) NULL,
+    TrangThai INT NOT NULL DEFAULT 1,
+    KetQuaTuVan NVARCHAR(MAX) NULL,
+    NgayTao DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+CREATE TABLE TieuChiTuVan (
+    MaTieuChi INT IDENTITY(1,1) PRIMARY KEY,
+    MaLichTuVan INT NOT NULL,
+    LoaiTieuChi NVARCHAR(100) NOT NULL,
+    GiaTri NVARCHAR(MAX) NOT NULL
+);
+
+CREATE TABLE DeXuatTranh (
+    MaDeXuat INT IDENTITY(1,1) PRIMARY KEY,
+    MaLichTuVan INT NOT NULL,
+    MaTacPham INT NOT NULL,
+    GiaDeXuat DECIMAL(18,2) NOT NULL,
+    GhiChu NVARCHAR(MAX) NULL,
+    TrangThai NVARCHAR(50) NOT NULL DEFAULT 'Pending'
+);
+
+CREATE TABLE HinhAnhTuVan (
+    MaHinhAnh INT IDENTITY(1,1) PRIMARY KEY,
+    MaLichTuVan INT NOT NULL,
+    Url NVARCHAR(MAX) NOT NULL,
+    MoTa NVARCHAR(MAX) NULL,
+    NgayTao DATETIME NOT NULL DEFAULT GETDATE()
+);
+
+-- Indexes
+CREATE INDEX IX_YeuCauVeTranh_MaKhachHang ON YeuCauVeTranh (MaKhachHang);
+CREATE INDEX IX_YeuCauVeTranh_MaHoaSi ON YeuCauVeTranh (MaHoaSi);
+CREATE INDEX IX_LichTuVan_MaKhachHang ON LichTuVan (MaKhachHang);
+CREATE INDEX IX_LichTuVan_MaHoaSi ON LichTuVan (MaHoaSi);
+CREATE INDEX IX_BaoGiaVeTranh_MaYeuCau ON BaoGiaVeTranh (MaYeuCau);
+CREATE INDEX IX_DeXuatTranh_MaLichTuVan ON DeXuatTranh (MaLichTuVan);
