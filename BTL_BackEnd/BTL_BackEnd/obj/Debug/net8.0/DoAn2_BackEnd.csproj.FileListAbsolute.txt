@@ -351,7 +351,6 @@ C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\DoAn2_BackEnd\obj\Debug\net8.0\D
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\DoAn2_BackEnd\obj\Debug\net8.0\ref\DoAn2_BackEnd.dll
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\appsettings.Development.json
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\appsettings.json
-C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\DoAn2_BackEnd.exe
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\DoAn2_BackEnd.deps.json
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\DoAn2_BackEnd.runtimeconfig.json
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\DoAn2_BackEnd.dll
