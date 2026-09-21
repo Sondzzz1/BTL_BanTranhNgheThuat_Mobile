@@ -71,6 +71,8 @@ builder.Services.AddScoped<IChiTietTacPhamRepository, ChiTietTacPhamRepository>(
 builder.Services.AddScoped<ITacPhamChinhSuaRepository, TacPhamChinhSuaRepository>();
 builder.Services.AddScoped<IYeuThichRepository, YeuThichRepository>();
 builder.Services.AddScoped<IHoanTraRepository, HoanTraRepository>();
+builder.Services.AddScoped<ICustomArtRepository, CustomArtRepository>();
+builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
 
 // Register BLL (Business Layer)
 builder.Services.AddScoped<IAuthBusiness, AuthBusiness>();
