@@ -1,6 +1,7 @@
 using DoAn2_BackEnd.BLL.Interfaces;
 using DoAn2_BackEnd.DTO;
 using DoAn2_BackEnd.Helpers;
+using DoAn2_BackEnd.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
