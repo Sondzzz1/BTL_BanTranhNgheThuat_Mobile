@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from 'react';
 
+const STORAGE_KEY = 'artgallery_customart_claims';
+
 const mockRequests = [
   {
     id: 101,
@@ -30,15 +32,52 @@ const mockRequests = [
   },
 ];
 
+const getClaimMap = () => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+type CustomArtRequestView = {
+  id: number;
+  khachHang: string;
+  tieuDe: string;
+  hoasi: string;
+  trangThai: string;
+  ngayTao: string;
+  gia: string;
+  assignedTo?: string;
+};
+
 const AdminCustomArt: React.FC = () => {
   const [status, setStatus] = useState<'all' | 'pending' | 'active' | 'done'>('all');
 
-  const filtered = useMemo(() => {
-    if (status === 'pending') return mockRequests.filter((x) => x.trangThai === 'Chờ báo giá');
-    if (status === 'active') return mockRequests.filter((x) => x.trangThai === 'Đã nhận');
-    if (status === 'done') return mockRequests.filter((x) => x.trangThai === 'Hoàn thành');
-    return mockRequests;
+  const requests = useMemo<CustomArtRequestView[]>(() => {
+    const claimMap = getClaimMap();
+
+    return mockRequests.map((item) => {
+      const claim = claimMap[item.id];
+      if (claim) {
+        return {
+          ...item,
+          hoasi: claim.artistName,
+          trangThai: 'Đã nhận',
+          assignedTo: claim.artistName,
+        };
+      }
+      return item;
+    });
   }, [status]);
+
+  const filtered = useMemo(() => {
+    if (status === 'pending') return requests.filter((x) => x.trangThai === 'Chờ báo giá');
+    if (status === 'active') return requests.filter((x) => x.trangThai === 'Đã nhận');
+    if (status === 'done') return requests.filter((x) => x.trangThai === 'Hoàn thành');
+    return requests;
+  }, [requests, status]);
 
   return (
     <div className="page">
@@ -77,7 +116,7 @@ const AdminCustomArt: React.FC = () => {
                 <td>#{item.id}</td>
                 <td>{item.khachHang}</td>
                 <td>{item.tieuDe}</td>
-                <td>{item.hoasi}</td>
+                <td>{item.assignedTo ? `${item.assignedTo} (đã nhận)` : item.hoasi}</td>
                 <td>
                   <span className={`status-badge ${item.trangThai === 'Hoàn thành' ? 'success' : item.trangThai === 'Đã nhận' ? 'warning' : 'neutral'}`}>
                     {item.trangThai}

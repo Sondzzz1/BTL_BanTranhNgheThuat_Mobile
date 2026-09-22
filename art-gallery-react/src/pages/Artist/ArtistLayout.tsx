@@ -66,6 +66,12 @@ const ArtistLayout: React.FC = () => {
             </li>
           </NavLink>
 
+          <NavLink to="/artist/custom-art">
+            <li className={location.pathname === '/artist/custom-art' ? 'active' : ''}>
+              <i className="ti-paint-bucket"></i> Yêu Cầu Tranh
+            </li>
+          </NavLink>
+
           <a href="/" style={{ textDecoration: 'none', color: 'inherit' }}>
             <li className="sidebar-link">
               <i className="ti-world"></i> Về Trang Chủ

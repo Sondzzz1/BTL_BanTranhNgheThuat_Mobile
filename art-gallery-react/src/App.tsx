@@ -46,6 +46,7 @@ import ArtworkDetailManagement from './pages/Artist/ArtworkDetailManagement';
 import ArtworkDetailContent from './pages/Artist/ArtworkDetailContent';
 import ArtistArticles from './pages/Artist/ArtistArticles';
 import ArtistRevenue from './pages/Artist/ArtistRevenue';
+import ArtistCustomArt from './pages/Artist/ArtistCustomArt';
 import UserLayout from './pages/User/UserLayout';
 import UserProfile from './pages/User/UserProfile';
 import UserOrders from './pages/User/UserOrders';
@@ -114,6 +115,7 @@ function App() {
               <Route path="artworks/:id/content" element={<ArtworkDetailContent />} />
               <Route path="articles" element={<ArtistArticles />} />
               <Route path="revenue" element={<ArtistRevenue />} />
+              <Route path="custom-art" element={<ArtistCustomArt />} />
               <Route path="sales" element={<PlaceholderPage title="Báo Cáo Bán Hàng" />} />
             </Route>
 
