@@ -3,6 +3,7 @@ namespace DoAn2_BackEnd.DTO;
 public class TaoYeuCauTranhRequest
 {
     public string TieuDe { get; set; } = string.Empty;
+    public string Type { get; set; } = "Original";
     public string LoaiTranh { get; set; } = string.Empty;
     public string KichThuoc { get; set; } = string.Empty;
     public string ChuDe { get; set; } = string.Empty;
@@ -11,6 +12,10 @@ public class TaoYeuCauTranhRequest
     public string ChatLieu { get; set; } = string.Empty;
     public string? MoTa { get; set; }
     public string? AnhThamKhao { get; set; }
+    public int? ReferenceArtworkId { get; set; }
+    public string? ReferenceArtworkName { get; set; }
+    public string? ReferenceArtistName { get; set; }
+    public string? ReferenceImageUrl { get; set; }
     public DateTime? NgayHoanThanhDuKien { get; set; }
 }
 
@@ -46,6 +51,7 @@ public class CustomArtRequestResponse
     public int MaKhachHang { get; set; }
     public int? MaHoaSi { get; set; }
     public string TieuDe { get; set; } = string.Empty;
+    public string Type { get; set; } = "Original";
     public string LoaiTranh { get; set; } = string.Empty;
     public string KichThuoc { get; set; } = string.Empty;
     public string ChuDe { get; set; } = string.Empty;
@@ -54,6 +60,10 @@ public class CustomArtRequestResponse
     public string ChatLieu { get; set; } = string.Empty;
     public string? MoTa { get; set; }
     public string? AnhThamKhao { get; set; }
+    public int? ReferenceArtworkId { get; set; }
+    public string? ReferenceArtworkName { get; set; }
+    public string? ReferenceArtistName { get; set; }
+    public string? ReferenceImageUrl { get; set; }
     public decimal TienDatCoc { get; set; }
     public decimal GiaDuKien { get; set; }
     public string TrangThai { get; set; } = string.Empty;

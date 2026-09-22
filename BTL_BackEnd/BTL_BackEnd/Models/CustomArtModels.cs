@@ -17,6 +17,13 @@ public enum CustomArtStatus
     Cancelled = 12
 }
 
+public enum CustomArtType
+{
+    Original = 0,
+    BasedOnArtwork = 1,
+    Reproduction = 2
+}
+
 public class CustomArtRequest
 {
     public int MaYeuCau { get; set; }
@@ -31,6 +38,11 @@ public class CustomArtRequest
     public string ChatLieu { get; set; } = string.Empty;
     public string? MoTa { get; set; }
     public string? AnhThamKhao { get; set; }
+    public CustomArtType Type { get; set; } = CustomArtType.Original;
+    public int? ReferenceArtworkId { get; set; }
+    public string? ReferenceArtworkName { get; set; }
+    public string? ReferenceArtistName { get; set; }
+    public string? ReferenceImageUrl { get; set; }
     public decimal TienDatCoc { get; set; }
     public decimal GiaDuKien { get; set; }
     public CustomArtStatus TrangThai { get; set; } = CustomArtStatus.Submitted;

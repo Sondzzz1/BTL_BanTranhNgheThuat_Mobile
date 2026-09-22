@@ -20,10 +20,16 @@ public class CustomArtRepository : ICustomArtRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
+        var typeValue = ParseCustomArtType(request.Type);
+        var referenceArtworkId = request.ReferenceArtworkId ?? (object?)DBNull.Value;
+        var referenceArtworkName = (object?)request.ReferenceArtworkName ?? DBNull.Value;
+        var referenceArtistName = (object?)request.ReferenceArtistName ?? DBNull.Value;
+        var referenceImageUrl = (object?)request.ReferenceImageUrl ?? DBNull.Value;
+
         var query = @"INSERT INTO YeuCauVeTranh
-            (MaKhachHang, TieuDe, LoaiTranh, KichThuoc, ChuDe, MauSac, PhongCach, ChatLieu, MoTa, AnhThamKhao, TienDatCoc, GiaDuKien, TrangThai, NgayTao, NgayCapNhat, NgayHoanThanhDuKien)
+            (MaKhachHang, TieuDe, LoaiTranh, KichThuoc, ChuDe, MauSac, PhongCach, ChatLieu, MoTa, AnhThamKhao, Type, ReferenceArtworkId, ReferenceArtworkName, ReferenceArtistName, ReferenceImageUrl, TienDatCoc, GiaDuKien, TrangThai, NgayTao, NgayCapNhat, NgayHoanThanhDuKien)
             OUTPUT INSERTED.MaYeuCau
-            VALUES (@MaKhachHang, @TieuDe, @LoaiTranh, @KichThuoc, @ChuDe, @MauSac, @PhongCach, @ChatLieu, @MoTa, @AnhThamKhao, @TienDatCoc, @GiaDuKien, @TrangThai, GETDATE(), GETDATE(), @NgayHoanThanhDuKien);";
+            VALUES (@MaKhachHang, @TieuDe, @LoaiTranh, @KichThuoc, @ChuDe, @MauSac, @PhongCach, @ChatLieu, @MoTa, @AnhThamKhao, @Type, @ReferenceArtworkId, @ReferenceArtworkName, @ReferenceArtistName, @ReferenceImageUrl, @TienDatCoc, @GiaDuKien, @TrangThai, GETDATE(), GETDATE(), @NgayHoanThanhDuKien);";
 
         using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@MaKhachHang", maKhachHang);
@@ -36,13 +42,18 @@ public class CustomArtRepository : ICustomArtRepository
         command.Parameters.AddWithValue("@ChatLieu", (object?)request.ChatLieu ?? DBNull.Value);
         command.Parameters.AddWithValue("@MoTa", (object?)request.MoTa ?? DBNull.Value);
         command.Parameters.AddWithValue("@AnhThamKhao", (object?)request.AnhThamKhao ?? DBNull.Value);
+        command.Parameters.AddWithValue("@Type", typeValue);
+        command.Parameters.AddWithValue("@ReferenceArtworkId", referenceArtworkId);
+        command.Parameters.AddWithValue("@ReferenceArtworkName", referenceArtworkName);
+        command.Parameters.AddWithValue("@ReferenceArtistName", referenceArtistName);
+        command.Parameters.AddWithValue("@ReferenceImageUrl", referenceImageUrl);
         command.Parameters.AddWithValue("@TienDatCoc", 0m);
         command.Parameters.AddWithValue("@GiaDuKien", 0m);
         command.Parameters.AddWithValue("@TrangThai", (int)CustomArtStatus.Submitted);
         command.Parameters.AddWithValue("@NgayHoanThanhDuKien", (object?)request.NgayHoanThanhDuKien ?? DBNull.Value);
 
         var id = Convert.ToInt32(await command.ExecuteScalarAsync());
-        return await GetById(id) ?? new CustomArtRequest { MaYeuCau = id, MaKhachHang = maKhachHang, TieuDe = request.TieuDe };
+        return await GetById(id) ?? new CustomArtRequest { MaYeuCau = id, MaKhachHang = maKhachHang, TieuDe = request.TieuDe, Type = typeValue };
     }
 
     public async Task<List<CustomArtRequest>> GetByCustomer(int maKhachHang)
@@ -293,6 +304,11 @@ public class CustomArtRepository : ICustomArtRepository
             ChatLieu = reader.IsDBNull(reader.GetOrdinal("ChatLieu")) ? string.Empty : reader.GetString(reader.GetOrdinal("ChatLieu")),
             MoTa = reader.IsDBNull(reader.GetOrdinal("MoTa")) ? null : reader.GetString(reader.GetOrdinal("MoTa")),
             AnhThamKhao = reader.IsDBNull(reader.GetOrdinal("AnhThamKhao")) ? null : reader.GetString(reader.GetOrdinal("AnhThamKhao")),
+            Type = HasColumn(reader, "Type") && !reader.IsDBNull(reader.GetOrdinal("Type")) ? ParseCustomArtType(reader.GetInt32(reader.GetOrdinal("Type"))) : CustomArtType.Original,
+            ReferenceArtworkId = HasColumn(reader, "ReferenceArtworkId") && !reader.IsDBNull(reader.GetOrdinal("ReferenceArtworkId")) ? reader.GetInt32(reader.GetOrdinal("ReferenceArtworkId")) : null,
+            ReferenceArtworkName = HasColumn(reader, "ReferenceArtworkName") && !reader.IsDBNull(reader.GetOrdinal("ReferenceArtworkName")) ? reader.GetString(reader.GetOrdinal("ReferenceArtworkName")) : null,
+            ReferenceArtistName = HasColumn(reader, "ReferenceArtistName") && !reader.IsDBNull(reader.GetOrdinal("ReferenceArtistName")) ? reader.GetString(reader.GetOrdinal("ReferenceArtistName")) : null,
+            ReferenceImageUrl = HasColumn(reader, "ReferenceImageUrl") && !reader.IsDBNull(reader.GetOrdinal("ReferenceImageUrl")) ? reader.GetString(reader.GetOrdinal("ReferenceImageUrl")) : null,
             TienDatCoc = reader.IsDBNull(reader.GetOrdinal("TienDatCoc")) ? 0 : reader.GetDecimal(reader.GetOrdinal("TienDatCoc")),
             GiaDuKien = reader.IsDBNull(reader.GetOrdinal("GiaDuKien")) ? 0 : reader.GetDecimal(reader.GetOrdinal("GiaDuKien")),
             TrangThai = reader.IsDBNull(reader.GetOrdinal("TrangThai")) ? CustomArtStatus.Submitted : (CustomArtStatus)reader.GetInt32(reader.GetOrdinal("TrangThai")),
@@ -300,6 +316,40 @@ public class CustomArtRepository : ICustomArtRepository
             NgayCapNhat = reader.IsDBNull(reader.GetOrdinal("NgayCapNhat")) ? null : reader.GetDateTime(reader.GetOrdinal("NgayCapNhat")),
             NgayHoanThanhDuKien = reader.IsDBNull(reader.GetOrdinal("NgayHoanThanhDuKien")) ? null : reader.GetDateTime(reader.GetOrdinal("NgayHoanThanhDuKien"))
         };
+    }
+
+    private static CustomArtType ParseCustomArtType(string? sourceType)
+    {
+        if (string.IsNullOrWhiteSpace(sourceType)) return CustomArtType.Original;
+
+        return sourceType.Trim() switch
+        {
+            "Original" => CustomArtType.Original,
+            "BasedOnArtwork" => CustomArtType.BasedOnArtwork,
+            "Reproduction" => CustomArtType.Reproduction,
+            _ => CustomArtType.Original
+        };
+    }
+
+    private static CustomArtType ParseCustomArtType(int value)
+    {
+        return value switch
+        {
+            1 => CustomArtType.BasedOnArtwork,
+            2 => CustomArtType.Reproduction,
+            _ => CustomArtType.Original
+        };
+    }
+
+    private static bool HasColumn(SqlDataReader reader, string columnName)
+    {
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            if (reader.GetName(i).Equals(columnName, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     private static CustomArtQuote MapQuote(SqlDataReader reader)
