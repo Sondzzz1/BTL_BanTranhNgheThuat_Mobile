@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   adminReturnService,
@@ -20,6 +20,159 @@ const STATUS_OPTIONS = [
 ];
 
 const PAGE_SIZE = 10;
+
+// Component thẻ thống kê
+const StatCard: React.FC<{
+  icon: string;
+  title: string;
+  value: number;
+  color: string;
+  bgColor: string;
+}> = ({ icon, title, value, color, bgColor }) => {
+  return (
+    <div
+      style={{
+        background: '#fff',
+        borderRadius: '16px',
+        padding: '24px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        border: `2px solid ${color}20`,
+        transition: 'all 0.3s ease',
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-4px)';
+        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.12)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.06)';
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1 }}>
+          <p style={{
+            margin: '0 0 8px 0',
+            fontSize: '14px',
+            color: '#6b7280',
+            fontWeight: '500',
+          }}>
+            {title}
+          </p>
+          <h2 style={{
+            margin: 0,
+            fontSize: '32px',
+            fontWeight: '700',
+            color: color,
+          }}>
+            {value}
+          </h2>
+        </div>
+        <div style={{
+          fontSize: '36px',
+          background: bgColor,
+          width: '60px',
+          height: '60px',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Styles hiện đại
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: '13px',
+  fontWeight: '600',
+  color: '#374151',
+  marginBottom: '6px',
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  borderRadius: '10px',
+  border: '2px solid #e5e7eb',
+  fontSize: '14px',
+  transition: 'all 0.2s ease',
+  outline: 'none',
+  background: '#fff',
+};
+
+const buttonStyle: React.CSSProperties = {
+  padding: '10px 20px',
+  borderRadius: '10px',
+  border: 'none',
+  fontSize: '14px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+  outline: 'none',
+};
+
+const modernThStyle: React.CSSProperties = {
+  padding: '16px 20px',
+  textAlign: 'left',
+  fontSize: '13px',
+  fontWeight: '700',
+  color: '#fff',
+  whiteSpace: 'nowrap',
+  letterSpacing: '0.5px',
+  textTransform: 'uppercase',
+};
+
+const modernTdStyle: React.CSSProperties = {
+  padding: '16px 20px',
+  fontSize: '14px',
+  verticalAlign: 'middle',
+};
+
+const paginationButtonStyle: React.CSSProperties = {
+  padding: '8px 16px',
+  borderRadius: '8px',
+  border: '2px solid #e5e7eb',
+  background: '#fff',
+  color: '#374151',
+  fontSize: '14px',
+  fontWeight: '600',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+};
+
+const pageNumberStyle: React.CSSProperties = {
+  width: '36px',
+  height: '36px',
+  borderRadius: '8px',
+  border: '2px solid #e5e7eb',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '14px',
+  cursor: 'pointer',
+  transition: 'all 0.2s ease',
+};
+
+// Styles cho bảng cũ (tạm thời giữ lại)
+const thStyle: React.CSSProperties = {
+  padding: '12px 16px',
+  textAlign: 'left',
+  fontSize: '13px',
+  fontWeight: 600,
+  color: '#374151',
+  whiteSpace: 'nowrap',
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: '12px 16px',
+  fontSize: '13px',
+  verticalAlign: 'middle',
+};
 
 const AdminReturns: React.FC = () => {
   const navigate = useNavigate();
@@ -87,75 +240,223 @@ const AdminReturns: React.FC = () => {
   const totalPages = Math.ceil(returns.length / PAGE_SIZE);
   const pagedReturns = returns.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
+  // Thống kê dữ liệu
+  const statistics = useMemo(() => {
+    const total = returns.length;
+    const pending = returns.filter(r => r.trangThai === 'CHO_DUYET').length;
+    const approved = returns.filter(r => r.trangThai === 'DA_DUYET').length;
+    const rejected = returns.filter(r => r.trangThai === 'TU_CHOI').length;
+    const completed = returns.filter(r => r.trangThai === 'HOAN_TAT').length;
+    const processing = returns.filter(r => 
+      ['DANG_HOAN_TRA', 'DA_NHAN_HANG', 'DA_HOAN_TIEN'].includes(r.trangThai)
+    ).length;
+
+    return { total, pending, approved, rejected, completed, processing };
+  }, [returns]);
+
   return (
     <div className="admin-content">
-      <div className="admin-header">
-        <h1>Quản lý hoàn trả</h1>
-        <p className="admin-subtitle">{returns.length} yêu cầu hoàn trả</p>
+      {/* Header với gradient đẹp */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: '16px',
+        padding: '30px 40px',
+        marginBottom: '30px',
+        color: '#fff',
+        boxShadow: '0 10px 30px rgba(102, 126, 234, 0.3)',
+      }}>
+        <h1 style={{ margin: '0 0 8px 0', fontSize: '32px', fontWeight: '700' }}>
+          📦 Quản lý yêu cầu hoàn trả
+        </h1>
+        <p style={{ margin: 0, fontSize: '16px', opacity: 0.9 }}>
+          Tổng quan và xử lý các yêu cầu hoàn trả sản phẩm từ khách hàng
+        </p>
       </div>
 
-      {/* Bộ lọc & tìm kiếm */}
-      <div className="filter-section" style={{ background: '#fff', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1', minWidth: '180px' }}>
-            <label style={{ display: 'block', fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Tìm kiếm</label>
+      {/* Thẻ thống kê */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '20px',
+        marginBottom: '30px',
+      }}>
+        <StatCard
+          icon="📊"
+          title="Tổng số yêu cầu"
+          value={statistics.total}
+          color="#667eea"
+          bgColor="#f0f3ff"
+        />
+        <StatCard
+          icon="⏳"
+          title="Chờ duyệt"
+          value={statistics.pending}
+          color="#f59e0b"
+          bgColor="#fff7ed"
+        />
+        <StatCard
+          icon="✅"
+          title="Đã duyệt"
+          value={statistics.approved}
+          color="#10b981"
+          bgColor="#f0fdf4"
+        />
+        <StatCard
+          icon="🔄"
+          title="Đang xử lý"
+          value={statistics.processing}
+          color="#3b82f6"
+          bgColor="#eff6ff"
+        />
+        <StatCard
+          icon="✔️"
+          title="Hoàn tất"
+          value={statistics.completed}
+          color="#8b5cf6"
+          bgColor="#faf5ff"
+        />
+        <StatCard
+          icon="❌"
+          title="Từ chối"
+          value={statistics.rejected}
+          color="#ef4444"
+          bgColor="#fef2f2"
+        />
+      </div>
+
+      {/* Bộ lọc & tìm kiếm - Thiết kế hiện đại */}
+      <div style={{
+        background: '#fff',
+        padding: '24px',
+        borderRadius: '16px',
+        marginBottom: '24px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>
+            🔍 Bộ lọc tìm kiếm
+          </h3>
+        </div>
+        
+        <form onSubmit={handleSearch} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          {/* Tìm kiếm */}
+          <div>
+            <label style={labelStyle}>Tìm kiếm</label>
             <input
               type="text"
-              placeholder="Tên khách hàng, tên sản phẩm, mã đơn..."
+              placeholder="Mã đơn, tên KH, sản phẩm..."
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              className="search-input"
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+              style={inputStyle}
             />
           </div>
-          <div style={{ minWidth: '160px' }}>
-            <label style={{ display: 'block', fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Trạng thái</label>
+
+          {/* Trạng thái */}
+          <div>
+            <label style={labelStyle}>Trạng thái</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+              style={inputStyle}
             >
               {STATUS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
+
+          {/* Từ ngày */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Từ ngày</label>
+            <label style={labelStyle}>Từ ngày</label>
             <input
               type="date"
               value={tuNgay}
               onChange={(e) => setTuNgay(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+              style={inputStyle}
             />
           </div>
+
+          {/* Đến ngày */}
           <div>
-            <label style={{ display: 'block', fontSize: '13px', color: '#6b7280', marginBottom: '4px' }}>Đến ngày</label>
+            <label style={labelStyle}>Đến ngày</label>
             <input
               type="date"
               value={denNgay}
               onChange={(e) => setDenNgay(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '14px' }}
+              style={inputStyle}
             />
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button type="submit" className="btn btn-primary">🔍 Tìm kiếm</button>
-            <button type="button" className="btn btn-secondary" onClick={handleReset}>Đặt lại</button>
+
+          {/* Các nút */}
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+            <button
+              type="submit"
+              style={{
+                ...buttonStyle,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: '#fff',
+                flex: 1,
+              }}
+            >
+              🔍 Tìm
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              style={{
+                ...buttonStyle,
+                background: '#f3f4f6',
+                color: '#374151',
+                flex: 1,
+              }}
+            >
+              ↺ Đặt lại
+            </button>
           </div>
         </form>
       </div>
 
       {/* Thông báo lỗi */}
       {error && (
-        <div className="error-message" style={{ background: '#fef2f2', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #fca5a5' }}>
-          ⚠️ {error}
+        <div style={{
+          background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+          color: '#991b1b',
+          padding: '16px 20px',
+          borderRadius: '12px',
+          marginBottom: '20px',
+          border: '2px solid #fca5a5',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          fontWeight: '500',
+        }}>
+          <span style={{ fontSize: '24px' }}>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
       {/* Loading */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-          ⏳ Đang tải dữ liệu...
+        <div style={{
+          textAlign: 'center',
+          padding: '60px 20px',
+          background: '#fff',
+          borderRadius: '16px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+        }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            border: '4px solid #f3f4f6',
+            borderTop: '4px solid #667eea',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px',
+          }} />
+          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>Đang tải dữ liệu...</p>
+          <style>
+            {`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}
+          </style>
         </div>
       )}
 
@@ -280,22 +581,6 @@ const AdminReturns: React.FC = () => {
       )}
     </div>
   );
-};
-
-// Styles
-const thStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  textAlign: 'left',
-  fontSize: '13px',
-  fontWeight: 600,
-  color: '#374151',
-  whiteSpace: 'nowrap',
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  fontSize: '13px',
-  verticalAlign: 'middle',
 };
 
 export default AdminReturns;

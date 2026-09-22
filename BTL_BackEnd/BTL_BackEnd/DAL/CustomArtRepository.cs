@@ -123,7 +123,10 @@ public class CustomArtRepository : ICustomArtRepository
             if (!await reader.ReadAsync())
                 return false;
 
-            var currentArtist = reader.IsDBNull(reader.GetOrdinal("MaHoaSi")) ? null : reader.GetInt32(reader.GetOrdinal("MaHoaSi"));
+            int? currentArtist = reader.IsDBNull(reader.GetOrdinal("MaHoaSi"))
+                ? (int?)null
+                : reader.GetInt32(reader.GetOrdinal("MaHoaSi"));
+
             if (currentArtist.HasValue && currentArtist.Value != maHoaSi)
                 return false;
         }
