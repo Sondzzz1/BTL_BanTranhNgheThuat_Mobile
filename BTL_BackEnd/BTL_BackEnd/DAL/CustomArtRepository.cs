@@ -115,6 +115,19 @@ public class CustomArtRepository : ICustomArtRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
+        var existingQuery = @"SELECT MaHoaSi, TrangThai FROM YeuCauVeTranh WHERE MaYeuCau = @MaYeuCau";
+        using (var existingCommand = new SqlCommand(existingQuery, connection))
+        {
+            existingCommand.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+            using var reader = await existingCommand.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+                return false;
+
+            var currentArtist = reader.IsDBNull(reader.GetOrdinal("MaHoaSi")) ? null : reader.GetInt32(reader.GetOrdinal("MaHoaSi"));
+            if (currentArtist.HasValue && currentArtist.Value != maHoaSi)
+                return false;
+        }
+
         var query = @"UPDATE YeuCauVeTranh SET MaHoaSi = @MaHoaSi, TrangThai = @TrangThai, NgayCapNhat = GETDATE() WHERE MaYeuCau = @MaYeuCau";
         using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);

@@ -65,7 +65,8 @@ public class CustomArtController : ControllerBase
             return BadRequest(new { message = "Không tìm thấy thông tin họa sĩ" });
 
         var success = await _customArtBusiness.NhanYeuCau(id, maHoaSi.Value);
-        if (!success) return NotFound(new { message = "Không tìm thấy yêu cầu vẽ tranh" });
+        if (!success)
+            return Conflict(new { message = "Yêu cầu này đã được nhận bởi họa sĩ khác hoặc không tồn tại." });
 
         return Ok(new { message = "Đã nhận yêu cầu và chuyển sang trạng thái đang xử lý" });
     }

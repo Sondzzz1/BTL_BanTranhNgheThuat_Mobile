@@ -1,45 +1,5 @@
-import React, { useMemo, useState } from 'react';
-
-const STORAGE_KEY = 'artgallery_customart_claims';
-
-const mockRequests = [
-  {
-    id: 101,
-    khachHang: 'Nguyễn Văn A',
-    tieuDe: 'Tranh treo phòng khách hiện đại',
-    hoasi: 'Họa sĩ Minh Anh',
-    trangThai: 'Chờ báo giá',
-    ngayTao: '2026-09-12',
-    gia: '8.500.000đ',
-  },
-  {
-    id: 102,
-    khachHang: 'Trần Thị B',
-    tieuDe: 'Tranh phong cách tối giản',
-    hoasi: 'Chưa giao',
-    trangThai: 'Đã nhận',
-    ngayTao: '2026-09-11',
-    gia: 'Chưa có',
-  },
-  {
-    id: 103,
-    khachHang: 'Lê Văn C',
-    tieuDe: 'Tranh gia đình nền nâu ấm',
-    hoasi: 'Họa sĩ Lan Hương',
-    trangThai: 'Hoàn thành',
-    ngayTao: '2026-09-09',
-    gia: '12.000.000đ',
-  },
-];
-
-const getClaimMap = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-};
+import React, { useEffect, useMemo, useState } from 'react';
+import { customArtService, CustomArtRequestApi, getCustomArtStatusLabel } from '../../services/customArtService';
 
 type CustomArtRequestView = {
   id: number;
@@ -52,30 +12,42 @@ type CustomArtRequestView = {
   assignedTo?: string;
 };
 
+const mapApiToView = (item: CustomArtRequestApi): CustomArtRequestView => ({
+  id: item.maYeuCau,
+  khachHang: `Khách hàng #${item.maKhachHang}`,
+  tieuDe: item.tieuDe,
+  hoasi: item.maHoaSi ? `Họa sĩ #${item.maHoaSi}` : 'Chưa giao',
+  trangThai: item.trangThai,
+  ngayTao: new Date(item.ngayTao).toLocaleDateString('vi-VN'),
+  gia: item.giaDuKien ? `${item.giaDuKien.toLocaleString('vi-VN')}đ` : 'Chưa có',
+  assignedTo: item.maHoaSi ? `Họa sĩ #${item.maHoaSi}` : undefined,
+});
+
 const AdminCustomArt: React.FC = () => {
   const [status, setStatus] = useState<'all' | 'pending' | 'active' | 'done'>('all');
+  const [requests, setRequests] = useState<CustomArtRequestView[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const requests = useMemo<CustomArtRequestView[]>(() => {
-    const claimMap = getClaimMap();
-
-    return mockRequests.map((item) => {
-      const claim = claimMap[item.id];
-      if (claim) {
-        return {
-          ...item,
-          hoasi: claim.artistName,
-          trangThai: 'Đã nhận',
-          assignedTo: claim.artistName,
-        };
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const data = await customArtService.getAllRequests();
+        setRequests(data.map(mapApiToView));
+      } catch (error) {
+        console.error('Lỗi khi tải danh sách custom art:', error);
+      } finally {
+        setLoading(false);
       }
-      return item;
-    });
-  }, [status]);
+    };
+
+    load();
+  }, []);
 
   const filtered = useMemo(() => {
-    if (status === 'pending') return requests.filter((x) => x.trangThai === 'Chờ báo giá');
-    if (status === 'active') return requests.filter((x) => x.trangThai === 'Đã nhận');
-    if (status === 'done') return requests.filter((x) => x.trangThai === 'Hoàn thành');
+    if (status === 'pending') return requests.filter((x) => x.trangThai === 'Submitted' || x.trangThai === 'PendingArtist');
+    if (status === 'active') return requests.filter((x) => x.trangThai === 'Assigned' || x.trangThai === 'InProgress' || x.trangThai === 'PreviewSent');
+    if (status === 'done') return requests.filter((x) => x.trangThai === 'Completed');
     return requests;
   }, [requests, status]);
 
@@ -90,44 +62,53 @@ const AdminCustomArt: React.FC = () => {
           <label>Trạng thái:</label>
           <select value={status} onChange={(e) => setStatus(e.target.value as any)}>
             <option value="all">Tất cả</option>
-            <option value="pending">Chờ báo giá</option>
-            <option value="active">Đã nhận</option>
+            <option value="pending">Chờ xử lý</option>
+            <option value="active">Đã nhận / đang làm</option>
             <option value="done">Hoàn thành</option>
           </select>
         </div>
       </div>
 
       <div className="table-container">
-        <table className="styled-table">
-          <thead>
-            <tr>
-              <th>Mã</th>
-              <th>Khách hàng</th>
-              <th>Tiêu đề</th>
-              <th>Họa sĩ</th>
-              <th>Trạng thái</th>
-              <th>Ngày tạo</th>
-              <th>Giá</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((item) => (
-              <tr key={item.id}>
-                <td>#{item.id}</td>
-                <td>{item.khachHang}</td>
-                <td>{item.tieuDe}</td>
-                <td>{item.assignedTo ? `${item.assignedTo} (đã nhận)` : item.hoasi}</td>
-                <td>
-                  <span className={`status-badge ${item.trangThai === 'Hoàn thành' ? 'success' : item.trangThai === 'Đã nhận' ? 'warning' : 'neutral'}`}>
-                    {item.trangThai}
-                  </span>
-                </td>
-                <td>{item.ngayTao}</td>
-                <td>{item.gia}</td>
+        {loading ? (
+          <div>Đang tải dữ liệu...</div>
+        ) : (
+          <table className="styled-table">
+            <thead>
+              <tr>
+                <th>Mã</th>
+                <th>Khách hàng</th>
+                <th>Tiêu đề</th>
+                <th>Họa sĩ</th>
+                <th>Trạng thái</th>
+                <th>Ngày tạo</th>
+                <th>Giá</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((item) => (
+                <tr key={item.id}>
+                  <td>#{item.id}</td>
+                  <td>{item.khachHang}</td>
+                  <td>{item.tieuDe}</td>
+                  <td>{item.assignedTo ? `${item.assignedTo} (đã nhận)` : item.hoasi}</td>
+                  <td>
+                    <span className={`status-badge ${item.trangThai === 'Completed' ? 'success' : item.trangThai === 'Assigned' || item.trangThai === 'InProgress' || item.trangThai === 'Quoted' ? 'warning' : 'neutral'}`}>
+                      {getCustomArtStatusLabel(item.trangThai)}
+                    </span>
+                  </td>
+                  <td>{item.ngayTao}</td>
+                  <td>{item.gia}</td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center' }}>Không có dữ liệu</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
