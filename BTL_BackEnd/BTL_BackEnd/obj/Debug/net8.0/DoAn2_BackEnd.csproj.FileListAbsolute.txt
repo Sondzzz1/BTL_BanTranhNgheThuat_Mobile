@@ -419,3 +419,4 @@ C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\obj\Debug\net8.0\ref
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\obj\Debug\net8.0\DoAn2_BackEnd.pdb
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\obj\Debug\net8.0\DoAn2_BackEnd.genruntimeconfig.cache
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\obj\Debug\net8.0\ref\DoAn2_BackEnd.dll
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\DoAn2_BackEnd.exe
