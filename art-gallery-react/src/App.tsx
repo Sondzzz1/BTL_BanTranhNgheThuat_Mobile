@@ -31,6 +31,8 @@ import AdminProfile from './pages/Admin/AdminProfile';
 import AdminArtworkDetails from './pages/Admin/AdminArtworkDetails';
 import AdminArtistArtworks from './pages/Admin/AdminArtistArtworks';
 import ReturnRequests from './pages/Admin/ReturnRequests';
+import AdminCustomArt from './pages/Admin/AdminCustomArt';
+import AdminConsultation from './pages/Admin/AdminConsultation';
 
 import AdminAuthorRevenue from './pages/Admin/AdminAuthorRevenue';
 import AdminApiTest from './pages/Admin/AdminApiTest';
@@ -96,6 +98,8 @@ function App() {
               <Route path="profile" element={<AdminProfile />} />
               <Route path="revenue" element={<AdminAuthorRevenue />} />
               <Route path="return-requests" element={<ReturnRequests />} />
+              <Route path="custom-art" element={<AdminCustomArt />} />
+              <Route path="consultation" element={<AdminConsultation />} />
               <Route path="api-test" element={<AdminApiTest />} />
               <Route path="test-edits" element={<TestEditsAPI />} />
             </Route>

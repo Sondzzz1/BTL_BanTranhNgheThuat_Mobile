@@ -52,6 +52,16 @@ const AdminLayout: React.FC = () => {
                                     <i className="ti-back-left"></i> Hoàn Trả
                                 </li>
                             </NavLink>
+                            <NavLink to="/admin/custom-art">
+                                <li className={location.pathname === '/admin/custom-art' ? 'active' : ''}>
+                                    <i className="ti-paint-bucket"></i> Tranh theo yêu cầu
+                                </li>
+                            </NavLink>
+                            <NavLink to="/admin/consultation">
+                                <li className={location.pathname === '/admin/consultation' ? 'active' : ''}>
+                                    <i className="ti-calendar"></i> Tư vấn nghệ thuật
+                                </li>
+                            </NavLink>
                             <NavLink to="/admin/customers">
                                 <li className={location.pathname === '/admin/customers' ? 'active' : ''}>
                                     <i className="ti-user"></i> Khách hàng

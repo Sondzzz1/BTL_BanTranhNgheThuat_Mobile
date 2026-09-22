@@ -30,6 +30,11 @@ import AboutScreen from './app/AboutScreen';
 import ArtistsScreen from './app/ArtistsScreen';
 import ArtistDetailScreen from './app/ArtistDetailScreen';
 import ContactScreen from './app/ContactScreen';
+import CustomArtListScreen from './app/custom-art/CustomArtListScreen';
+import CreateCustomArtScreen from './app/custom-art/CreateCustomArtScreen';
+import CustomArtDetailScreen from './app/custom-art/CustomArtDetailScreen';
+import ConsultationListScreen from './app/consultation/ConsultationListScreen';
+import ConsultationBookingScreen from './app/consultation/ConsultationBookingScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -213,6 +218,31 @@ function MainStackNavigator() {
         name="Contact"
         component={ContactScreen}
         options={{ title: 'Liên Hệ' }}
+      />
+      <Stack.Screen
+        name="CustomArtList"
+        component={CustomArtListScreen}
+        options={{ title: 'Vẽ theo yêu cầu' }}
+      />
+      <Stack.Screen
+        name="CreateCustomArt"
+        component={CreateCustomArtScreen}
+        options={{ title: 'Tạo yêu cầu vẽ tranh' }}
+      />
+      <Stack.Screen
+        name="CustomArtDetail"
+        component={CustomArtDetailScreen}
+        options={{ title: 'Chi tiết yêu cầu' }}
+      />
+      <Stack.Screen
+        name="ConsultationList"
+        component={ConsultationListScreen}
+        options={{ title: 'Lịch tư vấn' }}
+      />
+      <Stack.Screen
+        name="ConsultationBooking"
+        component={ConsultationBookingScreen}
+        options={{ title: 'Đặt lịch tư vấn' }}
       />
     </Stack.Navigator>
   );

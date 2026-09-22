@@ -107,6 +107,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     );
   };
 
+  const handleCustomArtPress = () => {
+    navigation.navigate('CustomArtList');
+  };
+
+  const handleConsultationPress = () => {
+    navigation.navigate('ConsultationList');
+  };
+
   if (isLoading) {
     return <Loading message="Đang tải dữ liệu..." />;
   }
@@ -167,7 +175,26 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         </View>
 
-        {/* 2. Feature Highlights (Dark Charcoal / Black Box Theme) */}
+        {/* 2. Service quick access */}
+        <View style={styles.quickServiceSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>DỊCH VỤ KHÁCH HÀNG</Text>
+          </View>
+          <View style={styles.quickServiceGrid}>
+            <TouchableOpacity style={styles.quickServiceCard} onPress={handleCustomArtPress}>
+              <Ionicons name="color-palette" size={28} color="#ea580c" />
+              <Text style={styles.quickServiceTitle}>Vẽ theo yêu cầu</Text>
+              <Text style={styles.quickServiceDesc}>Tạo yêu cầu, nhận báo giá, theo dõi tiến độ</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.quickServiceCard} onPress={handleConsultationPress}>
+              <Ionicons name="calendar" size={28} color="#111827" />
+              <Text style={styles.quickServiceTitle}>Tư vấn nghệ thuật</Text>
+              <Text style={styles.quickServiceDesc}>Đặt lịch với họa sĩ và nhận gợi ý không gian</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 3. Feature Highlights (Dark Charcoal / Black Box Theme) */}
         <View style={styles.featuresDarkSection}>
           <View style={styles.featureDarkCard}>
             <View style={styles.featureHeaderRow}>
@@ -606,6 +633,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     width: 8,
     height: 8,
+  },
+  quickServiceSection: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  quickServiceGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  quickServiceCard: {
+    flex: 1,
+    backgroundColor: '#fff7ed',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+    alignItems: 'flex-start',
+  },
+  quickServiceTitle: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0f172a',
+  },
+  quickServiceDesc: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#475569',
+    lineHeight: 18,
   },
   /* Dark Feature Section */
   featuresDarkSection: {
