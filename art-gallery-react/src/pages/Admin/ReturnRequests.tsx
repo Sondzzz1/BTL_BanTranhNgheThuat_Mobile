@@ -7,6 +7,7 @@ import {
   RETURN_STATUS_COLOR,
   RETURN_STATUS_TEXT,
 } from '../../services/adminReturnService';
+import { formatVnd } from '../../utils/currency';
 
 const filters = [
   ['ALL', 'Tất cả'], ['CHO_DUYET', 'Chờ duyệt'], ['DA_DUYET', 'Đã duyệt'],
@@ -14,9 +15,7 @@ const filters = [
   ['DA_HOAN_TIEN', 'Đã hoàn tiền'], ['HOAN_TAT', 'Hoàn tất'],
 ];
 
-const money = (value: number) => new Intl.NumberFormat('vi-VN', {
-  style: 'currency', currency: 'VND', maximumFractionDigits: 0,
-}).format(value);
+const money = formatVnd;
 
 const ReturnRequests: React.FC = () => {
   const [requests, setRequests] = useState<HoanTraSummary[]>([]);
@@ -47,19 +46,19 @@ const ReturnRequests: React.FC = () => {
   };
 
   useEffect(() => { load(); }, []);
-  useEffect(() => () => evidenceUrls.forEach(URL.revokeObjectURL), [evidenceUrls]);
+  useEffect(() => () => evidenceUrls.filter((url) => url.startsWith('blob:')).forEach(URL.revokeObjectURL), [evidenceUrls]);
 
   const openDetail = async (id: number) => {
     try {
       setBusy(true);
       const value = await adminReturnService.getReturnById(id);
-      evidenceUrls.forEach(URL.revokeObjectURL);
+      evidenceUrls.filter((url) => url.startsWith('blob:')).forEach(URL.revokeObjectURL);
       const loaded = await Promise.all(value.hinhAnh.map((path) => adminReturnService.getEvidenceObjectUrl(path)));
       setEvidenceUrls(loaded);
       setDetail(value);
       setRejectReason('');
       setResellable(Boolean(value.coTheBanLai));
-      setRefundAmount(String(value.soTienHoan ?? value.giaTacPham * value.soLuongTra));
+      setRefundAmount(Number(value.soTienHoan ?? value.giaTacPham * value.soLuongTra).toLocaleString('vi-VN'));
       setRefundMethod(value.phuongThucHoanTien || 'CHUYEN_KHOAN');
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Không thể tải chi tiết yêu cầu');
@@ -69,7 +68,7 @@ const ReturnRequests: React.FC = () => {
   };
 
   const closeDetail = () => {
-    evidenceUrls.forEach(URL.revokeObjectURL);
+    evidenceUrls.filter((url) => url.startsWith('blob:')).forEach(URL.revokeObjectURL);
     setEvidenceUrls([]);
     setDetail(null);
   };
@@ -106,7 +105,7 @@ const ReturnRequests: React.FC = () => {
 
   const refund = () => {
     if (!detail) return;
-    const amount = Number(refundAmount);
+    const amount = Number(refundAmount.replace(/\D/g, ''));
     if (!Number.isFinite(amount) || amount <= 0) return alert('Số tiền hoàn phải lớn hơn 0');
     return run(() => adminReturnService.confirmRefund(detail.maYeuCau, {
       soTienHoan: amount, phuongThucHoanTien: refundMethod,
@@ -219,7 +218,7 @@ const ReturnRequests: React.FC = () => {
             </div>}
 
             {detail.trangThai === 'DA_NHAN_HANG' && <div style={{ marginTop: 18, padding: 14, background: '#f8fafc' }}>
-              <label>Số tiền hoàn <input type="number" min="1" max={detail.giaTacPham * detail.soLuongTra} value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)} /></label>
+              <label>Số tiền hoàn <input type="text" inputMode="numeric" value={refundAmount} onChange={(e) => { const digits = e.target.value.replace(/\D/g, ''); setRefundAmount(digits ? Number(digits).toLocaleString('vi-VN') : ''); }} /> ₫</label>
               <label style={{ marginLeft: 12 }}>Phương thức <select value={refundMethod} onChange={(e) => setRefundMethod(e.target.value)}>
                 <option value="CHUYEN_KHOAN">Chuyển khoản</option><option value="TIEN_MAT">Tiền mặt</option><option value="MOMO">MoMo</option><option value="VNPAY">VNPay</option>
               </select></label>

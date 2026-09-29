@@ -18,9 +18,12 @@ public interface ICustomArtRepository
     Task<int?> CompleteRequest(int maYeuCau, int maHoaSi, HoanThanhYeuCauRequest request);
     Task<CustomArtQuote> CreateQuote(BaoGiaTranhRequest request, int maHoaSi);
     Task<CustomArtQuote?> GetQuoteById(int maBaoGia);
+    Task<CustomArtQuote?> GetLatestQuoteByRequest(int maYeuCau);
     Task<bool> ConfirmQuote(int maBaoGia, int maKhachHang);
     Task<bool> CreateDeposit(int maYeuCau, int maKhachHang, decimal soTien);
     Task<bool> CreateProgress(TaoTienDoRequest request, int maHoaSi);
+    Task<List<CustomArtProgress>> GetProgressByRequest(int maYeuCau);
+    Task<CustomArtProgress?> GetProgressById(int maYeuCau, int maTienDo);
     Task<bool> CreateFeedback(TaoPhanHoiRequest request, int maKhachHang);
     Task<bool> ConfirmComplete(int maYeuCau, int maKhachHang);
     Task<bool> UpdateStoredFilePath(int maYeuCau, int maKhachHang, string fileKind, string storedPath);

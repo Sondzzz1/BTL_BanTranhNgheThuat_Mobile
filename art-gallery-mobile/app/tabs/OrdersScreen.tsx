@@ -16,6 +16,7 @@ import ErrorMessage from '../../components/ErrorMessage';
 import EmptyState from '../../components/EmptyState';
 import Footer from '../../components/Footer';
 import AppHeader from '../../components/AppHeader';
+import { formatVnd } from '../../utils/currency';
 
 interface OrdersScreenProps {
   navigation: any;
@@ -75,12 +76,7 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
     navigation.navigate('OrderDetail', { id: order.maDonHang });
   };
 
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string): string => {
     try {

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
 import { orderService } from '../services/orderService';
+import { formatVnd } from '../utils/currency';
 import '../assets/css/Checkout.css';
 
 const Checkout: React.FC = () => {
@@ -95,12 +96,7 @@ const Checkout: React.FC = () => {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   if (!isAuthenticated || cart.length === 0) {
     return null;

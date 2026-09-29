@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { adminService, DoanhThuTheoHoaSiResponse } from '../../services/adminService';
+import { formatVnd } from '../../utils/currency';
 import './Admin.css';
 
-const formatCurrency = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
+const formatCurrency = formatVnd;
 
 const formatNumber = (n: number) =>
     new Intl.NumberFormat('vi-VN').format(n || 0);

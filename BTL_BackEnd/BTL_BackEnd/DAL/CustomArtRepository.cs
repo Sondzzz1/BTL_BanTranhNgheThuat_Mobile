@@ -169,15 +169,12 @@ public class CustomArtRepository : ICustomArtRepository
             SET TrangThai=@TrangThai, GhiChuKiemDuyet=@GhiChu,
                 NguoiKiemDuyet=@NguoiKiemDuyet, NgayKiemDuyet=GETDATE(), NgayCapNhat=GETDATE()
             WHERE MaYeuCau=@MaYeuCau AND MaHoaSi IS NULL
-              AND [Type] IN (@BasedOnArtwork, @Reproduction)
               AND TrangThai IN (@Pending, @WaitingPermission);";
         await using var command = new SqlCommand(sql, connection);
         command.Parameters.AddWithValue("@TrangThai", (int)status);
         command.Parameters.AddWithValue("@GhiChu", (object?)note ?? DBNull.Value);
         command.Parameters.AddWithValue("@NguoiKiemDuyet", maTaiKhoan);
         command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
-        command.Parameters.AddWithValue("@BasedOnArtwork", (int)CustomArtType.BasedOnArtwork);
-        command.Parameters.AddWithValue("@Reproduction", (int)CustomArtType.Reproduction);
         command.Parameters.AddWithValue("@Pending", (int)CustomArtStatus.Submitted);
         command.Parameters.AddWithValue("@WaitingPermission", (int)CustomArtStatus.WaitingPermission);
         return await command.ExecuteNonQueryAsync() == 1;
@@ -190,12 +187,13 @@ public class CustomArtRepository : ICustomArtRepository
         const string sql = @"
             UPDATE YeuCauVeTranh SET TrangThai=@TrangThai, NgayCapNhat=GETDATE()
             WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi
-              AND TrangThai IN (@Accepted, @Quoted, @CustomerAccepted, @DepositPaid, @InProgress, @PreviewSent, @RevisionRequested);";
+              AND TrangThai IN (@CustomerAccepted, @DepositPaid);";
         await using var command = new SqlCommand(sql, connection);
         command.Parameters.AddWithValue("@TrangThai", (int)status);
         command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
-        AddActiveStatusParameters(command);
+        command.Parameters.AddWithValue("@CustomerAccepted", (int)CustomArtStatus.CustomerAccepted);
+        command.Parameters.AddWithValue("@DepositPaid", (int)CustomArtStatus.DepositPaid);
         return await command.ExecuteNonQueryAsync() == 1;
     }
 
@@ -251,7 +249,7 @@ public class CustomArtRepository : ICustomArtRepository
                 return existingArtworkId.Value;
             }
 
-            if (!IsActiveArtistStatus(currentStatus))
+            if (currentStatus is not (CustomArtStatus.InProgress or CustomArtStatus.PreviewSent or CustomArtStatus.RevisionRequested))
             {
                 await transaction.RollbackAsync();
                 return null;
@@ -312,20 +310,33 @@ public class CustomArtRepository : ICustomArtRepository
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
         const string sql = @"
-            IF NOT EXISTS (SELECT 1 FROM YeuCauVeTranh WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi)
+            IF NOT EXISTS (SELECT 1 FROM YeuCauVeTranh WITH (UPDLOCK,HOLDLOCK)
+                           WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi AND TrangThai IN (@Assigned,@Quoted))
                 THROW 50010, N'Bạn không phụ trách yêu cầu này.', 1;
+            UPDATE BaoGiaVeTranh SET IsActive=0
+            WHERE MaYeuCau=@MaYeuCau AND IsActive=1;
             INSERT INTO BaoGiaVeTranh
                 (MaYeuCau, MaHoaSi, GiaBaoGia, ThoiGianHoanThanh, GhiChu, IsActive, NgayTao, TrangThai)
             OUTPUT INSERTED.MaBaoGia
             VALUES (@MaYeuCau, @MaHoaSi, @GiaBaoGia, @ThoiGianHoanThanh, @GhiChu, 1, GETDATE(), N'PendingCustomerApproval');";
-        await using var command = new SqlCommand(sql, connection);
+        await using var command = new SqlCommand(sql, connection, transaction);
         command.Parameters.AddWithValue("@MaYeuCau", request.MaYeuCau);
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
+        command.Parameters.AddWithValue("@Assigned", (int)CustomArtStatus.Assigned);
+        command.Parameters.AddWithValue("@Quoted", (int)CustomArtStatus.Quoted);
         command.Parameters.AddWithValue("@GiaBaoGia", request.GiaBaoGia);
         command.Parameters.AddWithValue("@ThoiGianHoanThanh", request.ThoiGianHoanThanh);
         command.Parameters.AddWithValue("@GhiChu", (object?)request.GhiChu ?? DBNull.Value);
         var id = Convert.ToInt32(await command.ExecuteScalarAsync());
+        await using var update = new SqlCommand(@"UPDATE YeuCauVeTranh SET TrangThai=@Quoted,NgayCapNhat=GETDATE()
+                                                  WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi;", connection, transaction);
+        update.Parameters.AddWithValue("@Quoted", (int)CustomArtStatus.Quoted);
+        update.Parameters.AddWithValue("@MaYeuCau", request.MaYeuCau);
+        update.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
+        await update.ExecuteNonQueryAsync();
+        await transaction.CommitAsync();
         return await GetQuoteById(id) ?? new CustomArtQuote
         {
             MaBaoGia = id,
@@ -346,19 +357,54 @@ public class CustomArtRepository : ICustomArtRepository
         return await reader.ReadAsync() ? MapQuote(reader) : null;
     }
 
+    public async Task<CustomArtQuote?> GetLatestQuoteByRequest(int maYeuCau)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = new SqlCommand(@"SELECT TOP (1) * FROM BaoGiaVeTranh
+                                                   WHERE MaYeuCau=@MaYeuCau
+                                                   ORDER BY IsActive DESC, MaBaoGia DESC", connection);
+        command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+        await using var reader = await command.ExecuteReaderAsync();
+        return await reader.ReadAsync() ? MapQuote(reader) : null;
+    }
+
     public async Task<bool> ConfirmQuote(int maBaoGia, int maKhachHang)
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
         const string sql = @"
             UPDATE b SET b.TrangThai=N'CustomerAccepted'
-            FROM BaoGiaVeTranh b
-            INNER JOIN YeuCauVeTranh y ON y.MaYeuCau=b.MaYeuCau
-            WHERE b.MaBaoGia=@MaBaoGia AND y.MaKhachHang=@MaKhachHang;";
-        await using var command = new SqlCommand(sql, connection);
+            OUTPUT INSERTED.MaYeuCau
+            FROM BaoGiaVeTranh b WITH (UPDLOCK,HOLDLOCK)
+            INNER JOIN YeuCauVeTranh y WITH (UPDLOCK,HOLDLOCK) ON y.MaYeuCau=b.MaYeuCau
+            WHERE b.MaBaoGia=@MaBaoGia AND b.IsActive=1
+              AND b.TrangThai=N'PendingCustomerApproval'
+              AND y.MaKhachHang=@MaKhachHang AND y.TrangThai=@Quoted;";
+        await using var command = new SqlCommand(sql, connection, transaction);
         command.Parameters.AddWithValue("@MaBaoGia", maBaoGia);
         command.Parameters.AddWithValue("@MaKhachHang", maKhachHang);
-        return await command.ExecuteNonQueryAsync() == 1;
+        command.Parameters.AddWithValue("@Quoted", (int)CustomArtStatus.Quoted);
+        var requestIdValue = await command.ExecuteScalarAsync();
+        if (requestIdValue == null)
+        {
+            await transaction.RollbackAsync();
+            return false;
+        }
+        var requestId = Convert.ToInt32(requestIdValue);
+        await using var update = new SqlCommand(@"UPDATE YeuCauVeTranh SET TrangThai=@CustomerAccepted,NgayCapNhat=GETDATE()
+                                                  WHERE MaYeuCau=@MaYeuCau AND TrangThai=@Quoted;", connection, transaction);
+        update.Parameters.AddWithValue("@CustomerAccepted", (int)CustomArtStatus.CustomerAccepted);
+        update.Parameters.AddWithValue("@Quoted", (int)CustomArtStatus.Quoted);
+        update.Parameters.AddWithValue("@MaYeuCau", requestId);
+        if (await update.ExecuteNonQueryAsync() != 1)
+        {
+            await transaction.RollbackAsync();
+            return false;
+        }
+        await transaction.CommitAsync();
+        return true;
     }
 
     public async Task<bool> CreateDeposit(int maYeuCau, int maKhachHang, decimal soTien)
@@ -366,10 +412,13 @@ public class CustomArtRepository : ICustomArtRepository
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
-        const string validate = "SELECT COUNT(1) FROM YeuCauVeTranh WITH (UPDLOCK) WHERE MaYeuCau=@MaYeuCau AND MaKhachHang=@MaKhachHang";
+        const string validate = @"SELECT COUNT(1) FROM YeuCauVeTranh WITH (UPDLOCK)
+                                  WHERE MaYeuCau=@MaYeuCau AND MaKhachHang=@MaKhachHang
+                                    AND TrangThai=@CustomerAccepted";
         await using var check = new SqlCommand(validate, connection, transaction);
         check.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
         check.Parameters.AddWithValue("@MaKhachHang", maKhachHang);
+        check.Parameters.AddWithValue("@CustomerAccepted", (int)CustomArtStatus.CustomerAccepted);
         if (Convert.ToInt32(await check.ExecuteScalarAsync()) != 1)
         {
             await transaction.RollbackAsync();
@@ -395,7 +444,9 @@ public class CustomArtRepository : ICustomArtRepository
         const string insert = @"
             INSERT INTO TienDoVeTranh (MaYeuCau, TieuDe, MoTa, AnhPreview, TrangThai, NgayTao)
             SELECT @MaYeuCau, @TieuDe, @MoTa, @AnhPreview, @ProgressStatus, GETDATE()
-            WHERE EXISTS (SELECT 1 FROM YeuCauVeTranh WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi);";
+            WHERE EXISTS (SELECT 1 FROM YeuCauVeTranh
+                          WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi
+                            AND TrangThai IN (@InProgress,@PreviewSent,@RevisionRequested));";
         await using var command = new SqlCommand(insert, connection, transaction);
         command.Parameters.AddWithValue("@MaYeuCau", request.MaYeuCau);
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
@@ -403,6 +454,9 @@ public class CustomArtRepository : ICustomArtRepository
         command.Parameters.AddWithValue("@MoTa", request.MoTa);
         command.Parameters.AddWithValue("@AnhPreview", (object?)request.AnhPreview ?? DBNull.Value);
         command.Parameters.AddWithValue("@ProgressStatus", request.TrangThai);
+        command.Parameters.AddWithValue("@InProgress", (int)CustomArtStatus.InProgress);
+        command.Parameters.AddWithValue("@PreviewSent", (int)CustomArtStatus.PreviewSent);
+        command.Parameters.AddWithValue("@RevisionRequested", (int)CustomArtStatus.RevisionRequested);
         if (await command.ExecuteNonQueryAsync() != 1)
         {
             await transaction.RollbackAsync();
@@ -416,6 +470,31 @@ public class CustomArtRepository : ICustomArtRepository
         await updateCommand.ExecuteNonQueryAsync();
         await transaction.CommitAsync();
         return true;
+    }
+
+    public async Task<List<CustomArtProgress>> GetProgressByRequest(int maYeuCau)
+    {
+        var result = new List<CustomArtProgress>();
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = new SqlCommand(@"SELECT * FROM TienDoVeTranh
+                                                   WHERE MaYeuCau=@MaYeuCau ORDER BY NgayTao,MaTienDo", connection);
+        command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) result.Add(MapProgress(reader));
+        return result;
+    }
+
+    public async Task<CustomArtProgress?> GetProgressById(int maYeuCau, int maTienDo)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = new SqlCommand(@"SELECT * FROM TienDoVeTranh
+                                                   WHERE MaYeuCau=@MaYeuCau AND MaTienDo=@MaTienDo", connection);
+        command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+        command.Parameters.AddWithValue("@MaTienDo", maTienDo);
+        await using var reader = await command.ExecuteReaderAsync();
+        return await reader.ReadAsync() ? MapProgress(reader) : null;
     }
 
     public async Task<bool> CreateFeedback(TaoPhanHoiRequest request, int maKhachHang)
@@ -618,6 +697,17 @@ public class CustomArtRepository : ICustomArtRepository
         IsActive = reader.GetBoolean(reader.GetOrdinal("IsActive")),
         NgayTao = reader.GetDateTime(reader.GetOrdinal("NgayTao")),
         TrangThai = GetNullableString(reader, "TrangThai") ?? "PendingCustomerApproval"
+    };
+
+    private static CustomArtProgress MapProgress(SqlDataReader reader) => new()
+    {
+        MaTienDo = reader.GetInt32(reader.GetOrdinal("MaTienDo")),
+        MaYeuCau = reader.GetInt32(reader.GetOrdinal("MaYeuCau")),
+        TieuDe = GetNullableString(reader, "TieuDe") ?? string.Empty,
+        MoTa = GetNullableString(reader, "MoTa") ?? string.Empty,
+        AnhPreview = GetNullableString(reader, "AnhPreview"),
+        TrangThai = GetNullableString(reader, "TrangThai") ?? "InProgress",
+        NgayTao = reader.GetDateTime(reader.GetOrdinal("NgayTao"))
     };
 
     private static CustomArtType ParseCustomArtType(string? type) => type?.Trim().ToUpperInvariant() switch

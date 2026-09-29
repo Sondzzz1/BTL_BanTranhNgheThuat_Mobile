@@ -1,6 +1,7 @@
 // Artist Revenue - Quản lý doanh thu của họa sĩ
 import React, { useState, useEffect } from 'react';
 import { artistDashboardService, DoanhThuTongQuanResponse, DonHangResponse } from '../../services/artistDashboardService';
+import { formatVnd } from '../../utils/currency';
 
 const ArtistRevenue: React.FC = () => {
   const [tongQuan, setTongQuan] = useState<DoanhThuTongQuanResponse | null>(null);
@@ -27,12 +28,7 @@ const ArtistRevenue: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(amount);
-  };
+  const formatCurrency = formatVnd;
 
   if (loading) return <div className="page" style={{ padding: '20px' }}>Đang tải dữ liệu...</div>;
 

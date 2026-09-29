@@ -4,6 +4,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { artistDashboardService, TacPhamHoaSiResponse } from '../../services/artistDashboardService';
 import { categoryService } from '../../services/categoryService';
 import apiClient from '../../services/api';
+import { formatVnd } from '../../utils/currency';
 import './ArtworkDetailManagement.css';
 
 interface ArtworkStats {
@@ -194,8 +195,7 @@ const ArtworkDetailManagement: React.FC = () => {
     }
   };
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {

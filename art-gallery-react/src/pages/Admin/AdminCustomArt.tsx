@@ -6,6 +6,7 @@ import {
   getCustomArtStatusLabel,
   getCustomArtTypeLabel,
 } from '../../services/customArtService';
+import { formatVnd } from '../../utils/currency';
 import './AdminCustomArt.css';
 
 const AdminCustomArt: React.FC = () => {
@@ -119,7 +120,7 @@ const AdminCustomArt: React.FC = () => {
               <Field label="Khách hàng" value={selected.tenKhachHang || `#${selected.maKhachHang}`} />
               <Field label="Loại yêu cầu" value={getCustomArtTypeLabel(selected.type)} />
               <Field label="Họa sĩ thực hiện" value={selected.tenHoaSiThucHien || 'Chưa có'} />
-              <Field label="Ngân sách" value={`${Number(selected.giaDuKien || 0).toLocaleString('vi-VN')}đ`} />
+              <Field label="Ngân sách" value={formatVnd(selected.giaDuKien)} />
             </div>
             <Field label="Mô tả" value={selected.moTa || '—'} />
             {selected.type === 'EXISTING_ARTWORK' && <div className="commission-source">

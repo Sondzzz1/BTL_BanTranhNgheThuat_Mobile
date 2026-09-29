@@ -406,8 +406,20 @@ public class HoanTraRepository : IHoanTraRepository
     };
 
     private static List<string> ParseImages(string? json){if(string.IsNullOrWhiteSpace(json))return new();try{return JsonSerializer.Deserialize<List<string>>(json)??new();}catch{return new();}}
-    private static List<string> MapImages(int returnId,string? json)=>ParseImages(json).Select(value=>
-        Uri.TryCreate(value,UriKind.Absolute,out _)?value:$"/api/hoan-tra/{returnId}/tep/{Uri.EscapeDataString(value)}").ToList();
+    private static List<string> MapImages(int returnId,string? json)=>ParseImages(json)
+        .Where(value=>!string.IsNullOrWhiteSpace(value))
+        .Select(value=>MapImage(returnId,value.Trim()))
+        .ToList();
+    private static string MapImage(int returnId,string value)
+    {
+        if(value.StartsWith("data:image/",StringComparison.OrdinalIgnoreCase)) return value;
+        if(value.StartsWith("/api/",StringComparison.OrdinalIgnoreCase)) return value;
+        if(Uri.TryCreate(value,UriKind.Absolute,out var uri) &&
+           (uri.Scheme==Uri.UriSchemeHttp || uri.Scheme==Uri.UriSchemeHttps)) return value;
+        var normalized=value.Replace('\\','/');
+        var fileName=normalized.Split('/',StringSplitOptions.RemoveEmptyEntries).LastOrDefault()??normalized;
+        return $"/api/hoan-tra/{returnId}/tep/{Uri.EscapeDataString(fileName)}";
+    }
     private static object Db(object? value)=>value??DBNull.Value;
     private static int? NullableInt(SqlDataReader r,string n)=>r[n]==DBNull.Value?null:Convert.ToInt32(r[n]);
     private static bool? NullableBool(SqlDataReader r,string n)=>r[n]==DBNull.Value?null:Convert.ToBoolean(r[n]);

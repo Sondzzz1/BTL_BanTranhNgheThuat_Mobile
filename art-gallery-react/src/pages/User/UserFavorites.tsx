@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { favoriteService, FavoriteItem } from '../../services/favoriteService';
 import FavoriteButton from '../../components/FavoriteButton';
+import { formatVnd } from '../../utils/currency';
 import './UserFavorites.css';
 
 const UserFavorites: React.FC = () => {
@@ -26,12 +27,7 @@ const UserFavorites: React.FC = () => {
     }
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -97,10 +93,10 @@ const UserFavorites: React.FC = () => {
             <div key={fav.maYeuThich} className="favorite-card">
               <div className="card-image" onClick={() => handleViewDetail(fav.tacPham.maTacPham)}>
                 <img
-                  src={fav.tacPham.hinhAnh || 'https://via.placeholder.com/300?text=No+Image'}
+                  src={fav.tacPham.hinhAnh || '/assets/images/no-image.svg'}
                   alt={fav.tacPham.tenTacPham}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image';
+                    (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                   }}
                 />
                 <div className="card-overlay">

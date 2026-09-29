@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useCart } from '../hooks/useCart';
+import { formatVnd } from '../utils/currency';
 import '../assets/css/Cart.css';
 
 const Cart: React.FC = () => {
@@ -110,7 +111,7 @@ const Cart: React.FC = () => {
                         />
                       </td>
                       <td className="ten-sp">{item.name}</td>
-                      <td className="gia-sp">{item.price.toLocaleString()}₫</td>
+                      <td className="gia-sp">{formatVnd(item.price)}</td>
                       <td className="sl-sp">
                         <button
                           onClick={() => decreaseQuantity(item.id)}
@@ -141,7 +142,7 @@ const Cart: React.FC = () => {
                           +
                         </button>
                       </td>
-                      <td>{(item.price * item.quantity).toLocaleString()}₫</td>
+                      <td>{formatVnd(item.price * item.quantity)}</td>
                     </tr>
                   ))
                 )}
@@ -161,11 +162,11 @@ const Cart: React.FC = () => {
                 </tr>
                 <tr>
                   <td className="h">Tạm tính</td>
-                  <td className="price h">{cartTotal.toLocaleString()}₫</td>
+                  <td className="price h">{formatVnd(cartTotal)}</td>
                 </tr>
                 <tr>
                   <td>Tổng</td>
-                  <td className="price">{cartTotal.toLocaleString()}₫</td>
+                  <td className="price">{formatVnd(cartTotal)}</td>
                 </tr>
               </tbody>
             </table>

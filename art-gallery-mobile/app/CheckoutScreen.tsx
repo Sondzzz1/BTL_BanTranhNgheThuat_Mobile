@@ -14,6 +14,7 @@ import { orderService } from '../services/orderService';
 import { customerService } from '../services/customerService';
 import { Cart } from '../types/cart';
 import Loading from '../components/Loading';
+import { formatVnd } from '../utils/currency';
 
 interface CheckoutScreenProps {
   navigation: any;
@@ -135,12 +136,7 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
     );
   };
 
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price || 0);
-  };
+  const formatPrice = formatVnd;
 
   const calculateTotal = (): number => {
     if (!cart) return 0;

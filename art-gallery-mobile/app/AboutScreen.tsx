@@ -23,11 +23,7 @@ export default function AboutScreen() {
 
       {/* Main Content */}
       <View style={styles.section}>
-        <Image
-          source={{ uri: 'https://via.placeholder.com/400x500' }}
-          style={styles.mainImage}
-          resizeMode="cover"
-        />
+        <View style={[styles.mainImage, styles.imagePlaceholder]}><Text style={styles.imagePlaceholderText}>Không có ảnh</Text></View>
         
         <View style={styles.content}>
           <Text style={styles.sectionTitle}>Về Nhà Sáng Lập</Text>
@@ -190,6 +186,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
   },
+  imagePlaceholder: { backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  imagePlaceholderText: { color: '#6b7280', fontWeight: '600' },
   content: {
     marginBottom: 20,
   },

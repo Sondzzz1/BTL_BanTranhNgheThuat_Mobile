@@ -11,6 +11,7 @@ import { Artwork } from '../types';
 import ArtworkDetailSection from '../components/ArtworkDetailSection';
 import RecommendedArtworks from '../components/RecommendedArtworks';
 import FavoriteButton from '../components/FavoriteButton';
+import { formatVnd } from '../utils/currency';
 import '../assets/css/ArtworkDetail.css';
 
 const ArtworkDetail: React.FC = () => {
@@ -129,12 +130,7 @@ const ArtworkDetail: React.FC = () => {
     if (ok) navigate('/checkout');
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   if (loading) {
     return (
@@ -171,7 +167,7 @@ const ArtworkDetail: React.FC = () => {
                 src={selectedImage || artwork.anhTranh}
                 alt={artwork.tenTranh}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/600?text=No+Image';
+                  (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                 }}
               />
               <div className="zoom-icon">

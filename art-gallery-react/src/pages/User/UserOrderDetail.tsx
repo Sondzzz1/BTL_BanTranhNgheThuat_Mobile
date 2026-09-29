@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { orderService } from '../../services/orderService';
 import { Order } from '../../types';
+import { formatVnd } from '../../utils/currency';
 
 const UserOrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,12 +46,7 @@ const UserOrderDetail: React.FC = () => {
     return `status-badge ${status}`;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');

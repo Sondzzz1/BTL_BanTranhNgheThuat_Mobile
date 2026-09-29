@@ -70,7 +70,7 @@ const News: React.FC = () => {
                                             onError={(e) => {
                                                 const img = e.target as HTMLImageElement;
                                                 img.onerror = null;
-                                                img.src = 'https://via.placeholder.com/600x400?text=No+Image';
+                                                img.src = '/assets/images/no-image.svg';
                                             }}
                                         />
                                         <div className="news-card-overlay">

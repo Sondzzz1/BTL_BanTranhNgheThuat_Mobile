@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { artworkService } from '../services/artworkService';
 import { Artwork } from '../types';
+import { formatVnd } from '../utils/currency';
 import './RecommendedArtworks.css';
 
 interface RecommendedArtworksProps {
@@ -29,12 +30,7 @@ const RecommendedArtworks: React.FC<RecommendedArtworksProps> = ({ currentArtwor
     loadRecommendations();
   }, [currentArtworkId]);
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const handleArtworkClick = (id: string) => {
     navigate(`/artworks/${id}`);
@@ -78,7 +74,7 @@ const RecommendedArtworks: React.FC<RecommendedArtworksProps> = ({ currentArtwor
                 src={artwork.anhTranh}
                 alt={artwork.tenTranh}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image';
+                  (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                 }}
               />
               <div className="card-overlay">

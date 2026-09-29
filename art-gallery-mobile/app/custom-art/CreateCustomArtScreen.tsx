@@ -149,7 +149,10 @@ export default function CreateCustomArtScreen({ navigation }: any) {
       <Input label="Phong cách" value={form.phongCach} onChangeText={(v: string) => update('phongCach', v)} />
       <Input label="Màu sắc" value={form.mauSac} onChangeText={(v: string) => update('mauSac', v)} />
       <Input label="Chất liệu" value={form.chatLieu} onChangeText={(v: string) => update('chatLieu', v)} />
-      <Input label="Ngân sách dự kiến" value={form.giaDuKien} onChangeText={(v: string) => update('giaDuKien', v)} keyboardType="numeric" />
+      <Input label="Ngân sách dự kiến" value={form.giaDuKien} onChangeText={(v: string) => {
+        const digits = v.replace(/\D/g, '');
+        update('giaDuKien', digits ? Number(digits).toLocaleString('vi-VN') : '');
+      }} keyboardType="numeric" />
       <Input label="Hạn mong muốn (YYYY-MM-DD)" value={form.ngayHoanThanhDuKien} onChangeText={(v: string) => update('ngayHoanThanhDuKien', v)} />
 
       {type !== 'EXISTING_ARTWORK' && filePicker('reference', 'Ảnh tham khảo')}

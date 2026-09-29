@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { Artwork } from '../types';
+import { formatVnd } from '../utils/currency';
 import './Artworks.css';
 
 const Artworks: React.FC = () => {
@@ -42,9 +43,7 @@ const Artworks: React.FC = () => {
         setFilteredArtworks(filtered);
     }, [artworks, categoryFilter, authorFilter, sizeFilter]);
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('vi-VN').format(price) + 'đ';
-    };
+    const formatPrice = formatVnd;
 
     return (
         <div className="artworks-page">
@@ -128,7 +127,7 @@ const Artworks: React.FC = () => {
                                         src={artwork.anhTranh}
                                         alt={artwork.tenTranh}
                                         onError={(e) => {
-                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image';
+                                            (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                                         }}
                                     />
                                     <p className="category">{artwork.danhMuc.toUpperCase()}</p>

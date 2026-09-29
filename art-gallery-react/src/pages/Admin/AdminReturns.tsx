@@ -7,6 +7,7 @@ import {
   RETURN_STATUS_COLOR,
   RETURN_REASON_TEXT,
 } from '../../services/adminReturnService';
+import { formatVnd } from '../../utils/currency';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Tất cả trạng thái' },
@@ -233,8 +234,7 @@ const AdminReturns: React.FC = () => {
     } catch { return dateStr; }
   };
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  const formatPrice = formatVnd;
 
   // Phân trang
   const totalPages = Math.ceil(returns.length / PAGE_SIZE);

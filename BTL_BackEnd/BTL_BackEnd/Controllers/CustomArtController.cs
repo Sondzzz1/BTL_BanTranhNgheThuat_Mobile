@@ -329,6 +329,66 @@ public class CustomArtController : ControllerBase
             "Yêu cầu không tồn tại hoặc không thuộc họa sĩ");
     }
 
+    [HttpPost("hoa-si/{id:int}/tien-do-co-tep")]
+    [Authorize(Roles = "HoaSi")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<ActionResult> ThemTienDoCoTep(
+        int id,
+        [FromForm] TaoTienDoForm request,
+        CancellationToken cancellationToken)
+    {
+        var maHoaSi = RequireArtistId();
+        if (!maHoaSi.HasValue) return Unauthorized(new { message = "Token không có MaHoaSi" });
+        string? savedName = null;
+        try
+        {
+            request.MaYeuCau = id;
+            if (request.AnhPreviewFile != null)
+            {
+                savedName = await _fileHelper.SaveAsync(request.AnhPreviewFile, "progress", cancellationToken);
+                request.AnhPreview = savedName;
+            }
+            if (!await _customArtBusiness.ThemTienDo(request, maHoaSi.Value))
+            {
+                _fileHelper.DeleteIfExists(savedName);
+                return Conflict(new { message = "Yêu cầu chưa bắt đầu, không tồn tại hoặc không thuộc họa sĩ" });
+            }
+            return Ok(new { message = "Cập nhật tiến độ thành công" });
+        }
+        catch (ArgumentException ex)
+        {
+            _fileHelper.DeleteIfExists(savedName);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch
+        {
+            _fileHelper.DeleteIfExists(savedName);
+            throw;
+        }
+    }
+
+    [HttpGet("yeu-cau/{id:int}/tien-do/{progressId:int}/tep")]
+    public async Task<IActionResult> XemTepTienDo(int id, int progressId)
+    {
+        try
+        {
+            var storedName = await _customArtBusiness.LayTepTienDo(
+                id, progressId, JwtHelper.GetMaNguoiDung(User), JwtHelper.GetMaHoaSi(User), JwtHelper.IsAdmin(User));
+            if (string.IsNullOrWhiteSpace(storedName)) return NotFound(new { message = "Tiến độ chưa có ảnh" });
+            if (Uri.TryCreate(storedName, UriKind.Absolute, out var externalUri)) return Redirect(externalUri.ToString());
+            var file = _fileHelper.OpenRead(storedName);
+            return File(file.Stream, file.ContentType, enableRangeProcessing: true);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound(new { message = "Ảnh tiến độ không còn tồn tại trên máy chủ" });
+        }
+    }
+
     [HttpPost("gui-phan-hoi")]
     [Authorize(Roles = "NguoiDung")]
     public async Task<ActionResult> GuiPhanHoi([FromBody] TaoPhanHoiRequest request)

@@ -14,6 +14,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { favoriteService } from '../../services/favoriteService';
+import { formatVnd } from '../../utils/currency';
 import { FavoriteWithProduct } from '../../types/favorite';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
@@ -89,12 +90,7 @@ export default function FavoritesScreen({ navigation }: FavoritesScreenProps) {
     navigation.navigate('ProductDetail', { id: favorite.tacPham.maTacPham });
   };
 
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);

@@ -247,11 +247,11 @@ const AdminArtworkDetails: React.FC = () => {
                 <tr key={item.maChiTiet}>
                   <td>
                     <img
-                      src={item.hinhAnh || 'https://via.placeholder.com/80?text=No+Image'}
+                      src={item.hinhAnh || '/assets/images/no-image.svg'}
                       alt={item.tenTacPham}
                       style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '5px' }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=No+Image';
+                        (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                       }}
                     />
                   </td>

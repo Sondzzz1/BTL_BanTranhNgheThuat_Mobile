@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminService } from '../../services/adminService';
+import { formatVnd } from '../../utils/currency';
 import './AdminArtistArtworks.css';
 
 interface Artwork {
@@ -291,7 +292,7 @@ const AdminArtistArtworks: React.FC = () => {
                                         <i className="ti-folder"></i> {artwork.tenDanhMuc || 'Chưa phân loại'}
                                     </p>
                                     <p className="price">
-                                        <i className="ti-money"></i> {artwork.gia.toLocaleString('vi-VN')} VNĐ
+                                        <i className="ti-money"></i> {formatVnd(artwork.gia)}
                                     </p>
                                     <p className="quantity">
                                         <i className="ti-package"></i> Số lượng: {artwork.soLuong}

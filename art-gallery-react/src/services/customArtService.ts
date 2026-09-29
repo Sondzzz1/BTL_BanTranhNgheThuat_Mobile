@@ -34,6 +34,8 @@ export interface CustomArtRequestApi {
   ngayCapNhat?: string | null;
   ngayHoanThanhDuKien?: string | null;
   maTacPhamKetQua?: number | null;
+  quote?: CustomArtQuoteResponse | null;
+  progress: CustomArtProgressResponse[];
 }
 
 export interface CustomArtQuoteRequest {
@@ -52,6 +54,17 @@ export interface CustomArtQuoteResponse {
   thoiGianHoanThanh: string;
   ghiChu?: string | null;
   trangThai: string;
+  ngayTao: string;
+}
+
+export interface CustomArtProgressResponse {
+  maTienDo: number;
+  maYeuCau: number;
+  tieuDe: string;
+  moTa: string;
+  anhPreview?: string | null;
+  trangThai: string;
+  ngayTao: string;
 }
 
 export const customArtStatusMap: Record<string, string> = {
@@ -82,6 +95,7 @@ export const customArtFileUrl = (path?: string | null) => {
 
 export const getAuthenticatedCustomArtFileUrl = async (path?: string | null) => {
   if (!path) return undefined;
+  if (/^data:image\//i.test(path)) return path;
   if (/^https?:\/\//i.test(path)) return path;
   const endpoint = path.replace(/^\/api(?=\/)/i, '');
   const response = await apiClient.get<Blob>(endpoint, { responseType: 'blob' });
@@ -135,5 +149,16 @@ export const customArtService = {
 
   async confirmQuote(quoteId: number): Promise<{ message: string }> {
     return (await apiClient.post(`/tranh-theo-yeu-cau/bao-gia/${quoteId}/xac-nhan`)).data;
+  },
+
+  async createProgress(id: number, input: { tieuDe: string; moTa: string; image?: File }) {
+    const form = new FormData();
+    form.append('TieuDe', input.tieuDe);
+    form.append('MoTa', input.moTa);
+    form.append('TrangThai', 'InProgress');
+    if (input.image) form.append('AnhPreviewFile', input.image);
+    return (await apiClient.post(`/tranh-theo-yeu-cau/hoa-si/${id}/tien-do-co-tep`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data;
   },
 };

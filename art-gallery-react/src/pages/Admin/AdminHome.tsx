@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, DashboardResponse, ThongKeNhanhResponse } from '../../services/adminService';
+import { formatVnd } from '../../utils/currency';
 import './Admin.css';
 
 const AdminHome: React.FC = () => {
@@ -27,12 +28,7 @@ const AdminHome: React.FC = () => {
         }
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND',
-        }).format(amount);
-    };
+    const formatCurrency = formatVnd;
 
     if (loading) return <div className="page"><div className="loading">Đang tải dữ liệu...</div></div>;
 

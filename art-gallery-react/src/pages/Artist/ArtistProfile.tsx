@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { artistDashboardService, HoSoHoaSiResponse } from '../../services/artistDashboardService';
+import { formatVnd } from '../../utils/currency';
 
 interface ProfileData {
   name: string;
@@ -115,7 +116,7 @@ const ArtistProfile: React.FC = () => {
                  Tác phẩm: <strong>{profileInfo?.soTacPham || 0}</strong>
                </span>
                <span style={{ background: '#f0f0f0', padding: '5px 10px', borderRadius: '5px', fontSize: '13px' }}>
-                 Tổng doanh thu: <strong>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(profileInfo?.tongDoanhThu || 0)}</strong>
+                 Tổng doanh thu: <strong>{formatVnd(profileInfo?.tongDoanhThu)}</strong>
                </span>
             </div>
           </div>

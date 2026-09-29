@@ -13,6 +13,7 @@ import { orderService } from '../../services/orderService';
 import { Order, ORDER_STATUS_TEXT } from '../../types/order';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
+import { formatVnd } from '../../utils/currency';
 
 interface OrderDetailScreenProps {
   route: any;
@@ -77,12 +78,7 @@ export default function OrderDetailScreen({
     );
   };
 
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);

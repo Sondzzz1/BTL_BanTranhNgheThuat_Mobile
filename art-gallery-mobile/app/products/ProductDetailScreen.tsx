@@ -14,6 +14,7 @@ import { productService } from '../../services/productService';
 import { cartService } from '../../services/cartService';
 import { reviewService } from '../../services/reviewService';
 import { Product } from '../../types/product';
+import { formatVnd } from '../../utils/currency';
 import { Review, ProductReviewSummary } from '../../types/review';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
@@ -235,12 +236,7 @@ export default function ProductDetailScreen({
     navigation.push('ProductDetail', { id: suggestionId });
   };
 
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   if (isLoading) {
     return <Loading message="Đang tải thông tin..." />;

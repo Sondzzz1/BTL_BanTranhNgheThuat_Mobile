@@ -54,6 +54,29 @@ export interface CommissionRequest {
   ngayCapNhat?: string | null;
   ngayHoanThanhDuKien?: string | null;
   maTacPhamKetQua?: number | null;
+  quote?: CommissionQuote | null;
+  progress: CommissionProgress[];
+}
+
+export interface CommissionQuote {
+  maBaoGia: number;
+  maYeuCau: number;
+  maHoaSi: number;
+  giaBaoGia: number;
+  thoiGianHoanThanh: string;
+  ghiChu?: string | null;
+  trangThai: string;
+  ngayTao: string;
+}
+
+export interface CommissionProgress {
+  maTienDo: number;
+  maYeuCau: number;
+  tieuDe: string;
+  moTa: string;
+  anhPreview?: string | null;
+  trangThai: string;
+  ngayTao: string;
 }
 
 export interface CommissionCreateInput {

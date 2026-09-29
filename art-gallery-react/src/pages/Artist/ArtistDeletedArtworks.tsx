@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { hoaSiAuthService } from '../../services/hoaSiAuthService';
 import { categoryService } from '../../services/categoryService';
+import { formatVnd } from '../../utils/currency';
 import './ArtistArtworks.css';
 
 interface DeletedArtwork {
@@ -64,8 +65,7 @@ const ArtistDeletedArtworks: React.FC = () => {
     }
   };
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  const formatPrice = formatVnd;
 
   // Lọc tác phẩm đã xóa
   let filteredArtworks = artworks;

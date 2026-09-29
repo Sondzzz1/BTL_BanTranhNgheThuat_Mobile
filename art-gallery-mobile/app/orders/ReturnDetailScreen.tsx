@@ -23,6 +23,7 @@ import {
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
 import { API_BASE_URL } from '../../constants/api';
+import { formatVnd } from '../../utils/currency';
 
 interface ReturnDetailScreenProps {
   route: any;
@@ -103,12 +104,11 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
   };
 
   const evidenceSource = (url: string) => ({
-    uri: /^https?:\/\//i.test(url) ? url : `${API_BASE_URL.replace(/\/api\/?$/, '')}${url}`,
-    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+    uri: /^(?:https?:\/\/|data:image\/)/i.test(url) ? url : `${API_BASE_URL.replace(/\/api\/?$/, '')}${url}`,
+    headers: /^data:image\//i.test(url) ? undefined : (authToken ? { Authorization: `Bearer ${authToken}` } : undefined),
   });
 
-  const formatPrice = (price: number): string =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string): string => {
     try {

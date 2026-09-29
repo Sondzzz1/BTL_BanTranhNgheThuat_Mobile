@@ -126,6 +126,7 @@ export const adminReturnService = {
 
   /** Tải ảnh bằng chứng qua Axios để header JWT vẫn được gửi. */
   async getEvidenceObjectUrl(path: string): Promise<string> {
+    if (/^(?:data:image\/|https?:\/\/)/i.test(path)) return path;
     const apiPath = path.startsWith('/api/') ? path.slice(4) : path;
     const response = await apiClient.get<Blob>(apiPath, { responseType: 'blob' });
     return URL.createObjectURL(response.data);

@@ -45,8 +45,13 @@ export const customArtService = {
     await apiClient.post(API_ENDPOINTS.CUSTOM_ART_CANCEL(id));
   },
 
+  async acceptQuote(quoteId: number): Promise<void> {
+    await apiClient.post(`/tranh-theo-yeu-cau/bao-gia/${quoteId}/xac-nhan`);
+  },
+
   absoluteFileUrl(path?: string | null): string | undefined {
     if (!path) return undefined;
+    if (/^data:image\//i.test(path)) return path;
     if (/^https?:\/\//i.test(path)) return path;
     const origin = API_BASE_URL.replace(/\/api\/?$/i, '');
     return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;

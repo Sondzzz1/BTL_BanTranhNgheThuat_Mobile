@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { artistDashboardService, TacPhamHoaSiResponse } from '../../services/artistDashboardService';
 import { categoryService } from '../../services/categoryService';
+import { formatVnd } from '../../utils/currency';
 
 const STATUS_LABEL: Record<number, { text: string; cls: string; icon: string }> = {
   0: { text: 'Chờ duyệt',  cls: 'pending',   icon: 'ti-time' },
@@ -142,8 +143,7 @@ const ArtistArtworks: React.FC = () => {
     }
   };
 
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  const formatPrice = formatVnd;
 
   // Lọc
   let filteredArtworks = myArtworks;

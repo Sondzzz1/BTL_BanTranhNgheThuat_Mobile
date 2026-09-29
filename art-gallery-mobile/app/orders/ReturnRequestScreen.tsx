@@ -14,6 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { returnService } from '../../services/returnService';
 import { OrderItem } from '../../types/order';
 import { RETURN_REASONS, ReturnUploadFile, TaoHoanTraRequest } from '../../types/return';
+import { formatVnd } from '../../utils/currency';
 
 interface ReturnRequestScreenProps {
   route: any;
@@ -39,8 +40,7 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
   // Sản phẩm được chọn để hoàn trả
   const selectedItem = selectedItemIndex !== null ? orderItems[selectedItemIndex] : null;
 
-  const formatPrice = (price: number): string =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+  const formatPrice = formatVnd;
 
   // Kiểm tra xem còn trong thời hạn 7 ngày không
   const checkReturnEligibility = (): boolean => {

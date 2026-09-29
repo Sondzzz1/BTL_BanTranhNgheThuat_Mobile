@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useCart } from '../hooks/useCart';
 import { Artwork } from '../types';
 import FavoriteButton from './FavoriteButton';
+import { formatVnd } from '../utils/currency';
 import '../assets/css/ArtworkCard.css';
 
 // Props Interface với TypeScript (thay cho PropTypes)
@@ -68,7 +69,7 @@ const ArtworkCard: React.FC<ArtworkCardProps> = ({
           
           <div className="artwork-footer">
             <span className="artwork-price">
-              {artwork.giaBan.toLocaleString('vi-VN')}₫
+              {formatVnd(artwork.giaBan)}
             </span>
             
             {showAddToCart && artwork.soLuongTon > 0 && (

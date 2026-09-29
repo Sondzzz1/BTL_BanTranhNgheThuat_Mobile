@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, DonHangAdminResponse, DonHangResponse } from '../../services/adminService';
+import { formatVnd } from '../../utils/currency';
 
 const AdminOrders: React.FC = () => {
     const [orders, setOrders] = useState<DonHangAdminResponse[]>([]);
@@ -104,12 +105,7 @@ const AdminOrders: React.FC = () => {
         }
     };
 
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND',
-        }).format(price);
-    };
+    const formatPrice = formatVnd;
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('vi-VN');
@@ -321,7 +317,7 @@ const AdminOrders: React.FC = () => {
                                                 <td>
                                                     <div className="item-info">
                                                         <img 
-                                                            src={item.hinhAnh || 'https://via.placeholder.com/50'} 
+                                                            src={item.hinhAnh || '/assets/images/no-image.svg'}
                                                             alt={item.tenTacPham} 
                                                             className="item-thumb" 
                                                         />

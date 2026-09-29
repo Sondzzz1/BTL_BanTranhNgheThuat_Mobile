@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/api';
 import { adminService, TacPhamHoaSiResponse } from '../../services/adminService';
+import { formatVnd } from '../../utils/currency';
 
 const STATUS_TEXT: Record<number, string> = {
     0: 'Chờ duyệt',
@@ -158,8 +159,7 @@ const AdminArt: React.FC = () => {
         }
     };
 
-    const formatPrice = (price: number) =>
-        new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+    const formatPrice = formatVnd;
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -273,12 +273,12 @@ const AdminArt: React.FC = () => {
                                     <tr key={artwork.maTacPham}>
                                         <td>
                                             <img
-                                                src={artwork.hinhAnh || 'https://via.placeholder.com/80?text=No+Image'}
+                                                src={artwork.hinhAnh || '/assets/images/no-image.svg'}
                                                 alt={artwork.tenTacPham}
                                                 style={{ width: '80px', height: '80px', objectFit: 'cover' }}
                                                 onError={(e) => {
                                                     (e.target as HTMLImageElement).src =
-                                                        'https://via.placeholder.com/80?text=No+Image';
+                                                        '/assets/images/no-image.svg';
                                                 }}
                                             />
                                         </td>
@@ -382,11 +382,11 @@ const AdminArt: React.FC = () => {
                                                 <tr key={edit.maChinhSua}>
                                                     <td>
                                                         <img
-                                                            src={edit.hinhAnh || 'https://via.placeholder.com/80?text=No+Image'}
+                                                            src={edit.hinhAnh || '/assets/images/no-image.svg'}
                                                             alt={edit.tenTacPham}
                                                             style={{ width: '80px', height: '80px', objectFit: 'cover' }}
                                                             onError={(e) => {
-                                                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/80?text=No+Image';
+                                                                (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                                                             }}
                                                         />
                                                     </td>
@@ -446,11 +446,11 @@ const AdminArt: React.FC = () => {
                                                 <tr key={edit.maChinhSua} style={{ opacity: 0.7 }}>
                                                     <td>
                                                         <img
-                                                            src={edit.hinhAnh || 'https://via.placeholder.com/80?text=No+Image'}
+                                                            src={edit.hinhAnh || '/assets/images/no-image.svg'}
                                                             alt={edit.tenTacPham}
                                                             style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                                                             onError={(e) => {
-                                                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60?text=No+Image';
+                                                                (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                                                             }}
                                                         />
                                                     </td>
@@ -488,11 +488,11 @@ const AdminArt: React.FC = () => {
                                                 <tr key={edit.maChinhSua} style={{ opacity: 0.7 }}>
                                                     <td>
                                                         <img
-                                                            src={edit.hinhAnh || 'https://via.placeholder.com/80?text=No+Image'}
+                                                            src={edit.hinhAnh || '/assets/images/no-image.svg'}
                                                             alt={edit.tenTacPham}
                                                             style={{ width: '60px', height: '60px', objectFit: 'cover' }}
                                                             onError={(e) => {
-                                                                (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60?text=No+Image';
+                                                                (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
                                                             }}
                                                         />
                                                     </td>

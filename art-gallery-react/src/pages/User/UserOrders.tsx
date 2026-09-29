@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { orderService } from '../../services/orderService';
 import { Order } from '../../types';
 import CancelOrderModal from '../../components/CancelOrderModal';
+import { formatVnd } from '../../utils/currency';
 
 const UserOrders: React.FC = () => {
   const { user } = useAuth();
@@ -51,12 +52,7 @@ const UserOrders: React.FC = () => {
     return `status-badge ${status}`;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');

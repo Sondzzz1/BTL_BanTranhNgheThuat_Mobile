@@ -70,11 +70,7 @@ export default function NewsScreen({ navigation }: any) {
       {/* Featured News */}
       <View style={styles.featuredSection}>
         <View style={styles.featuredCard}>
-          <Image
-            source={{ uri: 'https://via.placeholder.com/600x400' }}
-            style={styles.featuredImage}
-            resizeMode="cover"
-          />
+          <View style={[styles.featuredImage, styles.imagePlaceholder]}><Text style={styles.imagePlaceholderText}>Không có ảnh</Text></View>
           <View style={styles.featuredBadge}>
             <Text style={styles.featuredBadgeText}>NỔI BẬT</Text>
           </View>
@@ -113,13 +109,8 @@ export default function NewsScreen({ navigation }: any) {
                 // TODO: Navigate to article detail
               }}
             >
-              <Image
-                source={{ 
-                  uri: article.anhTieuDe || 'https://via.placeholder.com/600x400' 
-                }}
-                style={styles.newsImage}
-                resizeMode="cover"
-              />
+              {article.anhTieuDe ? <Image source={{ uri: article.anhTieuDe }} style={styles.newsImage} resizeMode="cover" /> :
+                <View style={[styles.newsImage, styles.imagePlaceholder]}><Text style={styles.imagePlaceholderText}>Không có ảnh</Text></View>}
               <View style={styles.newsContent}>
                 <View style={styles.newsMeta}>
                   <Text style={styles.newsCategory}>Tin tức</Text>
@@ -196,6 +187,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
   },
+  imagePlaceholder: { backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  imagePlaceholderText: { color: '#6b7280', fontWeight: '600' },
   featuredBadge: {
     position: 'absolute',
     top: 12,

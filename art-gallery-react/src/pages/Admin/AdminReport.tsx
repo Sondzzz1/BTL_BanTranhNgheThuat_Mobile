@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../services/adminService';
+import { formatVnd } from '../../utils/currency';
 import './Admin.css';
 
 interface SummaryData {
@@ -144,12 +145,7 @@ const AdminReport: React.FC = () => {
         loadReportData();
     }, [loadReportData]);
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('vi-VN', {
-            style: 'currency',
-            currency: 'VND',
-        }).format(amount);
-    };
+    const formatCurrency = formatVnd;
 
     const formatNumber = (n: number) =>
         new Intl.NumberFormat('vi-VN').format(n);

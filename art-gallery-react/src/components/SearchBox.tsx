@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { artworkService } from '../services/artworkService';
 import { Artwork } from '../types';
+import { formatVnd } from '../utils/currency';
 import './SearchBox.css';
 
 const SearchBox: React.FC = () => {
@@ -122,7 +123,7 @@ const SearchBox: React.FC = () => {
                         <div className="search-result-name">{artwork.tenTranh}</div>
                         <div className="search-result-artist">{artwork.tacGia}</div>
                         <div className="search-result-price">
-                          {artwork.giaBan.toLocaleString('vi-VN')} VNĐ
+                          {formatVnd(artwork.giaBan)}
                         </div>
                       </div>
                     </div>

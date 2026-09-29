@@ -2,6 +2,7 @@ using DoAn2_BackEnd.BLL.Interfaces;
 using DoAn2_BackEnd.DAL.Interfaces;
 using DoAn2_BackEnd.DTO;
 using DoAn2_BackEnd.Models;
+using System.Globalization;
 
 namespace DoAn2_BackEnd.BLL;
 
@@ -43,7 +44,11 @@ public class CustomArtBusiness : ICustomArtBusiness
             || (maNguoiDung.HasValue && item.MaKhachHang == maNguoiDung.Value)
             || (maHoaSi.HasValue && (item.MaHoaSi == maHoaSi.Value || item.TrangThai == CustomArtStatus.PendingArtist));
         if (!mayView) throw new UnauthorizedAccessException("Bạn không có quyền xem yêu cầu này");
-        return MapRequest(item);
+        var response = MapRequest(item);
+        var quote = await _customArtRepo.GetLatestQuoteByRequest(maYeuCau);
+        response.Quote = quote == null ? null : MapQuote(quote);
+        response.Progress = (await _customArtRepo.GetProgressByRequest(maYeuCau)).Select(MapProgress).ToList();
+        return response;
     }
 
     public async Task<bool> CapNhatYeuCau(int maYeuCau, int maKhachHang, CapNhatYeuCauTranhRequest request)
@@ -89,12 +94,18 @@ public class CustomArtBusiness : ICustomArtBusiness
     public async Task<CustomArtQuoteResponse> TaoBaoGia(BaoGiaTranhRequest request, int maHoaSi)
     {
         if (request.GiaBaoGia <= 0) throw new ArgumentException("Giá báo giá phải lớn hơn 0");
-        if (string.IsNullOrWhiteSpace(request.ThoiGianHoanThanh))
-            throw new ArgumentException("Thời gian hoàn thành không được để trống");
+        if (!DateOnly.TryParseExact(request.ThoiGianHoanThanh?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture,
+                DateTimeStyles.None, out var completionDate))
+            throw new ArgumentException("Ngày hoàn thành dự kiến phải có định dạng YYYY-MM-DD");
+        if (completionDate < DateOnly.FromDateTime(DateTime.Today))
+            throw new ArgumentException("Ngày hoàn thành dự kiến không được ở trong quá khứ");
+        request.ThoiGianHoanThanh = completionDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         var item = await _customArtRepo.GetById(request.MaYeuCau);
         if (item == null || item.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Bạn không phụ trách yêu cầu này");
+        if (item.TrangThai is not (CustomArtStatus.Assigned or CustomArtStatus.Quoted))
+            throw new ArgumentException("Chỉ có thể báo giá sau khi nhận yêu cầu và trước khi khách hàng chấp nhận");
 
         return MapQuote(await _customArtRepo.CreateQuote(request, maHoaSi));
     }
@@ -113,6 +124,13 @@ public class CustomArtBusiness : ICustomArtBusiness
         if (string.IsNullOrWhiteSpace(request.TieuDe) || string.IsNullOrWhiteSpace(request.MoTa))
             throw new ArgumentException("Tiêu đề và mô tả tiến độ không được để trống");
         return await _customArtRepo.CreateProgress(request, maHoaSi);
+    }
+
+    public async Task<string?> LayTepTienDo(int maYeuCau, int maTienDo, int? maNguoiDung, int? maHoaSi, bool isAdmin)
+    {
+        _ = await LayChiTiet(maYeuCau, maNguoiDung, maHoaSi, isAdmin);
+        var progress = await _customArtRepo.GetProgressById(maYeuCau, maTienDo);
+        return progress?.AnhPreview;
     }
 
     public Task<bool> GuiPhanHoi(TaoPhanHoiRequest request, int maKhachHang)
@@ -163,7 +181,7 @@ public class CustomArtBusiness : ICustomArtBusiness
             case CustomArtType.Original:
                 ClearOriginalArtworkFields(request);
                 request.DaXacNhanQuyenTaiLieu = false;
-                status = CustomArtStatus.PendingArtist;
+                status = CustomArtStatus.Submitted;
                 request.Type = "ORIGINAL_COMMISSION";
                 break;
 
@@ -177,7 +195,7 @@ public class CustomArtBusiness : ICustomArtBusiness
                 request.TinhTrangQuyenSuDung = null;
                 request.MoTaQuyenSuDung = null;
                 request.BangChungQuyenSuDung = null;
-                status = CustomArtStatus.PendingArtist;
+                status = CustomArtStatus.Submitted;
                 request.Type = "PERSONAL_REFERENCE";
                 break;
 
@@ -191,9 +209,7 @@ public class CustomArtBusiness : ICustomArtBusiness
                     string.IsNullOrWhiteSpace(request.NguonTacPhamGoc))
                     throw new ArgumentException("Phải có ảnh hoặc nguồn tham khảo của tác phẩm gốc");
                 permission = NormalizePermission(request.TinhTrangQuyenSuDung);
-                status = permission == PermissionUsageStatus.Unsure
-                    ? CustomArtStatus.WaitingPermission
-                    : CustomArtStatus.Submitted;
+                status = CustomArtStatus.Submitted;
                 request.DaXacNhanQuyenTaiLieu = false;
                 request.Type = type == CustomArtType.Reproduction ? "REPRODUCTION" : "EXISTING_ARTWORK";
                 break;
@@ -330,6 +346,28 @@ public class CustomArtBusiness : ICustomArtBusiness
         GiaBaoGia = model.GiaBaoGia,
         ThoiGianHoanThanh = model.ThoiGianHoanThanh,
         GhiChu = model.GhiChu,
-        TrangThai = model.TrangThai
+        TrangThai = model.TrangThai,
+        NgayTao = model.NgayTao
     };
+
+    private static CustomArtProgressResponse MapProgress(CustomArtProgress model) => new()
+    {
+        MaTienDo = model.MaTienDo,
+        MaYeuCau = model.MaYeuCau,
+        TieuDe = model.TieuDe,
+        MoTa = model.MoTa,
+        AnhPreview = GetProgressFileUrl(model),
+        TrangThai = model.TrangThai,
+        NgayTao = model.NgayTao
+    };
+
+    private static string? GetProgressFileUrl(CustomArtProgress progress)
+    {
+        var value = progress.AnhPreview;
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        if (value.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase)) return value;
+        if (Uri.TryCreate(value, UriKind.Absolute, out _)) return value;
+        if (value.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)) return value;
+        return $"/api/tranh-theo-yeu-cau/yeu-cau/{progress.MaYeuCau}/tien-do/{progress.MaTienDo}/tep";
+    }
 }

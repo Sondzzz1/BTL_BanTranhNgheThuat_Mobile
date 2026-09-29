@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { artworkService } from '../services/artworkService';
 import { Artwork } from '../types';
+import { formatVnd } from '../utils/currency';
 import '../assets/css/Home.css';
 
 const Home: React.FC = () => {
@@ -169,7 +170,7 @@ const Home: React.FC = () => {
                     Kích thước: {artwork.kichThuoc || 'Liên hệ'}
                   </p>
                   <div className="featured-artwork-price">
-                    {artwork.giaBan.toLocaleString('vi-VN')} VNĐ
+                    {formatVnd(artwork.giaBan)}
                   </div>
                 </div>
               </div>
@@ -211,7 +212,7 @@ const Home: React.FC = () => {
                     Kích thước: {artwork.kichThuoc || 'Liên hệ'}
                   </p>
                   <div className="featured-artwork-price">
-                    {artwork.giaBan.toLocaleString('vi-VN')} VNĐ
+                    {formatVnd(artwork.giaBan)}
                   </div>
                 </div>
               </div>

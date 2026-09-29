@@ -468,3 +468,15 @@ C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.deps.json
 C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.runtimeconfig.json
 C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.dll
 C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.pdb
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build\appsettings.Development.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build\appsettings.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build\DoAn2_BackEnd.deps.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build\DoAn2_BackEnd.dll
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build\DoAn2_BackEnd.pdb
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build-final\appsettings.Development.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build-final\appsettings.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build-final\DoAn2_BackEnd.deps.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build-final\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build-final\DoAn2_BackEnd.dll
+C:\Users\huanp\.codex\visualizations\2026\09\29\01a0ed7c-3f0d-7592-9a8c-90b5f5a7183a\backend-build-final\DoAn2_BackEnd.pdb

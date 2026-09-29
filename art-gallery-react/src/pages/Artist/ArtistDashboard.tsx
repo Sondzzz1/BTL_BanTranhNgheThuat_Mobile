@@ -7,6 +7,7 @@ import {
   TacPhamHoaSiResponse,
   DoanhThuTongQuanResponse,
 } from '../../services/artistDashboardService';
+import { formatVnd } from '../../utils/currency';
 
 const ArtistDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -37,8 +38,7 @@ const ArtistDashboard: React.FC = () => {
     }
   };
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+  const formatCurrency = formatVnd;
 
   const totalArtworks = myArtworks.length;
   const publishedArtworks = myArtworks.filter((a) => a.trangThai === 1).length;

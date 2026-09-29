@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService, HoSoHoaSiResponse, TacPhamHoaSiResponse } from '../../services/adminService';
+import { formatVnd } from '../../utils/currency';
 
 interface CreateForm {
     tenDangNhap: string;
@@ -20,8 +21,7 @@ const emptyForm: CreateForm = {
     diaChi: '',
 };
 
-const formatPrice = (n: number) =>
-    new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n || 0);
+const formatPrice = formatVnd;
 
 const AdminAuthors: React.FC = () => {
     const navigate = useNavigate();

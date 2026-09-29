@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Product } from '../types/product';
 import FavoriteButton from './FavoriteButton';
+import { formatVnd } from '../utils/currency';
 
 interface ProductCardProps {
   product: Product;
@@ -15,12 +16,7 @@ export default function ProductCard({
   onPress,
   onToggleFavorite,
 }: ProductCardProps) {
-  const formatPrice = (price: number): string => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(price);
-  };
+  const formatPrice = formatVnd;
 
   const isOutOfStock = product.soLuong === 0;
 

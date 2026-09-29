@@ -72,6 +72,11 @@ public class TaoTienDoRequest
     public string TrangThai { get; set; } = "InProgress";
 }
 
+public class TaoTienDoForm : TaoTienDoRequest
+{
+    public IFormFile? AnhPreviewFile { get; set; }
+}
+
 public class TaoPhanHoiRequest
 {
     public int MaYeuCau { get; set; }
@@ -116,6 +121,8 @@ public class CustomArtRequestResponse
     public DateTime? NgayCapNhat { get; set; }
     public DateTime? NgayHoanThanhDuKien { get; set; }
     public int? MaTacPhamKetQua { get; set; }
+    public CustomArtQuoteResponse? Quote { get; set; }
+    public List<CustomArtProgressResponse> Progress { get; set; } = new();
 }
 
 public class CustomArtQuoteResponse
@@ -127,4 +134,16 @@ public class CustomArtQuoteResponse
     public string ThoiGianHoanThanh { get; set; } = string.Empty;
     public string? GhiChu { get; set; }
     public string TrangThai { get; set; } = string.Empty;
+    public DateTime NgayTao { get; set; }
+}
+
+public class CustomArtProgressResponse
+{
+    public int MaTienDo { get; set; }
+    public int MaYeuCau { get; set; }
+    public string TieuDe { get; set; } = string.Empty;
+    public string MoTa { get; set; } = string.Empty;
+    public string? AnhPreview { get; set; }
+    public string TrangThai { get; set; } = string.Empty;
+    public DateTime NgayTao { get; set; }
 }

@@ -21,6 +21,7 @@ public interface ICustomArtBusiness
     Task<bool> XacNhanBaoGia(int maBaoGia, int maKhachHang);
     Task<bool> DatCoc(int maYeuCau, int maKhachHang, decimal soTien);
     Task<bool> ThemTienDo(TaoTienDoRequest request, int maHoaSi);
+    Task<string?> LayTepTienDo(int maYeuCau, int maTienDo, int? maNguoiDung, int? maHoaSi, bool isAdmin);
     Task<bool> GuiPhanHoi(TaoPhanHoiRequest request, int maKhachHang);
     Task<bool> XacNhanHoanThanh(int maYeuCau, int maKhachHang);
     Task<bool> LuuDuongDanTep(int maYeuCau, int maKhachHang, string fileKind, string storedPath);
