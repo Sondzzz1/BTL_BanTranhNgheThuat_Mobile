@@ -22,4 +22,6 @@ public class TacPham
     public int? MaTacPhamGoc { get; set; }
     public int? MaYeuCauVeTranh { get; set; }
     public string? MoTaNguonGoc { get; set; }
+    /// <summary>Chỉ tác phẩm độc bản mới tham gia ownership/certificate theo MaTacPham.</summary>
+    public bool LaTacPhamDocBan { get; set; }
 }

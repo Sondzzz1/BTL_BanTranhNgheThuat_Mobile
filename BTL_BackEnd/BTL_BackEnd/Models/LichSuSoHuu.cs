@@ -35,6 +35,8 @@ public class LichSuSoHuu
     public byte TrangThai { get; set; }
     
     public int? MaDonHang { get; set; } // Nếu có giao dịch
+    public int? MaChiTietDH { get; set; }
+    public int? MaYeuCauHoanTra { get; set; }
     public string? GhiChu { get; set; }
     public DateTime NgayTao { get; set; }
 }

@@ -7,8 +7,10 @@ public class ChungNhan
 {
     public int MaChungNhan { get; set; }
     public int MaLichSuSoHuu { get; set; }
+    public int? MaTacPham { get; set; }
+    public int? MaNguoiDung { get; set; }
     public string CertificateCode { get; set; } = null!; // COA-2026-XXXXXXXXXXXX
-    public string ContentHash { get; set; } = null!; // HMAC-SHA256 hash
+    public string? ContentHash { get; set; } // Legacy; module hiện tại không sử dụng hash/QR
     public DateTime NgayCap { get; set; }
     
     /// <summary>
@@ -20,7 +22,7 @@ public class ChungNhan
     public DateTime? NgayThuHoi { get; set; }
     public string? LyDoThuHoi { get; set; }
     public string? DuongDanPDF { get; set; } // /certificates/COA-2026-XXXX.pdf
-    public string? DuongDanQR { get; set; } // /qrcodes/COA-2026-XXXX.png
+    public string? DuongDanQR { get; set; } // Legacy; không dùng trong module mới
     
     /// <summary>
     /// Cho phép chủ sở hữu hiển thị tên công khai khi verify. Mặc định = false (che tên).

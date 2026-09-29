@@ -2,3 +2,5 @@ App_Data/commission-files/*
 !App_Data/commission-files/.gitkeep
 App_Data/return-evidence/*
 !App_Data/return-evidence/.gitkeep
+App_Data/copyright-evidence/*
+!App_Data/copyright-evidence/.gitkeep

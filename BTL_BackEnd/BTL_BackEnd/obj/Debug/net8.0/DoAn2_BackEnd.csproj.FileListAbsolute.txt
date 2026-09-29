@@ -462,3 +462,9 @@ C:\Users\huanp\AppData\Local\Temp\btl-return-backend-final-3\DoAn2_BackEnd.deps.
 C:\Users\huanp\AppData\Local\Temp\btl-return-backend-final-3\DoAn2_BackEnd.runtimeconfig.json
 C:\Users\huanp\AppData\Local\Temp\btl-return-backend-final-3\DoAn2_BackEnd.dll
 C:\Users\huanp\AppData\Local\Temp\btl-return-backend-final-3\DoAn2_BackEnd.pdb
+C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\appsettings.Development.json
+C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\appsettings.json
+C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.deps.json
+C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.dll
+C:\Users\huanp\AppData\Local\Temp\btl-copyright-models\DoAn2_BackEnd.pdb
