@@ -522,6 +522,7 @@ public class AdminBusiness : IAdminBusiness
 
             result.ChiTiet.Add(new ChiTietDonHangResponse
             {
+                MaChiTietDH = item.MaChiTietDH,
                 MaTacPham = item.MaTacPham,
                 TenTacPham = tacPham?.TenTacPham ?? "Sản phẩm đã xóa",
                 TenHoaSi = tenHoaSi,

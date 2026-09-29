@@ -113,11 +113,11 @@ export default function OrderDetailScreen({
 
   // Chỉ hiển thị nút hoàn trả khi đơn hàng đã Hoàn thành (status = 3)
   // VÀ trong vòng 7 ngày kể từ ngày hoàn thành
-  const canRequestReturn = (status: number, orderDate: string): boolean => {
+  const canRequestReturn = (status: number, deliveredDate: string): boolean => {
     if (status !== 3) return false;
     
     // Tính số ngày từ ngày đặt hàng đến hiện tại
-    const orderTime = new Date(orderDate).getTime();
+    const orderTime = new Date(deliveredDate).getTime();
     const currentTime = new Date().getTime();
     const daysDiff = Math.floor((currentTime - orderTime) / (1000 * 60 * 60 * 24));
     
@@ -262,7 +262,7 @@ export default function OrderDetailScreen({
       </ScrollView>
 
       {/* Nút hành động: Hủy đơn hoặc Yêu cầu hoàn trả */}
-      {(canCancelOrder(order.trangThai) || canRequestReturn(order.trangThai, order.ngayDat)) && (
+      {(canCancelOrder(order.trangThai) || canRequestReturn(order.trangThai, order.ngayGiao ?? order.ngayDat)) && (
         <View style={styles.footer}>
           {canCancelOrder(order.trangThai) && (
             <TouchableOpacity
@@ -275,7 +275,7 @@ export default function OrderDetailScreen({
               </Text>
             </TouchableOpacity>
           )}
-          {canRequestReturn(order.trangThai, order.ngayDat) && (
+          {canRequestReturn(order.trangThai, order.ngayGiao ?? order.ngayDat) && (
             <View>
               <TouchableOpacity
                 style={styles.returnButton}
@@ -283,14 +283,14 @@ export default function OrderDetailScreen({
                   navigation.navigate('ReturnRequest', {
                     orderId: order.maDonHang,
                     orderItems: order.chiTiet || [],
-                    orderDate: order.ngayDat,
+                    deliveredDate: order.ngayGiao ?? order.ngayDat,
                   })
                 }
               >
                 <Text style={styles.returnButtonText}>📦 Yêu cầu hoàn trả</Text>
               </TouchableOpacity>
               <Text style={styles.returnWarning}>
-                ⏰ Còn {getDaysRemaining(order.ngayDat)} ngày để yêu cầu hoàn trả
+                ⏰ Còn {getDaysRemaining(order.ngayGiao ?? order.ngayDat)} ngày để yêu cầu hoàn trả
               </Text>
             </View>
           )}
@@ -298,7 +298,7 @@ export default function OrderDetailScreen({
       )}
 
       {/* Hiển thị thông báo nếu quá hạn hoàn trả */}
-      {order.trangThai === 3 && !canRequestReturn(order.trangThai, order.ngayDat) && (
+      {order.trangThai === 3 && !canRequestReturn(order.trangThai, order.ngayGiao ?? order.ngayDat) && (
         <View style={styles.expiredFooter}>
           <Text style={styles.expiredText}>
             ⚠️ Đã quá thời hạn 7 ngày để yêu cầu hoàn trả sản phẩm

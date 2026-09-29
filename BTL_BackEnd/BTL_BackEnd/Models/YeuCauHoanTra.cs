@@ -15,6 +15,8 @@ public class YeuCauHoanTra
 
     /// <summary>Mã tác phẩm muốn hoàn trả</summary>
     public int MaTacPham { get; set; }
+    public int? MaChiTietDH { get; set; }
+    public int? SoLuongTra { get; set; }
 
     /// <summary>
     /// Lý do hoàn trả được chọn từ danh sách:
@@ -33,12 +35,24 @@ public class YeuCauHoanTra
 
     /// <summary>
     /// Trạng thái xử lý:
-    /// CHO_DUYET | DA_DUYET | TU_CHOI | DANG_HOAN_TRA | DA_NHAN_HANG | DA_HOAN_TIEN | HOAN_TAT
+    /// CHO_DUYET | DA_DUYET | TU_CHOI | DANG_HOAN_TRA | DA_NHAN_HANG | DA_HOAN_TIEN | HOAN_TAT | DA_HUY
     /// </summary>
     public string TrangThai { get; set; } = "CHO_DUYET";
 
     /// <summary>Lý do từ chối (nếu Admin từ chối)</summary>
     public string? LyDoTuChoi { get; set; }
+
+    public bool? CoTheBanLai { get; set; }
+    public decimal? SoTienHoan { get; set; }
+    public string? PhuongThucHoanTien { get; set; }
+    public string? TrangThaiHoanTien { get; set; }
+    public DateTime? NgayHoanTien { get; set; }
+    public int? NguoiDuyet { get; set; }
+    public DateTime? NgayDuyet { get; set; }
+    public int? NguoiNhanHang { get; set; }
+    public DateTime? NgayNhanHang { get; set; }
+    public int? NguoiHoanTien { get; set; }
+    public DateTime? NgayHuy { get; set; }
 
     public DateTime NgayTao { get; set; } = DateTime.Now;
     public DateTime NgayCapNhat { get; set; } = DateTime.Now;

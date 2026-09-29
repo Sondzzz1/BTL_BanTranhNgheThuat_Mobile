@@ -11,6 +11,7 @@ public class DonHang
     public string? DiaChiGiao { get; set; }
     public byte TrangThai { get; set; }
     public string? LyDoHuy { get; set; }
+    public DateTime? NgayGiao { get; set; }
 }
 
 public class ChiTietDonHang
@@ -20,4 +21,5 @@ public class ChiTietDonHang
     public int MaTacPham { get; set; }
     public int SoLuong { get; set; }
     public decimal DonGia { get; set; }
+    public int SoLuongDaHoan { get; set; }
 }

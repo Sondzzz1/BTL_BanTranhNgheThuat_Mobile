@@ -13,7 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { returnService } from '../../services/returnService';
 import { OrderItem } from '../../types/order';
-import { RETURN_REASONS, TaoHoanTraRequest } from '../../types/return';
+import { RETURN_REASONS, ReturnUploadFile, TaoHoanTraRequest } from '../../types/return';
 
 interface ReturnRequestScreenProps {
   route: any;
@@ -21,10 +21,10 @@ interface ReturnRequestScreenProps {
 }
 
 export default function ReturnRequestScreen({ route, navigation }: ReturnRequestScreenProps) {
-  const { orderId, orderItems, orderDate } = route.params as {
+  const { orderId, orderItems, deliveredDate } = route.params as {
     orderId: number;
     orderItems: OrderItem[];
-    orderDate: string;
+    deliveredDate: string;
   };
 
   // Form state
@@ -32,7 +32,8 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [description, setDescription] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<ReturnUploadFile[]>([]);
+  const [returnQuantity, setReturnQuantity] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sản phẩm được chọn để hoàn trả
@@ -43,14 +44,14 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
 
   // Kiểm tra xem còn trong thời hạn 7 ngày không
   const checkReturnEligibility = (): boolean => {
-    const orderTime = new Date(orderDate).getTime();
+    const orderTime = new Date(deliveredDate).getTime();
     const currentTime = new Date().getTime();
     const daysDiff = Math.floor((currentTime - orderTime) / (1000 * 60 * 60 * 24));
     return daysDiff <= 7;
   };
 
   const getDaysRemaining = (): number => {
-    const orderTime = new Date(orderDate).getTime();
+    const orderTime = new Date(deliveredDate).getTime();
     const currentTime = new Date().getTime();
     const daysDiff = Math.floor((currentTime - orderTime) / (1000 * 60 * 60 * 24));
     return Math.max(0, 7 - daysDiff);
@@ -74,11 +75,15 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
-      base64: true,
     });
 
-    if (!result.canceled && result.assets[0].base64) {
-      setImages([...images, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setImages([...images, {
+        uri: asset.uri,
+        name: asset.fileName || `return-${Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+      }]);
     }
   };
 
@@ -99,11 +104,15 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
       allowsEditing: true,
       aspect: [4, 3],
       quality: 0.8,
-      base64: true,
     });
 
-    if (!result.canceled && result.assets[0].base64) {
-      setImages([...images, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      setImages([...images, {
+        uri: asset.uri,
+        name: asset.fileName || `return-${Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg',
+      }]);
     }
   };
 
@@ -154,13 +163,14 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
       const request: TaoHoanTraRequest = {
         maDonHang: orderId,
         maTacPham: selectedItem.maTacPham,
+        maChiTietDH: selectedItem.maChiTietDH,
+        soLuongTra: returnQuantity,
         lyDo: selectedReason,
         lyDoKhac: selectedReason === 'LY_DO_KHAC' ? customReason.trim() : undefined,
         moTa: description.trim() || undefined,
-        hinhAnh: images.length > 0 ? images : undefined,
       };
 
-      const result = await returnService.createReturnRequest(request);
+      const result = await returnService.createReturnRequest(request, images);
 
       Alert.alert('Thành công! 🎉', result.message, [
         {
@@ -203,7 +213,10 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
                 styles.itemCard,
                 selectedItemIndex === index && styles.itemCardSelected,
               ]}
-              onPress={() => setSelectedItemIndex(index)}
+              onPress={() => {
+                setSelectedItemIndex(index);
+                setReturnQuantity(1);
+              }}
               activeOpacity={0.7}
             >
               {/* Radio button */}
@@ -235,6 +248,26 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
               </View>
             </TouchableOpacity>
           ))}
+          {selectedItem && selectedItem.soLuong > 1 && (
+            <View style={styles.quantityRow}>
+              <Text style={styles.quantityLabel}>Số lượng hoàn trả</Text>
+              <View style={styles.quantityControls}>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => setReturnQuantity((value) => Math.max(1, value - 1))}
+                >
+                  <Text style={styles.quantityButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.quantityValue}>{returnQuantity}</Text>
+                <TouchableOpacity
+                  style={styles.quantityButton}
+                  onPress={() => setReturnQuantity((value) => Math.min(selectedItem.soLuong, value + 1))}
+                >
+                  <Text style={styles.quantityButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
 
         {/* BƯỚC 2: Chọn lý do */}
@@ -312,7 +345,7 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
             <View style={styles.imagesGrid}>
               {images.map((img, index) => (
                 <View key={index} style={styles.imageItem}>
-                  <Image source={{ uri: img }} style={styles.previewImage} resizeMode="cover" />
+                  <Image source={{ uri: img.uri }} style={styles.previewImage} resizeMode="cover" />
                   <TouchableOpacity
                     style={styles.removeImageButton}
                     onPress={() => removeImage(index)}
@@ -478,6 +511,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
   },
+  quantityRow: {
+    marginTop: 6,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quantityLabel: { fontSize: 14, color: '#374151', fontWeight: '500' },
+  quantityControls: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  quantityButton: {
+    width: 34, height: 34, borderRadius: 8, backgroundColor: '#eff6ff',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  quantityButtonText: { color: '#1d4ed8', fontSize: 20, fontWeight: 'bold' },
+  quantityValue: { minWidth: 22, textAlign: 'center', fontWeight: '700', color: '#1f2937' },
   // Lý do
   reasonItem: {
     flexDirection: 'row',

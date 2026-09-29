@@ -6,6 +6,7 @@ import {
   YeuCauHoanTraChiTiet,
   TaoHoanTraRequest,
   TaoHoanTraResponse,
+  ReturnUploadFile,
 } from '../types/return';
 
 export const returnService = {
@@ -13,11 +14,22 @@ export const returnService = {
    * Tạo yêu cầu hoàn trả sản phẩm mới.
    * Gửi thông tin sản phẩm cần hoàn trả, lý do và hình ảnh minh chứng.
    */
-  async createReturnRequest(request: TaoHoanTraRequest): Promise<TaoHoanTraResponse> {
+  async createReturnRequest(request: TaoHoanTraRequest, files: ReturnUploadFile[]): Promise<TaoHoanTraResponse> {
     try {
+      const form = new FormData();
+      form.append('MaDonHang', String(request.maDonHang));
+      form.append('MaTacPham', String(request.maTacPham));
+      if (request.maChiTietDH != null) form.append('MaChiTietDH', String(request.maChiTietDH));
+      form.append('SoLuongTra', String(request.soLuongTra));
+      form.append('LyDo', request.lyDo);
+      if (request.lyDoKhac) form.append('LyDoKhac', request.lyDoKhac);
+      if (request.moTa) form.append('MoTa', request.moTa);
+      files.forEach((file) => form.append('HinhAnhFiles', file as any));
+
       const response = await apiClient.post<TaoHoanTraResponse>(
         API_ENDPOINTS.RETURN_CREATE,
-        request
+        form,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       );
       return response.data;
     } catch (error: any) {
@@ -73,6 +85,16 @@ export const returnService = {
       console.error('Error confirming product returned:', error);
       const serverError = error.response?.data;
       throw new Error(serverError?.message || error.message || 'Không thể xác nhận gửi hàng');
+    }
+  },
+
+  async cancelReturnRequest(id: number): Promise<{ message: string }> {
+    try {
+      const response = await apiClient.post<{ message: string }>(API_ENDPOINTS.RETURN_CANCEL(id));
+      return response.data;
+    } catch (error: any) {
+      const serverError = error.response?.data;
+      throw new Error(serverError?.message || error.message || 'Không thể hủy yêu cầu hoàn trả');
     }
   },
 };

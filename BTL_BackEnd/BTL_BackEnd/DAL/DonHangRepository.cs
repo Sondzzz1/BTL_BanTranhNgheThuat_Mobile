@@ -121,7 +121,10 @@ public class DonHangRepository : IDonHangRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        var query = "UPDATE DonHang SET TrangThai = @TrangThai, LyDoHuy = @LyDoHuy WHERE MaDonHang = @MaDonHang";
+        var query = @"UPDATE DonHang
+                      SET TrangThai=@TrangThai, LyDoHuy=@LyDoHuy,
+                          NgayGiao=CASE WHEN @TrangThai=3 AND NgayGiao IS NULL THEN GETDATE() ELSE NgayGiao END
+                      WHERE MaDonHang=@MaDonHang";
         using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@MaDonHang", maDonHang);
         command.Parameters.AddWithValue("@TrangThai", trangThai);
@@ -150,7 +153,8 @@ public class DonHangRepository : IDonHangRepository
                 MaDonHang = reader.GetInt32(reader.GetOrdinal("MaDonHang")),
                 MaTacPham = reader.GetInt32(reader.GetOrdinal("MaTacPham")),
                 SoLuong = reader.GetInt32(reader.GetOrdinal("SoLuong")),
-                DonGia = reader.GetDecimal(reader.GetOrdinal("DonGia"))
+                DonGia = reader.GetDecimal(reader.GetOrdinal("DonGia")),
+                SoLuongDaHoan = reader.IsDBNull(reader.GetOrdinal("SoLuongDaHoan")) ? 0 : reader.GetInt32(reader.GetOrdinal("SoLuongDaHoan"))
             });
         }
         return list;
@@ -195,7 +199,8 @@ public class DonHangRepository : IDonHangRepository
             TrangThai = reader.GetByte(reader.GetOrdinal("TrangThai")),
             LyDoHuy = reader.IsDBNull(reader.GetOrdinal("LyDoHuy")) 
                 ? null 
-                : reader.GetString(reader.GetOrdinal("LyDoHuy"))
+                : reader.GetString(reader.GetOrdinal("LyDoHuy")),
+            NgayGiao = reader.IsDBNull(reader.GetOrdinal("NgayGiao")) ? null : reader.GetDateTime(reader.GetOrdinal("NgayGiao"))
         };
     }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -21,6 +22,7 @@ import {
 } from '../../types/return';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
+import { API_BASE_URL } from '../../constants/api';
 
 interface ReturnDetailScreenProps {
   route: any;
@@ -34,9 +36,11 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(null);
 
   useEffect(() => {
     loadDetail();
+    AsyncStorage.getItem('authToken').then(setAuthToken);
   }, [returnId]);
 
   const loadDetail = async () => {
@@ -78,6 +82,31 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
     );
   };
 
+  const handleCancel = () => {
+    Alert.alert('Hủy yêu cầu', 'Bạn có chắc muốn hủy yêu cầu hoàn trả đang chờ duyệt?', [
+      { text: 'Không', style: 'cancel' },
+      {
+        text: 'Hủy yêu cầu', style: 'destructive', onPress: async () => {
+          try {
+            setIsConfirming(true);
+            const result = await returnService.cancelReturnRequest(returnId);
+            Alert.alert('Thành công', result.message);
+            await loadDetail();
+          } catch (err: any) {
+            Alert.alert('Lỗi', err.message || 'Không thể hủy yêu cầu');
+          } finally {
+            setIsConfirming(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const evidenceSource = (url: string) => ({
+    uri: /^https?:\/\//i.test(url) ? url : `${API_BASE_URL.replace(/\/api\/?$/, '')}${url}`,
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
+  });
+
   const formatPrice = (price: number): string =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
 
@@ -102,7 +131,7 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
 
   /** Tính index hiện tại của timeline dựa trên trạng thái */
   const getCurrentTimelineIndex = (status: string): number => {
-    if (status === RETURN_STATUS.TU_CHOI) return -1; // Từ chối: hiển thị riêng
+    if (status === RETURN_STATUS.TU_CHOI || status === RETURN_STATUS.DA_HUY) return -1;
     const index = RETURN_TIMELINE.findIndex((s) => s.status === status);
     return index >= 0 ? index : 0;
   };
@@ -193,7 +222,7 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
               {detail.hinhAnh.map((url, index) => (
                 <Image
                   key={index}
-                  source={{ uri: url }}
+                  source={evidenceSource(url)}
                   style={styles.evidenceImage}
                   resizeMode="cover"
                 />
@@ -213,6 +242,12 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
           </View>
         )}
 
+        {detail.trangThai === RETURN_STATUS.DA_HUY && (
+          <View style={styles.cancelledBox}>
+            <Text style={styles.cancelledTitle}>Yêu cầu này đã được bạn hủy.</Text>
+          </View>
+        )}
+
         {/* Hướng dẫn gửi hàng khi được duyệt */}
         {detail.trangThai === RETURN_STATUS.DA_DUYET && (
           <View style={styles.approvedBox}>
@@ -228,7 +263,7 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
         )}
 
         {/* Timeline trạng thái */}
-        {detail.trangThai !== RETURN_STATUS.TU_CHOI && (
+        {detail.trangThai !== RETURN_STATUS.TU_CHOI && detail.trangThai !== RETURN_STATUS.DA_HUY && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Tiến trình xử lý</Text>
             {RETURN_TIMELINE.map((step, index) => {
@@ -287,6 +322,17 @@ export default function ReturnDetailScreen({ route, navigation }: ReturnDetailSc
             ) : (
               <Text style={styles.confirmButtonText}>🚚 TÔI ĐÃ GỬI SẢN PHẨM</Text>
             )}
+          </TouchableOpacity>
+        </View>
+      )}
+      {detail.trangThai === RETURN_STATUS.CHO_DUYET && (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.cancelRequestButton, isConfirming && styles.confirmButtonDisabled]}
+            onPress={handleCancel}
+            disabled={isConfirming}
+          >
+            <Text style={styles.confirmButtonText}>{isConfirming ? 'Đang xử lý...' : 'HỦY YÊU CẦU'}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -358,6 +404,8 @@ const styles = StyleSheet.create({
   rejectedTitle: { fontSize: 16, fontWeight: 'bold', color: '#991b1b', marginBottom: 10 },
   rejectedLabel: { fontSize: 13, fontWeight: '600', color: '#7f1d1d', marginBottom: 4 },
   rejectedReason: { fontSize: 13, color: '#7f1d1d', lineHeight: 20 },
+  cancelledBox: { margin: 16, padding: 16, backgroundColor: '#f3f4f6', borderRadius: 12 },
+  cancelledTitle: { fontSize: 14, color: '#4b5563', fontWeight: '600' },
   approvedBox: {
     margin: 16,
     padding: 16,
@@ -423,6 +471,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   confirmButtonDisabled: { backgroundColor: '#86efac' },
+  cancelRequestButton: { backgroundColor: '#dc2626', padding: 16, borderRadius: 12, alignItems: 'center' },
   buttonLoading: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   confirmButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
 });

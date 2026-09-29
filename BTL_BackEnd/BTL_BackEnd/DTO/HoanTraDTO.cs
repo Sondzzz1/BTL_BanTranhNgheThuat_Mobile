@@ -9,14 +9,21 @@ public class TaoHoanTraRequest
 {
     public int MaDonHang { get; set; }
     public int MaTacPham { get; set; }
+    public int? MaChiTietDH { get; set; }
+    public int SoLuongTra { get; set; } = 1;
     /// <summary>
     /// Lý do: SAN_PHAM_HU_HONG | SAI_MO_TA | GIAO_SAI | LOI_SAN_PHAM | KHONG_DUNG_DAT | LY_DO_KHAC
     /// </summary>
     public string LyDo { get; set; } = string.Empty;
     public string? LyDoKhac { get; set; }
     public string? MoTa { get; set; }
-    /// <summary>Danh sách URL hình ảnh minh chứng (upload riêng hoặc base64)</summary>
+    /// <summary>Danh sách tên tệp do server quản lý; client mới phải dùng endpoint multipart.</summary>
     public List<string>? HinhAnh { get; set; }
+}
+
+public class TaoHoanTraForm : TaoHoanTraRequest
+{
+    public List<IFormFile>? HinhAnhFiles { get; set; }
 }
 
 /// <summary>Request Admin duyệt/từ chối yêu cầu hoàn trả</summary>
@@ -37,6 +44,17 @@ public class CapNhatTrangThaiHoanTraRequest
     public string TrangThai { get; set; } = string.Empty;
 }
 
+public class XacNhanNhanHangHoanTraRequest
+{
+    public bool CoTheBanLai { get; set; }
+}
+
+public class XacNhanHoanTienRequest
+{
+    public decimal? SoTienHoan { get; set; }
+    public string PhuongThucHoanTien { get; set; } = "COD";
+}
+
 // ================================================================
 // RESPONSE DTOs - Server trả về Client
 // ================================================================
@@ -49,15 +67,23 @@ public class HoanTraSummaryResponse
     public int MaNguoiDung { get; set; }
     public string? TenNguoiDung { get; set; }
     public int MaTacPham { get; set; }
+    public int? MaChiTietDH { get; set; }
     public string? TenTacPham { get; set; }
     public string? HinhAnhTacPham { get; set; }
     public decimal GiaTacPham { get; set; }
+    public int SoLuongTra { get; set; }
     public string LyDo { get; set; } = string.Empty;
     public string? LyDoKhac { get; set; }
     public string? MoTa { get; set; }
     public List<string> HinhAnh { get; set; } = new();
     public string TrangThai { get; set; } = string.Empty;
     public string? LyDoTuChoi { get; set; }
+    public bool? CoTheBanLai { get; set; }
+    public decimal? SoTienHoan { get; set; }
+    public string? PhuongThucHoanTien { get; set; }
+    public string? TrangThaiHoanTien { get; set; }
+    public DateTime? NgayNhanHang { get; set; }
+    public DateTime? NgayHoanTien { get; set; }
     public DateTime NgayTao { get; set; }
 }
 
@@ -71,10 +97,12 @@ public class HoanTraDetailResponse
     public string? EmailNguoiDung { get; set; }
     public string? SoDienThoaiNguoiDung { get; set; }
     public int MaTacPham { get; set; }
+    public int? MaChiTietDH { get; set; }
     public string? TenTacPham { get; set; }
     public string? HinhAnhTacPham { get; set; }
     public decimal GiaTacPham { get; set; }
     public int SoLuong { get; set; }
+    public int SoLuongTra { get; set; }
     public string LyDo { get; set; } = string.Empty;
     public string? LyDoKhac { get; set; }
     public string? MoTa { get; set; }
@@ -82,6 +110,12 @@ public class HoanTraDetailResponse
     public List<string> HinhAnh { get; set; } = new();
     public string TrangThai { get; set; } = string.Empty;
     public string? LyDoTuChoi { get; set; }
+    public bool? CoTheBanLai { get; set; }
+    public decimal? SoTienHoan { get; set; }
+    public string? PhuongThucHoanTien { get; set; }
+    public string? TrangThaiHoanTien { get; set; }
+    public DateTime? NgayNhanHang { get; set; }
+    public DateTime? NgayHoanTien { get; set; }
     public DateTime NgayTao { get; set; }
     public DateTime NgayCapNhat { get; set; }
     // Thông tin đơn hàng

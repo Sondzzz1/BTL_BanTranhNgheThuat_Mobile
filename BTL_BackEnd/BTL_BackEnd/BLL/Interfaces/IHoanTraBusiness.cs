@@ -9,11 +9,14 @@ public interface IHoanTraBusiness
     Task<List<HoanTraSummaryResponse>> GetHoanTraCuaToi(int maNguoiDung);
     Task<HoanTraDetailResponse> GetChiTiet(int maYeuCau, int maNguoiDung);
     Task XacNhanDaGuiHang(int maYeuCau, int maNguoiDung);
+    Task HuyYeuCau(int maYeuCau, int maNguoiDung);
 
     // Admin
     Task<List<HoanTraSummaryResponse>> GetAllHoanTra(string? trangThai, DateTime? tuNgay, DateTime? denNgay, string? keyword);
     Task<HoanTraDetailResponse> GetChiTietAdmin(int maYeuCau);
-    Task DuyetYeuCau(int maYeuCau, DuyetHoanTraRequest request);
+    Task DuyetYeuCau(int maYeuCau, int maTaiKhoan, DuyetHoanTraRequest request);
     Task CapNhatTrangThai(int maYeuCau, CapNhatTrangThaiHoanTraRequest request);
+    Task XacNhanNhanHang(int maYeuCau, int maTaiKhoan, XacNhanNhanHangHoanTraRequest request);
+    Task XacNhanHoanTien(int maYeuCau, int maTaiKhoan, XacNhanHoanTienRequest request);
     Task HoanTat(int maYeuCau);
 }

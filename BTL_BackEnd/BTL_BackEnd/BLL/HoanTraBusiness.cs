@@ -10,6 +10,10 @@ namespace DoAn2_BackEnd.BLL;
 /// </summary>
 public class HoanTraBusiness : IHoanTraBusiness
 {
+    private static readonly HashSet<string> LyDoHopLe = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "SAN_PHAM_HU_HONG", "SAI_MO_TA", "GIAO_SAI", "LOI_SAN_PHAM", "KHONG_DUNG_DAT", "LY_DO_KHAC"
+    };
     private readonly IHoanTraRepository _hoanTraRepository;
 
     public HoanTraBusiness(IHoanTraRepository hoanTraRepository)
@@ -27,26 +31,28 @@ public class HoanTraBusiness : IHoanTraBusiness
         // 1. Validate lý do không được rỗng
         if (string.IsNullOrWhiteSpace(request.LyDo))
             throw new ArgumentException("Vui lòng chọn lý do hoàn trả");
+        request.LyDo = request.LyDo.Trim().ToUpperInvariant();
+        if (!LyDoHopLe.Contains(request.LyDo))
+            throw new ArgumentException("Lý do hoàn trả không hợp lệ");
+        if (request.SoLuongTra <= 0)
+            throw new ArgumentException("Số lượng hoàn trả phải lớn hơn 0");
 
         // 2. Validate lý do khác khi chọn LY_DO_KHAC
         if (request.LyDo == "LY_DO_KHAC" && string.IsNullOrWhiteSpace(request.LyDoKhac))
             throw new ArgumentException("Vui lòng nhập lý do cụ thể");
+        if (request.LyDoKhac?.Length > 500 || request.MoTa?.Length > 2000)
+            throw new ArgumentException("Nội dung mô tả hoàn trả quá dài");
+        if (request.HinhAnh?.Any(path => path.StartsWith("data:", StringComparison.OrdinalIgnoreCase)
+                                           || path.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
+                                           || path.StartsWith("content:", StringComparison.OrdinalIgnoreCase)
+                                           || path.StartsWith("ph:", StringComparison.OrdinalIgnoreCase)) == true)
+            throw new ArgumentException("Ảnh bằng chứng phải được upload thành tệp thật lên server");
 
-        // 3. Kiểm tra đơn hàng hợp lệ (thuộc user, đã hoàn thành, chứa sản phẩm)
-        var hopLe = await _hoanTraRepository.KiemTraDonHangHopLe(
-            request.MaDonHang, maNguoiDung, request.MaTacPham);
+        if (request.LyDo == "LY_DO_KHAC" && await _hoanTraRepository.LaTranhDatVe(maNguoiDung, request))
+            throw new InvalidOperationException("Tranh đặt vẽ chỉ được hoàn trả khi hư hỏng, giao sai hoặc không đúng mô tả/thỏa thuận");
 
-        if (!hopLe)
-            throw new InvalidOperationException("Đơn hàng không hợp lệ hoặc chưa đủ điều kiện hoàn trả. Đơn hàng phải ở trạng thái Hoàn thành.");
-
-        // 4. Kiểm tra chưa có yêu cầu hoàn trả đang xử lý cho sản phẩm này
-        var daCoYeuCau = await _hoanTraRepository.KiemTraDaCoYeuCau(
-            request.MaDonHang, request.MaTacPham, maNguoiDung);
-
-        if (daCoYeuCau)
-            throw new InvalidOperationException("Sản phẩm này trong đơn hàng đã có yêu cầu hoàn trả đang được xử lý.");
-
-        // 5. Tạo yêu cầu
+        // Repository thực hiện kiểm tra đơn, dòng hàng, thời hạn, số lượng và chống request trùng
+        // trong cùng SERIALIZABLE transaction để tránh race condition.
         var maYeuCau = await _hoanTraRepository.TaoYeuCauHoanTra(maNguoiDung, request);
 
         return new TaoHoanTraResponse
@@ -79,6 +85,12 @@ public class HoanTraBusiness : IHoanTraBusiness
             throw new InvalidOperationException("Không thể xác nhận. Yêu cầu chưa được duyệt hoặc không thuộc về bạn.");
     }
 
+    public async Task HuyYeuCau(int maYeuCau, int maNguoiDung)
+    {
+        if (!await _hoanTraRepository.HuyYeuCau(maYeuCau, maNguoiDung))
+            throw new InvalidOperationException("Chỉ có thể hủy yêu cầu của bạn khi đang chờ duyệt");
+    }
+
     // ================================================================
     // ADMIN
     // ================================================================
@@ -100,14 +112,14 @@ public class HoanTraBusiness : IHoanTraBusiness
     }
 
     /// <summary>Admin duyệt hoặc từ chối yêu cầu hoàn trả</summary>
-    public async Task DuyetYeuCau(int maYeuCau, DuyetHoanTraRequest request)
+    public async Task DuyetYeuCau(int maYeuCau, int maTaiKhoan, DuyetHoanTraRequest request)
     {
         // Nếu từ chối phải có lý do
         if (!request.ChapNhan && string.IsNullOrWhiteSpace(request.LyDoTuChoi))
             throw new ArgumentException("Vui lòng nhập lý do từ chối");
 
         var success = await _hoanTraRepository.DuyetYeuCau(
-            maYeuCau, request.ChapNhan, request.LyDoTuChoi);
+            maYeuCau, maTaiKhoan, request.ChapNhan, request.LyDoTuChoi?.Trim());
 
         if (!success)
             throw new InvalidOperationException("Không thể duyệt. Yêu cầu không ở trạng thái Chờ duyệt.");
@@ -116,13 +128,32 @@ public class HoanTraBusiness : IHoanTraBusiness
     /// <summary>Admin cập nhật trạng thái theo quy trình</summary>
     public async Task CapNhatTrangThai(int maYeuCau, CapNhatTrangThaiHoanTraRequest request)
     {
-        var trangThaiHopLe = new[] { "DANG_HOAN_TRA", "DA_NHAN_HANG", "DA_HOAN_TIEN", "HOAN_TAT" };
+        request.TrangThai = request.TrangThai.Trim().ToUpperInvariant();
+        var trangThaiHopLe = new[] { "DANG_HOAN_TRA", "HOAN_TAT" };
         if (!trangThaiHopLe.Contains(request.TrangThai))
-            throw new ArgumentException($"Trạng thái không hợp lệ: {request.TrangThai}");
+            throw new ArgumentException("Hãy dùng API xác nhận nhận hàng hoặc xác nhận hoàn tiền cho bước nghiệp vụ tương ứng");
 
         var success = await _hoanTraRepository.CapNhatTrangThai(maYeuCau, request.TrangThai);
         if (!success)
             throw new InvalidOperationException("Không thể cập nhật trạng thái. Kiểm tra thứ tự chuyển trạng thái.");
+    }
+
+    public async Task XacNhanNhanHang(int maYeuCau, int maTaiKhoan, XacNhanNhanHangHoanTraRequest request)
+    {
+        if (!await _hoanTraRepository.XacNhanNhanHang(maYeuCau, maTaiKhoan, request.CoTheBanLai))
+            throw new InvalidOperationException("Yêu cầu không ở trạng thái đang hoàn trả hoặc đã được xử lý");
+    }
+
+    public async Task XacNhanHoanTien(int maYeuCau, int maTaiKhoan, XacNhanHoanTienRequest request)
+    {
+        var methods = new[] { "COD", "BANKTRANSFER", "MOMO", "VNPAY", "CHUYEN_KHOAN", "TIEN_MAT" };
+        request.PhuongThucHoanTien = request.PhuongThucHoanTien.Trim().ToUpperInvariant();
+        if (!methods.Contains(request.PhuongThucHoanTien))
+            throw new ArgumentException("Phương thức hoàn tiền không hợp lệ");
+        if (request.SoTienHoan.HasValue && request.SoTienHoan <= 0)
+            throw new ArgumentException("Số tiền hoàn phải lớn hơn 0");
+        if (!await _hoanTraRepository.XacNhanHoanTien(maYeuCau, maTaiKhoan, request))
+            throw new InvalidOperationException("Yêu cầu chưa được nhận lại, số tiền không hợp lệ hoặc đã hoàn tiền");
     }
 
     /// <summary>Admin hoàn tất toàn bộ quy trình hoàn trả</summary>

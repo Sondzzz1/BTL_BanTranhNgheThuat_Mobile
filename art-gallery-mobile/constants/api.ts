@@ -60,10 +60,11 @@ export const API_ENDPOINTS = {
   REVIEW_FIVE_STARS: '/danh-gia/5-sao',
 
   // Hoàn trả sản phẩm
-  RETURN_CREATE: '/hoan-tra',
+  RETURN_CREATE: '/hoan-tra/co-tep',
   RETURN_MY: '/hoan-tra/cua-toi',
   RETURN_DETAIL: (id: number) => `/hoan-tra/${id}`,
   RETURN_CONFIRM_SHIPPED: (id: number) => `/hoan-tra/${id}/xac-nhan-da-gui`,
+  RETURN_CANCEL: (id: number) => `/hoan-tra/${id}/huy`,
 
   // Tranh theo yêu cầu
   CUSTOM_ART_CREATE_WITH_FILES: '/tranh-theo-yeu-cau/tao-yeu-cau-co-tep',

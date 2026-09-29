@@ -25,7 +25,7 @@ public class LichSuSoHuu
     public DateTime? NgayChuyenGiao { get; set; } // Ngày chuyển giao cho người khác
     
     /// <summary>
-    /// 0=CREATION, 1=SALE, 2=RESALE (giai đoạn sau)
+    /// 0=CREATION, 1=SALE, 2=RESALE, 3=RETURN
     /// </summary>
     public byte LoaiChuyenGiao { get; set; }
     

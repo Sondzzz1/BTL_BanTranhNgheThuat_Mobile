@@ -8,13 +8,24 @@ import apiClient from './api';
 export interface HoanTraSummary {
   maYeuCau: number;
   maDonHang: number;
+  maNguoiDung: number;
+  tenNguoiDung?: string;
   maTacPham: number;
+  maChiTietDH?: number;
   tenTacPham?: string;
   hinhAnhTacPham?: string;
   giaTacPham: number;
+  soLuongTra: number;
   lyDo: string;
   moTa?: string;
   trangThai: string;
+  lyDoTuChoi?: string;
+  coTheBanLai?: boolean;
+  soTienHoan?: number;
+  phuongThucHoanTien?: string;
+  trangThaiHoanTien?: string;
+  ngayNhanHang?: string;
+  ngayHoanTien?: string;
   ngayTao: string;
 }
 
@@ -26,16 +37,24 @@ export interface HoanTraDetail {
   emailNguoiDung?: string;
   soDienThoaiNguoiDung?: string;
   maTacPham: number;
+  maChiTietDH?: number;
   tenTacPham?: string;
   hinhAnhTacPham?: string;
   giaTacPham: number;
   soLuong: number;
+  soLuongTra: number;
   lyDo: string;
   lyDoKhac?: string;
   moTa?: string;
   hinhAnh: string[];
   trangThai: string;
   lyDoTuChoi?: string;
+  coTheBanLai?: boolean;
+  soTienHoan?: number;
+  phuongThucHoanTien?: string;
+  trangThaiHoanTien?: string;
+  ngayNhanHang?: string;
+  ngayHoanTien?: string;
   ngayTao: string;
   ngayCapNhat: string;
   ngayDatHang: string;
@@ -84,6 +103,34 @@ export const adminReturnService = {
     return response.data;
   },
 
+  /** Xác nhận cửa hàng đã nhận tác phẩm; backend cập nhật kho/quyền sở hữu trong một transaction. */
+  async confirmReceived(id: number, coTheBanLai: boolean): Promise<{ message: string }> {
+    const response = await apiClient.put<{ message: string }>(
+      `/admin/hoan-tra/${id}/xac-nhan-da-nhan`,
+      { coTheBanLai }
+    );
+    return response.data;
+  },
+
+  /** Ghi nhận giao dịch hoàn tiền thực tế. */
+  async confirmRefund(
+    id: number,
+    request: { soTienHoan: number; phuongThucHoanTien: string }
+  ): Promise<{ message: string }> {
+    const response = await apiClient.put<{ message: string }>(
+      `/admin/hoan-tra/${id}/xac-nhan-hoan-tien`,
+      request
+    );
+    return response.data;
+  },
+
+  /** Tải ảnh bằng chứng qua Axios để header JWT vẫn được gửi. */
+  async getEvidenceObjectUrl(path: string): Promise<string> {
+    const apiPath = path.startsWith('/api/') ? path.slice(4) : path;
+    const response = await apiClient.get<Blob>(apiPath, { responseType: 'blob' });
+    return URL.createObjectURL(response.data);
+  },
+
   /** Admin cập nhật trạng thái theo quy trình */
   async updateReturnStatus(id: number, trangThai: string): Promise<{ message: string }> {
     const request: CapNhatTrangThaiRequest = { trangThai };
@@ -111,6 +158,7 @@ export const RETURN_STATUS_TEXT: Record<string, string> = {
   CHO_DUYET: 'Chờ duyệt',
   DA_DUYET: 'Đã duyệt',
   TU_CHOI: 'Từ chối',
+  DA_HUY: 'Đã hủy',
   DANG_HOAN_TRA: 'Đang gửi hàng',
   DA_NHAN_HANG: 'Đã nhận hàng',
   DA_HOAN_TIEN: 'Đã hoàn tiền',
@@ -121,6 +169,7 @@ export const RETURN_STATUS_COLOR: Record<string, string> = {
   CHO_DUYET: '#f59e0b',
   DA_DUYET: '#3b82f6',
   TU_CHOI: '#ef4444',
+  DA_HUY: '#6b7280',
   DANG_HOAN_TRA: '#f97316',
   DA_NHAN_HANG: '#8b5cf6',
   DA_HOAN_TIEN: '#10b981',

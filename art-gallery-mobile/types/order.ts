@@ -25,6 +25,7 @@ export interface Order {
   maNguoiDung: number;
   tenNguoiDung?: string;
   ngayDat: string;
+  ngayGiao?: string;
   tongTien: number;
   tenNguoiNhan?: string;
   soDienThoai?: string;
@@ -44,7 +45,8 @@ export const ORDER_STATUS = {
   CONFIRMED: 1,      // Đã xác nhận
   SHIPPING: 2,       // Đang giao
   COMPLETED: 3,      // Hoàn thành
-  CANCELLED: 4,      // Đã hủy
+  CANCEL_REQUESTED: 4, // Chờ duyệt hủy
+  CANCELLED: 5,      // Đã hủy
 } as const;
 
 export const ORDER_STATUS_TEXT: Record<number, string> = {
@@ -52,5 +54,6 @@ export const ORDER_STATUS_TEXT: Record<number, string> = {
   1: 'Đã xác nhận',
   2: 'Đang giao hàng',
   3: 'Hoàn thành',
-  4: 'Đã hủy',
+  4: 'Chờ duyệt hủy',
+  5: 'Đã hủy',
 };

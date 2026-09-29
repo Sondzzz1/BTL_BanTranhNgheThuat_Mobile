@@ -68,6 +68,7 @@ public class DonHangResponse
 {
     public int MaDonHang { get; set; }
     public DateTime NgayDat { get; set; }
+    public DateTime? NgayGiao { get; set; }
     public decimal TongTien { get; set; }
     public string TenNguoiNhan { get; set; } = null!;
     public string SoDienThoai { get; set; } = null!;
@@ -80,6 +81,7 @@ public class DonHangResponse
 
 public class ChiTietDonHangResponse
 {
+    public int MaChiTietDH { get; set; }
     public int MaTacPham { get; set; }
     public string TenTacPham { get; set; } = null!;
     public string TenHoaSi { get; set; } = null!;

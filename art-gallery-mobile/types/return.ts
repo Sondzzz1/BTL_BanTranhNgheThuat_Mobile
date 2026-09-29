@@ -8,9 +8,11 @@ export interface YeuCauHoanTra {
   maYeuCau: number;
   maDonHang: number;
   maTacPham: number;
+  maChiTietDH?: number;
   tenTacPham?: string;
   hinhAnhTacPham?: string;
   giaTacPham: number;
+  soLuongTra: number;
   lyDo: string;
   moTa?: string;
   trangThai: string;
@@ -25,16 +27,24 @@ export interface YeuCauHoanTraChiTiet {
   emailNguoiDung?: string;
   soDienThoaiNguoiDung?: string;
   maTacPham: number;
+  maChiTietDH?: number;
   tenTacPham?: string;
   hinhAnhTacPham?: string;
   giaTacPham: number;
   soLuong: number;
+  soLuongTra: number;
   lyDo: string;
   lyDoKhac?: string;
   moTa?: string;
   hinhAnh: string[];
   trangThai: string;
   lyDoTuChoi?: string;
+  coTheBanLai?: boolean;
+  soTienHoan?: number;
+  phuongThucHoanTien?: string;
+  trangThaiHoanTien?: string;
+  ngayNhanHang?: string;
+  ngayHoanTien?: string;
   ngayTao: string;
   ngayCapNhat: string;
   ngayDatHang: string;
@@ -44,11 +54,18 @@ export interface YeuCauHoanTraChiTiet {
 export interface TaoHoanTraRequest {
   maDonHang: number;
   maTacPham: number;
+  maChiTietDH?: number;
+  soLuongTra: number;
   /** SAN_PHAM_HU_HONG | SAI_MO_TA | GIAO_SAI | LOI_SAN_PHAM | KHONG_DUNG_DAT | LY_DO_KHAC */
   lyDo: string;
   lyDoKhac?: string;
   moTa?: string;
-  hinhAnh?: string[]; // Base64 images
+}
+
+export interface ReturnUploadFile {
+  uri: string;
+  name: string;
+  type: string;
 }
 
 export interface TaoHoanTraResponse {
@@ -64,6 +81,7 @@ export const RETURN_STATUS = {
   CHO_DUYET: 'CHO_DUYET',
   DA_DUYET: 'DA_DUYET',
   TU_CHOI: 'TU_CHOI',
+  DA_HUY: 'DA_HUY',
   DANG_HOAN_TRA: 'DANG_HOAN_TRA',
   DA_NHAN_HANG: 'DA_NHAN_HANG',
   DA_HOAN_TIEN: 'DA_HOAN_TIEN',
@@ -76,6 +94,7 @@ export const RETURN_STATUS_TEXT: Record<string, string> = {
   CHO_DUYET: 'Chờ duyệt',
   DA_DUYET: 'Đã duyệt',
   TU_CHOI: 'Từ chối',
+  DA_HUY: 'Đã hủy',
   DANG_HOAN_TRA: 'Đang gửi hàng',
   DA_NHAN_HANG: 'Đã nhận hàng',
   DA_HOAN_TIEN: 'Đã hoàn tiền',
@@ -86,6 +105,7 @@ export const RETURN_STATUS_COLOR: Record<string, string> = {
   CHO_DUYET: '#f59e0b',
   DA_DUYET: '#3b82f6',
   TU_CHOI: '#ef4444',
+  DA_HUY: '#6b7280',
   DANG_HOAN_TRA: '#f97316',
   DA_NHAN_HANG: '#8b5cf6',
   DA_HOAN_TIEN: '#10b981',
@@ -96,6 +116,7 @@ export const RETURN_STATUS_BG: Record<string, string> = {
   CHO_DUYET: '#fef3c7',
   DA_DUYET: '#dbeafe',
   TU_CHOI: '#fee2e2',
+  DA_HUY: '#f3f4f6',
   DANG_HOAN_TRA: '#ffedd5',
   DA_NHAN_HANG: '#ede9fe',
   DA_HOAN_TIEN: '#d1fae5',

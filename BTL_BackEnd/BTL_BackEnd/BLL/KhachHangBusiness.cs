@@ -352,6 +352,7 @@ public class KhachHangBusiness : IKhachHangBusiness
             {
                 MaDonHang = donHang.MaDonHang,
                 NgayDat = donHang.NgayDat,
+                NgayGiao = donHang.NgayGiao,
                 TongTien = donHang.TongTien,
                 TenNguoiNhan = donHang.TenNguoiNhan ?? "",
                 SoDienThoai = donHang.SoDienThoai ?? "",
@@ -388,6 +389,7 @@ public class KhachHangBusiness : IKhachHangBusiness
             }
             chiTietResponse.Add(new ChiTietDonHangResponse
             {
+                MaChiTietDH = chiTiet.MaChiTietDH,
                 MaTacPham = chiTiet.MaTacPham,
                 TenTacPham = tacPham?.TenTacPham ?? "",
                 TenHoaSi = tenHoaSi,
@@ -402,6 +404,7 @@ public class KhachHangBusiness : IKhachHangBusiness
         {
             MaDonHang = donHang.MaDonHang,
             NgayDat = donHang.NgayDat,
+            NgayGiao = donHang.NgayGiao,
             TongTien = donHang.TongTien,
             TenNguoiNhan = donHang.TenNguoiNhan ?? "",
             SoDienThoai = donHang.SoDienThoai ?? "",
