@@ -6,11 +6,14 @@ import FavoriteButton from './FavoriteButton';
 interface ProductCardProps {
   product: Product;
   onPress: () => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export default function ProductCard({
   product,
   onPress,
+  onToggleFavorite,
 }: ProductCardProps) {
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat('vi-VN', {
@@ -44,7 +47,7 @@ export default function ProductCard({
 
         {/* Favorite Button */}
         <View style={styles.favoriteButtonContainer}>
-          <FavoriteButton productId={product.maTacPham} size="small" />
+          <FavoriteButton productId={product.maTacPham} size="small" onToggle={onToggleFavorite ? () => onToggleFavorite() : undefined} />
         </View>
 
         {isOutOfStock && (

@@ -18,6 +18,11 @@ public class TacPhamViewDTO
     public byte TrangThai { get; set; }
     public string TrangThaiText { get; set; } = null!;
     public DateTime NgayTao { get; set; }
+    public byte LoaiTacPham { get; set; }
+    public string? TacGiaGoc { get; set; }
+    public int? MaTacPhamGoc { get; set; }
+    public int? MaYeuCauVeTranh { get; set; }
+    public string? MoTaNguonGoc { get; set; }
 }
 
 public class TacPhamCreateDTO

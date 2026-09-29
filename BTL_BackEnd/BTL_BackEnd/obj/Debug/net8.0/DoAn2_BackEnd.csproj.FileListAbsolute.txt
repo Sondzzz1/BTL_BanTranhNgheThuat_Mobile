@@ -420,3 +420,15 @@ C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\obj\Debug\net8.0\DoA
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\obj\Debug\net8.0\DoAn2_BackEnd.genruntimeconfig.cache
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\obj\Debug\net8.0\ref\DoAn2_BackEnd.dll
 C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\BTL_BackEnd\bin\Debug\net8.0\DoAn2_BackEnd.exe
+C:\Users\huanp\AppData\Local\Temp\BTL_Mobile_backend_build\appsettings.Development.json
+C:\Users\huanp\AppData\Local\Temp\BTL_Mobile_backend_build\appsettings.json
+C:\Users\huanp\AppData\Local\Temp\BTL_Mobile_backend_build\DoAn2_BackEnd.deps.json
+C:\Users\huanp\AppData\Local\Temp\BTL_Mobile_backend_build\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\AppData\Local\Temp\BTL_Mobile_backend_build\DoAn2_BackEnd.dll
+C:\Users\huanp\AppData\Local\Temp\BTL_Mobile_backend_build\DoAn2_BackEnd.pdb
+C:\Users\huanp\AppData\Local\Temp\btl-mobile-backend-final\appsettings.Development.json
+C:\Users\huanp\AppData\Local\Temp\btl-mobile-backend-final\appsettings.json
+C:\Users\huanp\AppData\Local\Temp\btl-mobile-backend-final\DoAn2_BackEnd.deps.json
+C:\Users\huanp\AppData\Local\Temp\btl-mobile-backend-final\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\AppData\Local\Temp\btl-mobile-backend-final\DoAn2_BackEnd.dll
+C:\Users\huanp\AppData\Local\Temp\btl-mobile-backend-final\DoAn2_BackEnd.pdb

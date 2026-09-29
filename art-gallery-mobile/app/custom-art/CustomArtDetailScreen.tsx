@@ -1,77 +1,110 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { customArtService } from '../../services/customArtService';
+import { CommissionRequest, commissionStatusLabels } from '../../types/customArt';
 
 export default function CustomArtDetailScreen({ route, navigation }: any) {
-  const item = route?.params?.item || {
-    id: 101,
-    title: 'Tranh treo phòng khách hiện đại',
-    status: 'Đã nhận',
-    artist: 'Họa sĩ Minh Anh',
-    date: '2026-09-10',
-    price: '8.500.000đ',
+  const id = Number(route?.params?.id || route?.params?.item?.maYeuCau || route?.params?.item?.id);
+  const [item, setItem] = useState<CommissionRequest | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [authToken, setAuthToken] = useState<string | null>(null);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const [detail, token] = await Promise.all([
+        customArtService.getById(id),
+        AsyncStorage.getItem('authToken'),
+      ]);
+      setItem(detail);
+      setAuthToken(token);
+    } catch (error: any) {
+      Alert.alert('Không thể tải chi tiết', error?.response?.data?.message || 'Vui lòng thử lại.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => { load(); }, [id]);
+
+  const cancel = () => Alert.alert('Hủy yêu cầu', 'Bạn chắc chắn muốn hủy yêu cầu này?', [
+    { text: 'Không', style: 'cancel' },
+    {
+      text: 'Hủy yêu cầu', style: 'destructive', onPress: async () => {
+        try { await customArtService.cancel(id); await load(); }
+        catch (error: any) { Alert.alert('Không thể hủy', error?.response?.data?.message || 'Vui lòng thử lại.'); }
+      },
+    },
+  ]);
+
+  if (loading) return <ActivityIndicator size="large" color="#ea580c" style={styles.loader} />;
+  if (!item) return <View style={styles.center}><Text>Không tìm thấy yêu cầu.</Text></View>;
+
+  const canCancel = !item.maHoaSi && !['COMPLETED', 'REJECTED', 'CANCELLED'].includes(item.trangThai);
+  const referenceUrl = customArtService.absoluteFileUrl(item.referenceImageUrl || item.anhThamKhao);
+  const evidenceUrl = customArtService.absoluteFileUrl(item.bangChungQuyenSuDung);
+  const imageHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+
   return (
-    <View style={styles.wrapper}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Chi tiết yêu cầu</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>{item.tieuDe}</Text>
+      <Text style={styles.status}>{commissionStatusLabels[item.trangThai] || item.trangThai}</Text>
+
+      <Section label="Mô tả" value={item.moTa || 'Không có'} />
+      <View style={styles.twoColumns}>
+        <Section label="Loại yêu cầu" value={item.type} compact />
+        <Section label="Ngày tạo" value={new Date(item.ngayTao).toLocaleDateString('vi-VN')} compact />
       </View>
+      <Section label="Họa sĩ thực hiện" value={item.tenHoaSiThucHien || 'Chưa có họa sĩ nhận'} />
+      <Section label="Ngân sách dự kiến" value={`${Number(item.giaDuKien || 0).toLocaleString('vi-VN')}đ`} />
 
-      <ScrollView style={styles.body}>
-        <Text style={styles.bigTitle}>{item.title}</Text>
-        <View style={styles.statusRow}>
-          <Text style={[styles.status, styles.active]}>{item.status}</Text>
+      {item.type === 'EXISTING_ARTWORK' && (
+        <View style={styles.sourceBox}>
+          <Text style={styles.sourceHeading}>Nguồn gốc tác phẩm</Text>
+          <Section label="Tên tác phẩm gốc" value={item.referenceArtworkName || '—'} />
+          <Section label="Tác giả tác phẩm gốc" value={item.referenceArtistName || '—'} />
+          <Section label="Nguồn tham khảo" value={item.nguonTacPhamGoc || '—'} />
+          <Section label="Trạng thái quyền sử dụng" value={item.tinhTrangQuyenSuDung || '—'} />
+          <Section label="Mô tả quyền sử dụng" value={item.moTaQuyenSuDung || '—'} />
+          {item.ghiChuKiemDuyet && <Section label="Ghi chú kiểm duyệt" value={item.ghiChuKiemDuyet} />}
         </View>
+      )}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Họa sĩ phụ trách</Text>
-          <Text style={styles.value}>{item.artist}</Text>
-        </View>
+      {item.type === 'PERSONAL_REFERENCE' && (
+        <Section label="Xác nhận quyền tài liệu cá nhân" value={item.daXacNhanQuyenTaiLieu ? 'Đã xác nhận' : 'Chưa xác nhận'} />
+      )}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Ngày tạo</Text>
-          <Text style={styles.value}>{item.date}</Text>
-        </View>
+      {referenceUrl && <View style={styles.imageBox}><Text style={styles.imageLabel}>Ảnh tham khảo</Text><Image source={{ uri: referenceUrl, headers: imageHeaders }} style={styles.image} /></View>}
+      {evidenceUrl && <View style={styles.imageBox}><Text style={styles.imageLabel}>Bằng chứng quyền sử dụng</Text><Image source={{ uri: evidenceUrl, headers: imageHeaders }} style={styles.image} /></View>}
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Báo giá</Text>
-          <Text style={styles.value}>{item.price}</Text>
-        </View>
-
-        <View style={styles.timelineBox}>
-          <Text style={styles.timelineTitle}>Tiến độ</Text>
-          {['Yêu cầu đã gửi', 'Họa sĩ nhận', 'Báo giá', 'Đặt cọc', 'Đang làm', 'Hoàn thành'].map((step, index) => (
-            <View key={step} style={styles.timelineItem}>
-              <View style={[styles.dot, index <= 3 && styles.dotActive]} />
-              <Text style={styles.timelineText}>{step}</Text>
-            </View>
-          ))}
-        </View>
-      </ScrollView>
-    </View>
+      {item.maTacPhamKetQua && <Section label="Tác phẩm mới trong hệ thống" value={`#${item.maTacPhamKetQua}`} />}
+      {canCancel && <TouchableOpacity style={styles.cancelButton} onPress={cancel}><Text style={styles.cancelText}>Hủy yêu cầu</Text></TouchableOpacity>}
+    </ScrollView>
   );
 }
 
+function Section({ label, value, compact = false }: { label: string; value: string; compact?: boolean }) {
+  return <View style={[styles.section, compact && styles.compact]}><Text style={styles.label}>{label}</Text><Text style={styles.value}>{value}</Text></View>;
+}
+
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  back: { fontSize: 26, color: '#111827', marginRight: 10 },
-  title: { fontSize: 22, fontWeight: '700', color: '#111827' },
-  body: { flex: 1 },
-  bigTitle: { fontSize: 22, fontWeight: '700', color: '#111827', marginBottom: 10 },
-  statusRow: { flexDirection: 'row', marginBottom: 18 },
-  status: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, fontSize: 12, fontWeight: '700' },
-  active: { backgroundColor: '#fff7ed', color: '#c2410c' },
-  section: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 12 },
-  label: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
-  value: { fontSize: 15, color: '#111827', fontWeight: '600' },
-  timelineBox: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginTop: 8 },
-  timelineTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  timelineItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  dot: { width: 10, height: 10, borderRadius: 999, backgroundColor: '#d1d5db', marginRight: 10 },
-  dotActive: { backgroundColor: '#ea580c' },
-  timelineText: { color: '#374151', fontSize: 14 },
+  screen: { flex: 1, backgroundColor: '#f8fafc' },
+  content: { padding: 16, paddingBottom: 40 },
+  loader: { marginTop: 100 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 24, fontWeight: '800', color: '#111827' },
+  status: { alignSelf: 'flex-start', backgroundColor: '#ffedd5', color: '#c2410c', fontWeight: '800', paddingHorizontal: 11, paddingVertical: 6, borderRadius: 999, marginTop: 9, marginBottom: 16 },
+  section: { backgroundColor: '#fff', borderRadius: 10, padding: 13, marginBottom: 10, borderWidth: 1, borderColor: '#e5e7eb' },
+  compact: { flex: 1 },
+  twoColumns: { flexDirection: 'row', gap: 10 },
+  label: { color: '#6b7280', fontSize: 12, marginBottom: 4 },
+  value: { color: '#111827', fontSize: 15, fontWeight: '600' },
+  sourceBox: { backgroundColor: '#fff7ed', borderWidth: 1, borderColor: '#fed7aa', borderRadius: 14, padding: 12, marginBottom: 12 },
+  sourceHeading: { color: '#9a3412', fontSize: 18, fontWeight: '800', marginBottom: 10 },
+  imageBox: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12 },
+  imageLabel: { fontWeight: '700', color: '#374151', marginBottom: 8 },
+  image: { width: '100%', height: 230, borderRadius: 10, resizeMode: 'contain', backgroundColor: '#f3f4f6' },
+  cancelButton: { borderWidth: 1, borderColor: '#dc2626', padding: 13, borderRadius: 10, alignItems: 'center', marginTop: 8 },
+  cancelText: { color: '#dc2626', fontWeight: '800' },
 });

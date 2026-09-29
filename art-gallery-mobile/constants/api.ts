@@ -1,7 +1,7 @@
 
 
 // Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
-export const API_BASE_URL = 'http://10.59.67.115:5273/api';
+export const API_BASE_URL = 'http://10.109.101.115:5273/api';
 
 
 export const API_TIMEOUT = 60000; // 60 seconds (tăng từ 30s)
@@ -64,4 +64,10 @@ export const API_ENDPOINTS = {
   RETURN_MY: '/hoan-tra/cua-toi',
   RETURN_DETAIL: (id: number) => `/hoan-tra/${id}`,
   RETURN_CONFIRM_SHIPPED: (id: number) => `/hoan-tra/${id}/xac-nhan-da-gui`,
+
+  // Tranh theo yêu cầu
+  CUSTOM_ART_CREATE_WITH_FILES: '/tranh-theo-yeu-cau/tao-yeu-cau-co-tep',
+  CUSTOM_ART_MY: '/tranh-theo-yeu-cau/yeu-cau-cua-toi',
+  CUSTOM_ART_DETAIL: (id: number) => `/tranh-theo-yeu-cau/yeu-cau/${id}`,
+  CUSTOM_ART_CANCEL: (id: number) => `/tranh-theo-yeu-cau/yeu-cau/${id}/huy`,
 };

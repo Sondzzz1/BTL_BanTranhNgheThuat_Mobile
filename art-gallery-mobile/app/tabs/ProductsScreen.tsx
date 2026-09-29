@@ -86,8 +86,8 @@ export default function ProductsScreen({ navigation, route }: ProductsScreenProp
 
       if (user) {
         try {
-          const favs = await favoriteService.getFavorites();
-          const ids = new Set(favs.map(f => f.tacPham.maTacPham));
+          const favs = await favoriteService.getMyFavorites();
+          const ids = new Set<number>(favs.map((f) => f.tacPham.maTacPham));
           setFavoriteIds(ids);
         } catch {
           // ignore favorite loading error

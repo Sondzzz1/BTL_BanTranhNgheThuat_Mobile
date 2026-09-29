@@ -14,14 +14,25 @@ public enum CustomArtStatus
     RevisionRequested = 9,
     Completed = 10,
     Rejected = 11,
-    Cancelled = 12
+    Cancelled = 12,
+    // Added at the end so persisted status values 0-12 remain unchanged.
+    WaitingPermission = 13
 }
 
 public enum CustomArtType
 {
     Original = 0,
     BasedOnArtwork = 1,
-    Reproduction = 2
+    Reproduction = 2,
+    PersonalReference = 3
+}
+
+public enum PermissionUsageStatus : byte
+{
+    AuthorOrRightsOwner = 1,
+    PermissionGranted = 2,
+    PermittedScope = 3,
+    Unsure = 4
 }
 
 public class CustomArtRequest
@@ -43,12 +54,23 @@ public class CustomArtRequest
     public string? ReferenceArtworkName { get; set; }
     public string? ReferenceArtistName { get; set; }
     public string? ReferenceImageUrl { get; set; }
+    public string? NguonTacPhamGoc { get; set; }
+    public PermissionUsageStatus? TinhTrangQuyenSuDung { get; set; }
+    public bool DaXacNhanQuyenTaiLieu { get; set; }
+    public string? MoTaQuyenSuDung { get; set; }
+    public string? BangChungQuyenSuDung { get; set; }
+    public string? GhiChuKiemDuyet { get; set; }
+    public int? NguoiKiemDuyet { get; set; }
+    public DateTime? NgayKiemDuyet { get; set; }
     public decimal TienDatCoc { get; set; }
     public decimal GiaDuKien { get; set; }
     public CustomArtStatus TrangThai { get; set; } = CustomArtStatus.Submitted;
     public DateTime NgayTao { get; set; } = DateTime.UtcNow;
     public DateTime? NgayCapNhat { get; set; }
     public DateTime? NgayHoanThanhDuKien { get; set; }
+    public string? TenKhachHang { get; set; }
+    public string? TenHoaSiThucHien { get; set; }
+    public int? MaTacPhamKetQua { get; set; }
 }
 
 public class CustomArtImage

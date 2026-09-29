@@ -81,7 +81,7 @@ export default function ArtistsScreen({ navigation }: ArtistsScreenProps) {
         {/* Hero Section */}
         <View style={styles.hero}>
           <View style={styles.heroIcon}>
-            <Ionicons name="palette" size={48} color="#7c3aed" />
+            <Ionicons name="color-palette" size={48} color="#7c3aed" />
           </View>
           <Text style={styles.heroTitle}>Họa Sĩ</Text>
           <Text style={styles.heroSubtitle}>
@@ -98,7 +98,7 @@ export default function ArtistsScreen({ navigation }: ArtistsScreenProps) {
           </View>
         ) : artists.length === 0 ? (
           <EmptyState
-            icon="people-outline"
+            emoji="🎨"
             message="Chưa có họa sĩ nào"
             description="Danh sách họa sĩ sẽ được cập nhật sớm"
           />

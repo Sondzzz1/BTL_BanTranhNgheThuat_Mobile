@@ -1,0 +1,24 @@
+.commission-page { padding: 24px; }
+.commission-toolbar { display: flex; gap: 12px; flex-wrap: wrap; margin: 18px 0; }
+.commission-toolbar select, .commission-note { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+.commission-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+.commission-table th, .commission-table td { padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+.commission-table tbody tr { cursor: pointer; }
+.commission-table tbody tr:hover { background: #fff7ed; }
+.commission-badge { display: inline-block; padding: 5px 9px; border-radius: 999px; background: #ffedd5; color: #9a3412; font-size: 12px; font-weight: 700; }
+.commission-message { margin: 10px 0; padding: 10px; border-radius: 8px; background: #ecfdf5; color: #166534; }
+.commission-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .55); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.commission-modal { background: #fff; width: min(780px, 100%); max-height: 90vh; overflow: auto; border-radius: 14px; padding: 22px; }
+.commission-modal-header { display: flex; justify-content: space-between; gap: 16px; }
+.commission-close { border: 0; background: transparent; font-size: 24px; cursor: pointer; }
+.commission-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 16px 0; }
+.commission-field { padding: 11px; background: #f8fafc; border-radius: 8px; }
+.commission-field small { display: block; color: #6b7280; margin-bottom: 4px; }
+.commission-source { border: 1px solid #fed7aa; background: #fff7ed; border-radius: 10px; padding: 14px; margin: 14px 0; }
+.commission-image { max-width: 100%; max-height: 320px; border-radius: 8px; margin-top: 10px; }
+.commission-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.commission-actions button { border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 700; }
+.commission-approve { background: #16a34a; color: #fff; }
+.commission-wait { background: #f59e0b; color: #fff; }
+.commission-reject { background: #dc2626; color: #fff; }
+@media (max-width: 700px) { .commission-grid { grid-template-columns: 1fr; } .commission-table { font-size: 13px; } }

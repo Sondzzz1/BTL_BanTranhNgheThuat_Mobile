@@ -64,7 +64,12 @@ public class PublicController : ControllerBase
                     HinhAnh = x.TacPham.HinhAnh,
                     KichThuoc = x.TacPham.KichThuoc,
                     ChatLieu = x.TacPham.ChatLieu,
-                    ChatLieuKhung = x.TacPham.ChatLieuKhung
+                    ChatLieuKhung = x.TacPham.ChatLieuKhung,
+                    LoaiTacPham = x.TacPham.LoaiTacPham,
+                    TacGiaGoc = x.TacPham.TacGiaGoc,
+                    MaTacPhamGoc = x.TacPham.MaTacPhamGoc,
+                    MaYeuCauVeTranh = x.TacPham.MaYeuCauVeTranh,
+                    MoTaNguonGoc = x.TacPham.MoTaNguonGoc
                 })
                 .ToList();
 
@@ -107,7 +112,12 @@ public class PublicController : ControllerBase
                 HinhAnh = tacPham.HinhAnh,
                 KichThuoc = tacPham.KichThuoc,
                 ChatLieu = tacPham.ChatLieu,
-                ChatLieuKhung = tacPham.ChatLieuKhung
+                ChatLieuKhung = tacPham.ChatLieuKhung,
+                LoaiTacPham = tacPham.LoaiTacPham,
+                TacGiaGoc = tacPham.TacGiaGoc,
+                MaTacPhamGoc = tacPham.MaTacPhamGoc,
+                MaYeuCauVeTranh = tacPham.MaYeuCauVeTranh,
+                MoTaNguonGoc = tacPham.MoTaNguonGoc
             };
 
             return Ok(result);
@@ -157,7 +167,12 @@ public class PublicController : ControllerBase
                     HinhAnh = x.TacPham.HinhAnh,
                     KichThuoc = x.TacPham.KichThuoc,
                     ChatLieu = x.TacPham.ChatLieu,
-                    ChatLieuKhung = x.TacPham.ChatLieuKhung
+                    ChatLieuKhung = x.TacPham.ChatLieuKhung,
+                    LoaiTacPham = x.TacPham.LoaiTacPham,
+                    TacGiaGoc = x.TacPham.TacGiaGoc,
+                    MaTacPhamGoc = x.TacPham.MaTacPhamGoc,
+                    MaYeuCauVeTranh = x.TacPham.MaYeuCauVeTranh,
+                    MoTaNguonGoc = x.TacPham.MoTaNguonGoc
                 })
                 .ToList();
 
@@ -391,6 +406,11 @@ public class TacPhamResponse
     public string? KichThuoc { get; set; }
     public string? ChatLieu { get; set; }
     public string? ChatLieuKhung { get; set; }
+    public byte LoaiTacPham { get; set; }
+    public string? TacGiaGoc { get; set; }
+    public int? MaTacPhamGoc { get; set; }
+    public int? MaYeuCauVeTranh { get; set; }
+    public string? MoTaNguonGoc { get; set; }
 }
 
 public class TacPhamCongKhaiResponse

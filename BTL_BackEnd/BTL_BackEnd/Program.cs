@@ -84,6 +84,7 @@ builder.Services.AddScoped<IChiTietTacPhamBusiness, ChiTietTacPhamBusiness>();
 builder.Services.AddScoped<IHoanTraBusiness, HoanTraBusiness>();
 builder.Services.AddScoped<ICustomArtBusiness, CustomArtBusiness>();
 builder.Services.AddScoped<IConsultationBusiness, ConsultationBusiness>();
+builder.Services.AddScoped<DoAn2_BackEnd.Helpers.CommissionFileHelper>();
 
 // Swagger/OpenAPI
 builder.Services.AddEndpointsApiExplorer();

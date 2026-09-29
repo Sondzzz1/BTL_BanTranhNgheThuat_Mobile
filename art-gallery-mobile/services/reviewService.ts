@@ -101,7 +101,7 @@ export const reviewService = {
     const totalStars = reviews.reduce((sum, r) => sum + r.danhGia, 0);
     const avgRating = totalStars / reviews.length;
 
-    const starCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     reviews.forEach((r) => {
       starCounts[r.danhGia]++;
     });

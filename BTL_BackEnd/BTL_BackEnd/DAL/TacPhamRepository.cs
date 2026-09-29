@@ -210,6 +210,21 @@ public class TacPhamRepository : ITacPhamRepository
             NgayTao = reader.GetDateTime(reader.GetOrdinal("NgayTao")),
             LyDo = HasColumn(reader, "LyDo") && !reader.IsDBNull(reader.GetOrdinal("LyDo"))
                 ? reader.GetString(reader.GetOrdinal("LyDo"))
+                : null,
+            LoaiTacPham = HasColumn(reader, "LoaiTacPham") && !reader.IsDBNull(reader.GetOrdinal("LoaiTacPham"))
+                ? reader.GetByte(reader.GetOrdinal("LoaiTacPham"))
+                : (byte)0,
+            TacGiaGoc = HasColumn(reader, "TacGiaGoc") && !reader.IsDBNull(reader.GetOrdinal("TacGiaGoc"))
+                ? reader.GetString(reader.GetOrdinal("TacGiaGoc"))
+                : null,
+            MaTacPhamGoc = HasColumn(reader, "MaTacPhamGoc") && !reader.IsDBNull(reader.GetOrdinal("MaTacPhamGoc"))
+                ? reader.GetInt32(reader.GetOrdinal("MaTacPhamGoc"))
+                : null,
+            MaYeuCauVeTranh = HasColumn(reader, "MaYeuCauVeTranh") && !reader.IsDBNull(reader.GetOrdinal("MaYeuCauVeTranh"))
+                ? reader.GetInt32(reader.GetOrdinal("MaYeuCauVeTranh"))
+                : null,
+            MoTaNguonGoc = HasColumn(reader, "MoTaNguonGoc") && !reader.IsDBNull(reader.GetOrdinal("MoTaNguonGoc"))
+                ? reader.GetString(reader.GetOrdinal("MoTaNguonGoc"))
                 : null
         };
     }

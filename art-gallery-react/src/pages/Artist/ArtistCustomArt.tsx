@@ -1,922 +1,108 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import {
-  customArtService,
   CustomArtRequestApi,
+  customArtService,
+  getAuthenticatedCustomArtFileUrl,
   getCustomArtStatusLabel,
+  getCustomArtTypeLabel,
 } from '../../services/customArtService';
 import './ArtistCustomArt.css';
 
-type FilterStatus = 'all' | 'available' | 'claimed' | 'done';
-
-type CustomArtListItem = {
-  id: number;
-  khachHang: string;
-  tieuDe: string;
-  loaiTranh: string;
-  kichThuoc: string;
-  moTa: string;
-  trangThai: string;
-  isClaimed: boolean;
-  assignedArtistId?: number;
-  assignedArtist?: string;
-  phongCach?: string;
-  mauSac?: string;
-  chatLieu?: string;
-  anhThamKhao?: string | null;
-};
-
-const mapApiToView = (
-  item: CustomArtRequestApi
-): CustomArtListItem => ({
-  id: item.maYeuCau,
-  khachHang: `Khách hàng #${item.maKhachHang}`,
-  tieuDe: item.tieuDe,
-  loaiTranh: item.loaiTranh || 'Chưa cập nhật',
-  kichThuoc: item.kichThuoc || 'Chưa cập nhật',
-  moTa: item.moTa || 'Không có mô tả',
-  trangThai: item.trangThai,
-  isClaimed: !!item.maHoaSi,
-  assignedArtistId: item.maHoaSi ?? undefined,
-  assignedArtist: item.maHoaSi
-    ? `Họa sĩ #${item.maHoaSi}`
-    : undefined,
-  phongCach: item.phongCach,
-  mauSac: item.mauSac,
-  chatLieu: item.chatLieu,
-  anhThamKhao:
-    item.anhThamKhao ||
-    item.referenceImageUrl ||
-    null,
-});
-
 const ArtistCustomArt: React.FC = () => {
   const { user } = useAuth();
-
-  const [status, setStatus] =
-    useState<FilterStatus>('all');
-
-  const [requests, setRequests] = useState<
-    CustomArtListItem[]
-  >([]);
-
+  const artistId = Number(user?.id || 0);
+  const [items, setItems] = useState<CustomArtRequestApi[]>([]);
+  const [selected, setSelected] = useState<CustomArtRequestApi | null>(null);
   const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState('');
+  const [quote, setQuote] = useState({ price: '', time: '', note: '' });
+  const [referencePreview, setReferencePreview] = useState<string>();
 
-  const [notice, setNotice] =
-    useState<string>('');
-
-  const [openQuoteId, setOpenQuoteId] =
-    useState<number | null>(null);
-
-  const [selectedRequest, setSelectedRequest] =
-    useState<CustomArtListItem | null>(null);
-
-  const [quoteForm, setQuoteForm] = useState({
-    GiaBaoGia: '',
-    ThoiGianHoanThanh: '',
-    GhiChu: '',
-  });
-
-  const currentArtistId = Number(
-    user?.id || 0
-  );
-
-  const loadRequests = async () => {
-    try {
-      const data =
-        await customArtService.getAllRequests();
-
-      setRequests(
-        data.map(mapApiToView)
-      );
-    } catch (error) {
-      console.error(
-        'Lỗi khi tải yêu cầu custom art:',
-        error
-      );
-
-      setNotice(
-        'Không thể tải danh sách yêu cầu.'
-      );
-    }
-  };
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-
-      try {
-        await loadRequests();
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
+  const load = useCallback(async () => {
+    try { setLoading(true); setItems(await customArtService.getArtistRequests()); }
+    catch (error: any) { setMessage(error?.response?.data?.message || 'Không thể tải yêu cầu.'); }
+    finally { setLoading(false); }
   }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => () => {
+    if (referencePreview?.startsWith('blob:')) URL.revokeObjectURL(referencePreview);
+  }, [referencePreview]);
 
-  useEffect(() => {
-    if (!notice) return;
-
-    const timer = window.setTimeout(() => {
-      setNotice('');
-    }, 4000);
-
-    return () => window.clearTimeout(timer);
-  }, [notice]);
-
-  const filtered = useMemo(() => {
-    if (status === 'available') {
-      return requests.filter(
-        (x) => !x.isClaimed
-      );
-    }
-
-    if (status === 'claimed') {
-      return requests.filter(
-        (x) => x.isClaimed
-      );
-    }
-
-    if (status === 'done') {
-      return requests.filter(
-        (x) =>
-          x.trangThai === 'Completed'
-      );
-    }
-
-    return requests;
-  }, [requests, status]);
-
-  const statistics = useMemo(() => {
-    return {
-      total: requests.length,
-
-      available: requests.filter(
-        (x) => !x.isClaimed
-      ).length,
-
-      mine: requests.filter(
-        (x) =>
-          x.assignedArtistId ===
-          currentArtistId
-      ).length,
-
-      completed: requests.filter(
-        (x) =>
-          x.trangThai === 'Completed'
-      ).length,
-    };
-  }, [requests, currentArtistId]);
-
-  const handleClaim = async (
-    requestId: number
-  ) => {
+  const openDetail = async (item: CustomArtRequestApi) => {
     try {
-      const response =
-        await customArtService.claimRequest(
-          requestId
-        );
-
-      setNotice(
-        response.message ||
-          `Bạn đã nhận yêu cầu #${requestId}.`
-      );
-
-      await loadRequests();
+      const detail = await customArtService.getById(item.maYeuCau);
+      setSelected(detail);
+      setReferencePreview(await getAuthenticatedCustomArtFileUrl(detail.referenceImageUrl || detail.anhThamKhao));
+      setQuote({ price: '', time: '', note: '' });
     } catch (error: any) {
-      const msg =
-        error?.response?.data?.message ||
-        'Không thể nhận yêu cầu này.';
-
-      setNotice(msg);
+      setMessage(error?.response?.data?.message || 'Không thể tải chi tiết.');
     }
   };
 
-  const openQuote = (
-    item: CustomArtListItem
-  ) => {
-    setSelectedRequest(item);
-    setOpenQuoteId(item.id);
-
-    setQuoteForm({
-      GiaBaoGia: '',
-      ThoiGianHoanThanh: '',
-      GhiChu: '',
-    });
+  const closeDetail = () => {
+    setSelected(null);
+    setReferencePreview(undefined);
   };
 
-  const closeQuote = () => {
-    setOpenQuoteId(null);
-    setSelectedRequest(null);
-
-    setQuoteForm({
-      GiaBaoGia: '',
-      ThoiGianHoanThanh: '',
-      GhiChu: '',
-    });
+  const run = async (action: () => Promise<any>, success: string) => {
+    try { await action(); setMessage(success); closeDetail(); await load(); }
+    catch (error: any) { setMessage(error?.response?.data?.message || 'Không thể thực hiện thao tác.'); }
   };
 
-  const handleSubmitQuote = async () => {
-    if (!openQuoteId) {
-      setNotice(
-        'Vui lòng chọn yêu cầu để báo giá.'
-      );
-      return;
-    }
-
-    if (
-      !quoteForm.GiaBaoGia ||
-      !quoteForm.ThoiGianHoanThanh
-    ) {
-      setNotice(
-        'Vui lòng nhập giá báo giá và thời gian hoàn thành.'
-      );
-      return;
-    }
-
-    const price =
-      Number(quoteForm.GiaBaoGia);
-
-    if (
-      Number.isNaN(price) ||
-      price <= 0
-    ) {
-      setNotice(
-        'Giá báo giá phải lớn hơn 0.'
-      );
-      return;
-    }
-
-    try {
-      await customArtService.createQuote({
-        MaYeuCau: openQuoteId,
-        MaHoaSi: currentArtistId || 0,
-        GiaBaoGia: price,
-        ThoiGianHoanThanh:
-          quoteForm.ThoiGianHoanThanh,
-        GhiChu:
-          quoteForm.GhiChu ||
-          undefined,
-      });
-
-      setNotice(
-        `Đã gửi báo giá cho yêu cầu #${openQuoteId}.`
-      );
-
-      closeQuote();
-
-      await loadRequests();
-    } catch (error: any) {
-      const msg =
-        error?.response?.data?.message ||
-        'Không thể gửi báo giá.';
-
-      setNotice(msg);
-    }
+  const submitQuote = async () => {
+    if (!selected || !quote.price || !quote.time) return setMessage('Vui lòng nhập giá và thời gian hoàn thành.');
+    await run(() => customArtService.createQuote({
+      MaYeuCau: selected.maYeuCau,
+      GiaBaoGia: Number(quote.price),
+      ThoiGianHoanThanh: quote.time,
+      GhiChu: quote.note || undefined,
+    }), 'Đã gửi báo giá.');
   };
 
-  const getStatusClass = (
-    item: CustomArtListItem,
-    isMine: boolean
-  ) => {
-    if (item.trangThai === 'Completed') {
-      return 'completed';
-    }
-
-    if (item.isClaimed) {
-      return isMine
-        ? 'mine'
-        : 'claimed';
-    }
-
-    return 'available';
+  const complete = async (item: CustomArtRequestApi) => {
+    const title = window.prompt('Tên tác phẩm mới', item.tieuDe);
+    if (title === null) return;
+    const image = window.prompt('URL ảnh tác phẩm hoàn thành (có thể để trống)', '') || undefined;
+    await run(() => customArtService.complete(item.maYeuCau, {
+      tenTacPhamMoi: title || item.tieuDe,
+      hinhAnhTacPham: image,
+      moTaNguonGoc: item.nguonTacPhamGoc || undefined,
+    }), 'Đã hoàn thành và tạo tác phẩm mới. Tác phẩm chưa được tự động xác minh bản quyền.');
   };
 
-  const getStatusText = (
-    item: CustomArtListItem,
-    isMine: boolean
-  ) => {
-    if (item.isClaimed) {
-      return isMine
-        ? 'Bạn đang nhận'
-        : `Đã nhận bởi ${
-            item.assignedArtist ||
-            'họa sĩ khác'
-          }`;
-    }
-
-    return getCustomArtStatusLabel(
-      item.trangThai
-    );
-  };
-
-  const formatPrice = (value: string) => {
-    if (!value) return '';
-
-    const number = Number(
-      value.replace(/\D/g, '')
-    );
-
-    if (!number) return '';
-
-    return new Intl.NumberFormat(
-      'vi-VN'
-    ).format(number);
-  };
-
-  return (
-    <div className="artist-custom-page">
-      {/* HEADER */}
-      <div className="artist-page-header">
-        <div>
-          <div className="artist-breadcrumb">
-            <span>Họa sĩ</span>
-            <i className="ti-angle-right" />
-            <span>Tranh theo yêu cầu</span>
+  return <div className="artist-commission">
+    <div className="artist-commission-header"><div><h2>Yêu cầu tranh đã duyệt</h2><p>Chỉ hiển thị yêu cầu APPROVED hoặc yêu cầu do bạn nhận.</p></div><button className="artist-secondary" onClick={load}>Làm mới</button></div>
+    {message && <div className="artist-commission-message">{message}</div>}
+    {loading ? <p>Đang tải...</p> : <div className="artist-commission-grid">
+      {items.map((item) => {
+        const mine = item.maHoaSi === artistId;
+        return <article className="artist-commission-card" key={item.maYeuCau}>
+          <span className="artist-commission-badge">{getCustomArtStatusLabel(item.trangThai)}</span>
+          <h3>{item.tieuDe}</h3>
+          <p className="artist-commission-meta">{getCustomArtTypeLabel(item.type)} · {item.loaiTranh} · {item.kichThuoc}</p>
+          <p>{item.moTa || 'Không có mô tả'}</p>
+          {item.type === 'EXISTING_ARTWORK' && <p><strong>Tác giả gốc:</strong> {item.referenceArtistName}</p>}
+          <div className="artist-commission-actions">
+            <button className="artist-secondary" onClick={() => openDetail(item)}>Chi tiết</button>
+            {!item.maHoaSi && item.trangThai === 'APPROVED' && <button className="artist-primary" onClick={() => run(() => customArtService.claimRequest(item.maYeuCau), 'Đã nhận yêu cầu.')}>Nhận yêu cầu</button>}
+            {mine && item.trangThai === 'ACCEPTED' && <button className="artist-primary" onClick={() => run(() => customArtService.updateStatus(item.maYeuCau, 'IN_PROGRESS'), 'Đã bắt đầu thực hiện.')}>Bắt đầu</button>}
+            {mine && ['ACCEPTED', 'IN_PROGRESS'].includes(item.trangThai) && <button className="artist-success" onClick={() => complete(item)}>Hoàn thành</button>}
           </div>
-
-          <h1>
-            Yêu cầu tranh theo yêu cầu
-          </h1>
-
-          <p>
-            Quản lý các yêu cầu vẽ tranh,
-            nhận đơn và gửi báo giá cho khách hàng.
-          </p>
-        </div>
-
-        <button
-          className="refresh-button"
-          onClick={async () => {
-            setLoading(true);
-
-            try {
-              await loadRequests();
-              setNotice(
-                'Đã cập nhật danh sách yêu cầu.'
-              );
-            } finally {
-              setLoading(false);
-            }
-          }}
-        >
-          <i className="ti-reload" />
-          Làm mới
-        </button>
-      </div>
-
-      {/* NOTICE */}
-      {notice && (
-        <div className="artist-notice">
-          <div className="artist-notice-icon">
-            <i className="ti-check" />
-          </div>
-
-          <span>{notice}</span>
-
-          <button
-            onClick={() => setNotice('')}
-            aria-label="Đóng"
-          >
-            <i className="ti-close" />
-          </button>
-        </div>
-      )}
-
-      {/* STATISTICS */}
-      <div className="artist-stat-grid">
-        <div className="artist-stat-card">
-          <div className="stat-icon stat-icon-blue">
-            <i className="ti-layers" />
-          </div>
-
-          <div>
-            <span className="stat-label">
-              Tổng yêu cầu
-            </span>
-
-            <strong>
-              {statistics.total}
-            </strong>
-
-            <small>
-              Tất cả yêu cầu
-            </small>
-          </div>
-        </div>
-
-        <div className="artist-stat-card">
-          <div className="stat-icon stat-icon-orange">
-            <i className="ti-paint-roller" />
-          </div>
-
-          <div>
-            <span className="stat-label">
-              Còn trống
-            </span>
-
-            <strong>
-              {statistics.available}
-            </strong>
-
-            <small>
-              Đang chờ họa sĩ nhận
-            </small>
-          </div>
-        </div>
-
-        <div className="artist-stat-card">
-          <div className="stat-icon stat-icon-purple">
-            <i className="ti-user" />
-          </div>
-
-          <div>
-            <span className="stat-label">
-              Bạn đang nhận
-            </span>
-
-            <strong>
-              {statistics.mine}
-            </strong>
-
-            <small>
-              Yêu cầu của bạn
-            </small>
-          </div>
-        </div>
-
-        <div className="artist-stat-card">
-          <div className="stat-icon stat-icon-green">
-            <i className="ti-check-box" />
-          </div>
-
-          <div>
-            <span className="stat-label">
-              Hoàn thành
-            </span>
-
-            <strong>
-              {statistics.completed}
-            </strong>
-
-            <small>
-              Đã hoàn tất
-            </small>
-          </div>
-        </div>
-      </div>
-
-      {/* QUOTE FORM */}
-      {openQuoteId && selectedRequest && (
-        <div className="quote-panel">
-          <div className="quote-panel-header">
-            <div className="quote-title-wrap">
-              <div className="quote-icon">
-                <i className="ti-receipt" />
-              </div>
-
-              <div>
-                <h3>
-                  Gửi báo giá
-                </h3>
-
-                <p>
-                  Yêu cầu #{selectedRequest.id}
-                  {' · '}
-                  {selectedRequest.tieuDe}
-                </p>
-              </div>
-            </div>
-
-            <button
-              className="quote-close"
-              onClick={closeQuote}
-            >
-              <i className="ti-close" />
-            </button>
-          </div>
-
-          <div className="quote-request-summary">
-            <div>
-              <span>Loại tranh</span>
-              <strong>
-                {selectedRequest.loaiTranh}
-              </strong>
-            </div>
-
-            <div>
-              <span>Kích thước</span>
-              <strong>
-                {selectedRequest.kichThuoc}
-              </strong>
-            </div>
-
-            {selectedRequest.phongCach && (
-              <div>
-                <span>Phong cách</span>
-                <strong>
-                  {selectedRequest.phongCach}
-                </strong>
-              </div>
-            )}
-
-            {selectedRequest.chatLieu && (
-              <div>
-                <span>Chất liệu</span>
-                <strong>
-                  {selectedRequest.chatLieu}
-                </strong>
-              </div>
-            )}
-          </div>
-
-          <div className="quote-form-grid">
-            <div className="form-group">
-              <label>
-                Giá báo giá
-                <span>*</span>
-              </label>
-
-              <div className="input-with-suffix">
-                <input
-                  type="number"
-                  value={
-                    quoteForm.GiaBaoGia
-                  }
-                  onChange={(e) =>
-                    setQuoteForm(
-                      (prev) => ({
-                        ...prev,
-                        GiaBaoGia:
-                          e.target.value,
-                      })
-                    )
-                  }
-                  placeholder="VD: 25000000"
-                  min="0"
-                />
-
-                <span>VNĐ</span>
-              </div>
-
-              {quoteForm.GiaBaoGia && (
-                <small className="input-helper">
-                  {formatPrice(
-                    quoteForm.GiaBaoGia
-                  )}{' '}
-                  VNĐ
-                </small>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label>
-                Thời gian hoàn thành
-                <span>*</span>
-              </label>
-
-              <div className="input-with-icon">
-                <i className="ti-time" />
-
-                <input
-                  type="text"
-                  value={
-                    quoteForm.ThoiGianHoanThanh
-                  }
-                  onChange={(e) =>
-                    setQuoteForm(
-                      (prev) => ({
-                        ...prev,
-                        ThoiGianHoanThanh:
-                          e.target.value,
-                      })
-                    )
-                  }
-                  placeholder="VD: 14 ngày"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-group quote-note">
-            <label>Ghi chú cho khách hàng</label>
-
-            <textarea
-              value={quoteForm.GhiChu}
-              onChange={(e) =>
-                setQuoteForm(
-                  (prev) => ({
-                    ...prev,
-                    GhiChu:
-                      e.target.value,
-                  })
-                )
-              }
-              rows={4}
-              placeholder="Ví dụ: Đã bao gồm phí khung tranh, vận chuyển..."
-            />
-          </div>
-
-          <div className="quote-actions">
-            <button
-              className="quote-cancel"
-              onClick={closeQuote}
-            >
-              Hủy
-            </button>
-
-            <button
-              className="quote-submit"
-              onClick={handleSubmitQuote}
-            >
-              <i className="ti-check" />
-              Gửi báo giá
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* FILTER */}
-      <div className="request-toolbar">
-        <div className="toolbar-title">
-          <div>
-            <h2>
-              Danh sách yêu cầu
-            </h2>
-
-            <span>
-              {filtered.length} yêu cầu
-            </span>
-          </div>
-        </div>
-
-        <div className="filter-tabs">
-          <button
-            className={
-              status === 'all'
-                ? 'active'
-                : ''
-            }
-            onClick={() =>
-              setStatus('all')
-            }
-          >
-            Tất cả
-          </button>
-
-          <button
-            className={
-              status === 'available'
-                ? 'active'
-                : ''
-            }
-            onClick={() =>
-              setStatus('available')
-            }
-          >
-            Còn trống
-            <span>
-              {statistics.available}
-            </span>
-          </button>
-
-          <button
-            className={
-              status === 'claimed'
-                ? 'active'
-                : ''
-            }
-            onClick={() =>
-              setStatus('claimed')
-            }
-          >
-            Đã nhận
-          </button>
-
-          <button
-            className={
-              status === 'done'
-                ? 'active'
-                : ''
-            }
-            onClick={() =>
-              setStatus('done')
-            }
-          >
-            Hoàn thành
-          </button>
-        </div>
-      </div>
-
-      {/* TABLE */}
-      <div className="artist-table-card">
-        {loading ? (
-          <div className="artist-loading">
-            <div className="loading-spinner" />
-            <span>
-              Đang tải danh sách yêu cầu...
-            </span>
-          </div>
-        ) : (
-          <div className="artist-table-wrapper">
-            <table className="artist-request-table">
-              <thead>
-                <tr>
-                  <th className="col-code">
-                    Mã
-                  </th>
-
-                  <th className="col-request">
-                    Yêu cầu
-                  </th>
-
-                  <th>
-                    Khách hàng
-                  </th>
-
-                  <th>
-                    Đặc điểm
-                  </th>
-
-                  <th>
-                    Trạng thái
-                  </th>
-
-                  <th className="col-action">
-                    Thao tác
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {filtered.map((item) => {
-                  const isMine =
-                    !!item.assignedArtistId &&
-                    currentArtistId > 0 &&
-                    item.assignedArtistId ===
-                      currentArtistId;
-
-                  return (
-                    <tr key={item.id}>
-                      {/* CODE */}
-                      <td>
-                        <span className="request-code">
-                          #{item.id}
-                        </span>
-                      </td>
-
-                      {/* REQUEST */}
-                      <td>
-                        <div className="request-main">
-                          <strong>
-                            {item.tieuDe}
-                          </strong>
-
-                          <p>
-                            {item.moTa}
-                          </p>
-                        </div>
-                      </td>
-
-                      {/* CUSTOMER */}
-                      <td>
-                        <div className="customer-cell">
-                          <div className="customer-avatar">
-                            <i className="ti-user" />
-                          </div>
-
-                          <div>
-                            <strong>
-                              {item.khachHang}
-                            </strong>
-
-                            <span>
-                              Khách hàng
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* CHARACTERISTICS */}
-                      <td>
-                        <div className="art-specs">
-                          <span>
-                            <i className="ti-paint-roller" />
-                            {item.loaiTranh}
-                          </span>
-
-                          <span>
-                            <i className="ti-ruler-alt-2" />
-                            {item.kichThuoc}
-                          </span>
-
-                          {item.phongCach && (
-                            <span>
-                              <i className="ti-brush-alt" />
-                              {item.phongCach}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* STATUS */}
-                      <td>
-                        <span
-                          className={`request-status ${getStatusClass(
-                            item,
-                            isMine
-                          )}`}
-                        >
-                          <span className="status-dot" />
-
-                          {getStatusText(
-                            item,
-                            isMine
-                          )}
-                        </span>
-                      </td>
-
-                      {/* ACTION */}
-                      <td>
-                        <div className="request-actions">
-                          {!item.isClaimed ? (
-                            <button
-                              className="action-button primary"
-                              onClick={() =>
-                                handleClaim(
-                                  item.id
-                                )
-                              }
-                            >
-                              <i className="ti-hand-point-right" />
-                              Nhận yêu cầu
-                            </button>
-                          ) : isMine ? (
-                            <button
-                              className="action-button quote"
-                              onClick={() =>
-                                openQuote(item)
-                              }
-                            >
-                              <i className="ti-receipt" />
-                              Báo giá
-                            </button>
-                          ) : (
-                            <button
-                              className="action-button disabled"
-                              disabled
-                            >
-                              <i className="ti-lock" />
-                              Đã nhận
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={6}
-                      className="empty-cell"
-                    >
-                      <div className="empty-state">
-                        <div className="empty-icon">
-                          <i className="ti-paint-bucket" />
-                        </div>
-
-                        <h3>
-                          Không có yêu cầu
-                        </h3>
-
-                        <p>
-                          Hiện chưa có yêu cầu
-                          phù hợp với bộ lọc này.
-                        </p>
-
-                        {status !== 'all' && (
-                          <button
-                            onClick={() =>
-                              setStatus('all')
-                            }
-                          >
-                            Xem tất cả yêu cầu
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+        </article>;
+      })}
+      {!items.length && <p>Chưa có yêu cầu phù hợp.</p>}
+    </div>}
+
+    {selected && <div className="artist-modal-overlay" onMouseDown={closeDetail}><div className="artist-modal" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="artist-modal-top"><div><h2>{selected.tieuDe}</h2><span className="artist-commission-badge">{getCustomArtStatusLabel(selected.trangThai)}</span></div><button className="artist-secondary" onClick={closeDetail}>Đóng</button></div>
+      <p><strong>Khách hàng:</strong> {selected.tenKhachHang || `#${selected.maKhachHang}`}</p>
+      <p><strong>Nội dung:</strong> {selected.moTa}</p>
+      {selected.type === 'EXISTING_ARTWORK' && <div className="artist-source"><h3>Nguồn gốc và điều kiện sử dụng</h3><p><strong>Tác phẩm gốc:</strong> {selected.referenceArtworkName}</p><p><strong>Tác giả gốc:</strong> {selected.referenceArtistName}</p><p><strong>Nguồn:</strong> {selected.nguonTacPhamGoc || '—'}</p><p><strong>Quyền sử dụng:</strong> {selected.tinhTrangQuyenSuDung || '—'}</p><p><strong>Ghi chú quyền:</strong> {selected.moTaQuyenSuDung || '—'}</p></div>}
+      {referencePreview && <img className="artist-reference" src={referencePreview} alt="Tham khảo" />}
+      {selected.maHoaSi === artistId && ['ACCEPTED', 'IN_PROGRESS'].includes(selected.trangThai) && <div className="artist-quote"><h3>Báo giá</h3><input type="number" min="1" placeholder="Giá báo giá" value={quote.price} onChange={(e) => setQuote({ ...quote, price: e.target.value })} /><input placeholder="Thời gian hoàn thành" value={quote.time} onChange={(e) => setQuote({ ...quote, time: e.target.value })} /><textarea placeholder="Ghi chú" value={quote.note} onChange={(e) => setQuote({ ...quote, note: e.target.value })} /><button className="artist-primary" onClick={submitQuote}>Gửi báo giá</button></div>}
+    </div></div>}
+  </div>;
 };
 
 export default ArtistCustomArt;
