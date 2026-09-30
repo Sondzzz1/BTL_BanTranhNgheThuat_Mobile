@@ -290,7 +290,7 @@ public class CustomArtController : ControllerBase
             if (!artworkId.HasValue)
             {
                 _fileHelper.DeleteIfExists(savedName);
-                return Conflict(new { message = "Yêu cầu không thuộc họa sĩ hoặc không ở trạng thái IN_PROGRESS" });
+                return Conflict(new { message = "Yêu cầu phải ở trạng thái IN_PROGRESS và có ít nhất một cập nhật tiến độ" });
             }
             return Ok(new { message = "Đã lưu tác phẩm hoàn thiện", maTacPham = artworkId.Value });
         }

@@ -34,6 +34,7 @@ export interface CustomArtRequestApi {
   ngayCapNhat?: string | null;
   ngayHoanThanhDuKien?: string | null;
   maTacPhamKetQua?: number | null;
+  soLuongTienDo?: number;
   quote?: CustomArtQuoteResponse | null;
   progress: CustomArtProgressResponse[];
 }

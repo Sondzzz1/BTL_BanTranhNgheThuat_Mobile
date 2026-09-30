@@ -317,7 +317,8 @@ public class CustomArtBusiness : ICustomArtBusiness
         NgayTao = model.NgayTao,
         NgayCapNhat = model.NgayCapNhat,
         NgayHoanThanhDuKien = model.NgayHoanThanhDuKien,
-        MaTacPhamKetQua = model.MaTacPhamKetQua
+        MaTacPhamKetQua = model.MaTacPhamKetQua,
+        SoLuongTienDo = model.SoLuongTienDo
     };
 
     private static string GetTypeName(CustomArtType type) => type switch

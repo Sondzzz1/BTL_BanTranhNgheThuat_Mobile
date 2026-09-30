@@ -23,6 +23,8 @@ const ArtistCustomArt: React.FC = () => {
   const [completionForm, setCompletionForm] = useState<{ note: string; image?: File }>({ note: '' });
   const [referencePreview, setReferencePreview] = useState<string>();
   const [progressPreviews, setProgressPreviews] = useState<Record<number, string>>({});
+  const [progressUploadPreview, setProgressUploadPreview] = useState<string>();
+  const [completionUploadPreview, setCompletionUploadPreview] = useState<string>();
 
   const load = useCallback(async () => {
     try { setLoading(true); setItems(await customArtService.getArtistRequests()); }
@@ -36,6 +38,12 @@ const ArtistCustomArt: React.FC = () => {
   useEffect(() => () => {
     Object.values(progressPreviews).filter((url) => url.startsWith('blob:')).forEach(URL.revokeObjectURL);
   }, [progressPreviews]);
+  useEffect(() => () => {
+    if (progressUploadPreview?.startsWith('blob:')) URL.revokeObjectURL(progressUploadPreview);
+  }, [progressUploadPreview]);
+  useEffect(() => () => {
+    if (completionUploadPreview?.startsWith('blob:')) URL.revokeObjectURL(completionUploadPreview);
+  }, [completionUploadPreview]);
 
   const loadDetail = async (id: number) => {
     const detail = await customArtService.getById(id);
@@ -56,6 +64,7 @@ const ArtistCustomArt: React.FC = () => {
       await loadDetail(item.maYeuCau);
       setQuote({ price: '', time: '', note: '' });
       setProgressForm({ title: '', description: '' });
+      setProgressUploadPreview(undefined);
     } catch (error: any) {
       setMessage(error?.response?.data?.message || 'Không thể tải chi tiết.');
     }
@@ -65,6 +74,7 @@ const ArtistCustomArt: React.FC = () => {
     setSelected(null);
     setReferencePreview(undefined);
     setProgressPreviews({});
+    setProgressUploadPreview(undefined);
   };
 
   const run = async (action: () => Promise<any>, success: string) => {
@@ -94,6 +104,7 @@ const ArtistCustomArt: React.FC = () => {
       });
       setMessage('Đã đăng tiến độ mới.');
       setProgressForm({ title: '', description: '' });
+      setProgressUploadPreview(undefined);
       await loadDetail(selected.maYeuCau);
       await load();
     } catch (error: any) {
@@ -104,6 +115,23 @@ const ArtistCustomArt: React.FC = () => {
   const openCompletion = (item: CustomArtRequestApi) => {
     setCompletionTarget(item);
     setCompletionForm({ note: '' });
+    setCompletionUploadPreview(undefined);
+  };
+
+  const selectProgressImage = (file?: File) => {
+    setProgressForm((current) => ({ ...current, image: file }));
+    setProgressUploadPreview(file ? URL.createObjectURL(file) : undefined);
+  };
+
+  const selectCompletionImage = (file?: File) => {
+    setCompletionForm((current) => ({ ...current, image: file }));
+    setCompletionUploadPreview(file ? URL.createObjectURL(file) : undefined);
+  };
+
+  const closeCompletion = () => {
+    setCompletionTarget(null);
+    setCompletionForm({ note: '' });
+    setCompletionUploadPreview(undefined);
   };
 
   const submitCompletion = async () => {
@@ -117,8 +145,8 @@ const ArtistCustomArt: React.FC = () => {
         title: completionTarget.tieuDe,
       });
       setMessage('Đã lưu tác phẩm hoàn thiện và chuyển yêu cầu sang COMPLETED.');
-      setCompletionTarget(null);
-      setCompletionForm({ note: '' });
+      closeCompletion();
+      closeDetail();
       await load();
     } catch (error: any) {
       setMessage(error?.response?.data?.message || 'Không thể hoàn thành tác phẩm.');
@@ -131,17 +159,19 @@ const ArtistCustomArt: React.FC = () => {
     {loading ? <p>Đang tải...</p> : <div className="artist-commission-grid">
       {items.map((item) => {
         const mine = item.maHoaSi === artistId;
+        const canUpdateProgress = mine && ['InProgress', 'PreviewSent', 'RevisionRequested'].includes(item.trangThaiNoiBo || '');
         return <article className="artist-commission-card" key={item.maYeuCau}>
           <span className="artist-commission-badge">{getCustomArtStatusLabel(item.trangThai)}</span>
           <h3>{item.tieuDe}</h3>
           <p className="artist-commission-meta">{getCustomArtTypeLabel(item.type)} · {item.loaiTranh} · {item.kichThuoc}</p>
           <p>{item.moTa || 'Không có mô tả'}</p>
+          {!!item.soLuongTienDo && <div className="artist-progress-alert">✓ Đã có {item.soLuongTienDo} cập nhật tiến độ</div>}
           {item.type === 'EXISTING_ARTWORK' && <p><strong>Tác giả gốc:</strong> {item.referenceArtistName}</p>}
           <div className="artist-commission-actions">
             <button className="artist-secondary" onClick={() => openDetail(item)}>Chi tiết</button>
+            {canUpdateProgress && <button className="artist-primary" onClick={() => openDetail(item)}>Cập nhật tiến độ</button>}
             {!item.maHoaSi && item.trangThai === 'APPROVED' && <button className="artist-primary" onClick={() => run(() => customArtService.claimRequest(item.maYeuCau), 'Đã nhận yêu cầu.')}>Nhận yêu cầu</button>}
             {mine && ['CustomerAccepted', 'DepositPaid'].includes(item.trangThaiNoiBo || '') && <button className="artist-primary" onClick={() => run(() => customArtService.updateStatus(item.maYeuCau, 'IN_PROGRESS'), 'Đã bắt đầu thực hiện.')}>Bắt đầu</button>}
-            {mine && item.trangThai === 'IN_PROGRESS' && <button className="artist-success" onClick={() => openCompletion(item)}>Hoàn thành tác phẩm</button>}
           </div>
         </article>;
       })}
@@ -158,15 +188,21 @@ const ArtistCustomArt: React.FC = () => {
       {selected.quote && <div className="artist-source"><h3>Báo giá hiện tại</h3><p><strong>Số tiền:</strong> {formatVnd(selected.quote.giaBaoGia)}</p><p><strong>Ngày hoàn thành:</strong> {new Date(`${selected.quote.thoiGianHoanThanh}T00:00:00`).toLocaleDateString('vi-VN')}</p><p><strong>Ghi chú:</strong> {selected.quote.ghiChu || '—'}</p><p><strong>Trạng thái:</strong> {selected.quote.trangThai === 'CustomerAccepted' ? 'Khách hàng đã chấp nhận' : 'Chờ khách hàng chấp nhận'}</p></div>}
       {selected.maHoaSi === artistId && ['Assigned', 'Quoted'].includes(selected.trangThaiNoiBo || '') && <div className="artist-quote"><h3>Báo giá</h3><input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Giá báo giá" value={quote.price} onChange={(e) => setQuote({ ...quote, price: e.target.value.replace(/\D/g, '') })} />{!!quote.price && <small className="artist-money-preview">Hiển thị: {formatVnd(Number(quote.price))}</small>}<input type="date" value={quote.time} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setQuote({ ...quote, time: e.target.value })} /><textarea placeholder="Ghi chú" value={quote.note} onChange={(e) => setQuote({ ...quote, note: e.target.value })} /><button className="artist-primary" onClick={submitQuote}>Gửi báo giá</button></div>}
       <div className="artist-source"><h3>Tiến độ</h3>{(selected.progress || []).length ? selected.progress.map((entry) => <div key={entry.maTienDo} style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: 12, marginBottom: 12 }}><strong>{new Date(entry.ngayTao).toLocaleDateString('vi-VN')} — {entry.tieuDe}</strong><p>{entry.moTa}</p>{progressPreviews[entry.maTienDo] && <img className="artist-reference" src={progressPreviews[entry.maTienDo]} alt={entry.tieuDe} />}</div>) : <p>Chưa có cập nhật tiến độ.</p>}</div>
-      {selected.maHoaSi === artistId && ['InProgress', 'PreviewSent', 'RevisionRequested'].includes(selected.trangThaiNoiBo || '') && <div className="artist-quote"><h3>Đăng tiến độ mới</h3><input placeholder="Tiêu đề tiến độ" value={progressForm.title} onChange={(e) => setProgressForm({ ...progressForm, title: e.target.value })} /><textarea placeholder="Mô tả tiến độ" value={progressForm.description} onChange={(e) => setProgressForm({ ...progressForm, description: e.target.value })} /><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setProgressForm({ ...progressForm, image: e.target.files?.[0] })} /><button className="artist-primary" onClick={submitProgress}>Đăng tiến độ</button></div>}
+      {selected.maHoaSi === artistId && ['InProgress', 'PreviewSent', 'RevisionRequested'].includes(selected.trangThaiNoiBo || '') && <>
+        <div className="artist-quote"><h3>Cập nhật tiến độ</h3><input placeholder="Tiêu đề tiến độ" value={progressForm.title} onChange={(e) => setProgressForm({ ...progressForm, title: e.target.value })} /><textarea placeholder="Mô tả tiến độ" value={progressForm.description} onChange={(e) => setProgressForm({ ...progressForm, description: e.target.value })} /><input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => selectProgressImage(e.target.files?.[0])} />{progressUploadPreview && <div className="artist-upload-preview-box"><span>Ảnh tiến độ đã chọn</span><img className="artist-upload-preview" src={progressUploadPreview} alt="Xem trước ảnh tiến độ" /></div>}<button className="artist-primary" onClick={submitProgress}>Đăng tiến độ</button></div>
+        {(selected.progress || []).some((entry) => entry.trangThai?.toUpperCase() !== 'COMPLETED')
+          ? <div className="artist-completion-ready"><strong>Đã có tiến độ thực hiện.</strong><span>Bạn có thể hoàn thành tác phẩm khi đã sẵn sàng.</span><button className="artist-success artist-complete-submit" onClick={() => openCompletion(selected)}>Hoàn thành tác phẩm</button></div>
+          : <div className="artist-progress-required">Hãy đăng ít nhất một cập nhật tiến độ trước khi hoàn thành tác phẩm.</div>}
+      </>}
     </div></div>}
 
-    {completionTarget && <div className="artist-modal-overlay" onMouseDown={() => setCompletionTarget(null)}><div className="artist-modal artist-completion-modal" onMouseDown={(e) => e.stopPropagation()}>
-      <div className="artist-modal-top"><div><h2>Hoàn thành tác phẩm</h2><p>{completionTarget.tieuDe}</p></div><button className="artist-secondary" onClick={() => setCompletionTarget(null)}>Đóng</button></div>
+    {completionTarget && <div className="artist-modal-overlay" onMouseDown={closeCompletion}><div className="artist-modal artist-completion-modal" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="artist-modal-top"><div><h2>Hoàn thành tác phẩm</h2><p>{completionTarget.tieuDe}</p></div><button className="artist-secondary" onClick={closeCompletion}>Đóng</button></div>
       <div className="artist-quote">
         <label>Ảnh tác phẩm hoàn thiện *</label>
-        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => setCompletionForm({ ...completionForm, image: e.target.files?.[0] })} />
+        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => selectCompletionImage(e.target.files?.[0])} />
         {completionForm.image && <small>Đã chọn: {completionForm.image.name}</small>}
+        {completionUploadPreview && <div className="artist-upload-preview-box"><span>Ảnh tác phẩm hoàn thiện đã chọn</span><img className="artist-upload-preview" src={completionUploadPreview} alt="Xem trước tác phẩm hoàn thiện" /></div>}
         <label>Ghi chú hoàn thiện</label>
         <textarea placeholder="Ghi chú gửi khách hàng (không bắt buộc)" value={completionForm.note} onChange={(e) => setCompletionForm({ ...completionForm, note: e.target.value })} />
         <button className="artist-success artist-complete-submit" onClick={submitCompletion}>Lưu tác phẩm hoàn thiện</button>

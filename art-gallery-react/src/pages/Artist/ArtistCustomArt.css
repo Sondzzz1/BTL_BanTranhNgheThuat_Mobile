@@ -22,3 +22,9 @@
 .artist-money-preview { color: #c2410c; font-weight: 700; }
 .artist-completion-modal { width: min(560px, 100%); }
 .artist-complete-submit { border: 0; border-radius: 8px; padding: 11px 14px; cursor: pointer; font-weight: 700; }
+.artist-progress-alert { margin: 10px 0; padding: 9px 10px; border-radius: 8px; background: #ecfdf5; color: #047857; font-weight: 700; }
+.artist-upload-preview-box { display: grid; gap: 8px; padding: 10px; border-radius: 10px; background: #f8fafc; color: #475569; font-weight: 700; }
+.artist-upload-preview { width: min(100%, 440px); max-height: 320px; object-fit: contain; border-radius: 10px; background: #e5e7eb; }
+.artist-progress-required { margin-top: 14px; padding: 12px; border: 1px solid #fcd34d; border-radius: 10px; background: #fffbeb; color: #92400e; font-weight: 700; }
+.artist-completion-ready { display: grid; gap: 6px; margin-top: 14px; padding: 14px; border: 1px solid #86efac; border-radius: 10px; background: #f0fdf4; color: #166534; }
+.artist-completion-ready button { justify-self: start; margin-top: 6px; }

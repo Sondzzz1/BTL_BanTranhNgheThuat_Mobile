@@ -71,6 +71,7 @@ public class CustomArtRequest
     public string? TenKhachHang { get; set; }
     public string? TenHoaSiThucHien { get; set; }
     public int? MaTacPhamKetQua { get; set; }
+    public int SoLuongTienDo { get; set; }
 }
 
 public class CustomArtImage

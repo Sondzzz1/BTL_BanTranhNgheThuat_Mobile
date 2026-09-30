@@ -13,6 +13,7 @@ public class CustomArtRepository : ICustomArtRepository
         SELECT y.*,
                n.Ten AS TenKhachHang,
                h.TenHoaSi AS TenHoaSiThucHien,
+               (SELECT COUNT(1) FROM TienDoVeTranh p WHERE p.MaYeuCau = y.MaYeuCau) AS SoLuongTienDo,
                (SELECT TOP (1) t.MaTacPham FROM TacPham t WHERE t.MaYeuCauVeTranh = y.MaYeuCau ORDER BY t.MaTacPham DESC) AS MaTacPhamKetQua
         FROM YeuCauVeTranh y
         LEFT JOIN NguoiDung n ON n.MaNguoiDung = y.MaKhachHang
@@ -210,7 +211,12 @@ public class CustomArtRepository : ICustomArtRepository
                                  WHERE b.MaYeuCau=y.MaYeuCau AND b.IsActive=1 ORDER BY b.MaBaoGia DESC), y.GiaDuKien, 0) AS GiaTacPham,
                        (SELECT TOP (1) t.MaTacPham FROM TacPham t WHERE t.MaYeuCauVeTranh=y.MaYeuCau ORDER BY t.MaTacPham DESC) AS ExistingArtworkId
                 FROM YeuCauVeTranh y WITH (UPDLOCK, HOLDLOCK)
-                WHERE y.MaYeuCau=@MaYeuCau AND y.MaHoaSi=@MaHoaSi;";
+                WHERE y.MaYeuCau=@MaYeuCau AND y.MaHoaSi=@MaHoaSi
+                  AND EXISTS (
+                      SELECT 1 FROM TienDoVeTranh p
+                      WHERE p.MaYeuCau=y.MaYeuCau
+                        AND UPPER(ISNULL(p.TrangThai, N'')) <> N'COMPLETED'
+                  );";
             await using var select = new SqlCommand(selectSql, connection, transaction);
             select.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
             select.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
@@ -703,7 +709,8 @@ public class CustomArtRepository : ICustomArtRepository
         NgayHoanThanhDuKien = GetNullableDateTime(reader, "NgayHoanThanhDuKien"),
         TenKhachHang = GetNullableString(reader, "TenKhachHang"),
         TenHoaSiThucHien = GetNullableString(reader, "TenHoaSiThucHien"),
-        MaTacPhamKetQua = GetNullableInt(reader, "MaTacPhamKetQua")
+        MaTacPhamKetQua = GetNullableInt(reader, "MaTacPhamKetQua"),
+        SoLuongTienDo = reader.GetInt32(reader.GetOrdinal("SoLuongTienDo"))
     };
 
     private static CustomArtQuote MapQuote(SqlDataReader reader) => new()

@@ -127,6 +127,7 @@ public class CustomArtRequestResponse
     public DateTime? NgayCapNhat { get; set; }
     public DateTime? NgayHoanThanhDuKien { get; set; }
     public int? MaTacPhamKetQua { get; set; }
+    public int SoLuongTienDo { get; set; }
     public CustomArtQuoteResponse? Quote { get; set; }
     public List<CustomArtProgressResponse> Progress { get; set; } = new();
 }
