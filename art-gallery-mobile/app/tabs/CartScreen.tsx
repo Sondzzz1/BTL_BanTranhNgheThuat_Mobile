@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [updatingItems, setUpdatingItems] = useState<Set<number>>(new Set());
   const [isClearing, setIsClearing] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+  const selectionInitialized = useRef(false);
 
   // Reload cart when screen gains focus
   useFocusEffect(
@@ -55,6 +57,14 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       setIsLoading(true);
       const cartData = await cartService.getCart();
       setCart(cartData);
+      const validIds = new Set(cartData.danhSachSanPham.map(item => item.maChiTietGH));
+      setSelectedItemIds(previous => {
+        if (!selectionInitialized.current) {
+          selectionInitialized.current = true;
+          return validIds;
+        }
+        return new Set([...previous].filter(id => validIds.has(id)));
+      });
     } catch (err: any) {
       console.error('Error loading cart:', err);
       if (err.response?.status === 401) {
@@ -111,6 +121,11 @@ export default function CartScreen({ navigation }: CartScreenProps) {
           onPress: async () => {
             try {
               await cartService.removeFromCart(item.maChiTietGH);
+              setSelectedItemIds(previous => {
+                const next = new Set(previous);
+                next.delete(item.maChiTietGH);
+                return next;
+              });
               await loadCart();
             } catch (err: any) {
               Alert.alert('Lỗi', err.message || 'Không thể xóa sản phẩm');
@@ -134,6 +149,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             try {
               setIsClearing(true);
               await cartService.clearCart();
+              setSelectedItemIds(new Set());
               await loadCart();
             } catch (err: any) {
               Alert.alert('Lỗi', err.message || 'Không thể xóa giỏ hàng');
@@ -148,24 +164,35 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
   const handleCheckout = () => {
     const items = cart?.danhSachSanPham || [];
-    if (items.length === 0) {
-      Alert.alert('Thông báo', 'Giỏ hàng của bạn đang trống');
+    const selectedIds = items
+      .filter(item => selectedItemIds.has(item.maChiTietGH))
+      .map(item => item.maChiTietGH);
+    if (selectedIds.length === 0) {
+      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất một sản phẩm');
       return;
     }
 
-    // Navigate to Checkout screen
-    navigation.navigate('Checkout');
+    navigation.navigate('Checkout', { mode: 'cart', cartItemIds: selectedIds });
   };
 
   const formatPrice = formatVnd;
 
   const calculateTotal = (): number => {
     if (!cart) return 0;
-    if (cart.tongTien && cart.tongTien > 0) return cart.tongTien;
     return (cart.danhSachSanPham || []).reduce(
-      (sum, item) => sum + (item.thanhTien || item.gia * item.soLuong),
+      (sum, item) => selectedItemIds.has(item.maChiTietGH)
+        ? sum + (item.thanhTien || item.gia * item.soLuong)
+        : sum,
       0
     );
+  };
+
+  const toggleItem = (id: number) => {
+    setSelectedItemIds(previous => {
+      const next = new Set(previous);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
 
   const renderCartItem = ({ item }: { item: CartItem }) => {
@@ -173,6 +200,14 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
     return (
       <View style={styles.cartItem}>
+        <TouchableOpacity
+          style={[styles.checkbox, selectedItemIds.has(item.maChiTietGH) && styles.checkboxSelected]}
+          onPress={() => toggleItem(item.maChiTietGH)}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: selectedItemIds.has(item.maChiTietGH) }}
+        >
+          {selectedItemIds.has(item.maChiTietGH) && <Text style={styles.checkmark}>✓</Text>}
+        </TouchableOpacity>
         {/* Product Image */}
         <View style={styles.itemImageContainer}>
           {item.hinhAnh ? (
@@ -301,9 +336,15 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       <AppHeader navigation={navigation} />
       {/* Header Info Bar */}
       <View style={styles.cartHeaderBar}>
-        <Text style={styles.cartCountText}>
-          Có {items.length} tác phẩm trong giỏ
-        </Text>
+        <TouchableOpacity onPress={() => setSelectedItemIds(
+          selectedItemIds.size === items.length
+            ? new Set()
+            : new Set(items.map(item => item.maChiTietGH))
+        )}>
+          <Text style={styles.cartCountText}>
+            {selectedItemIds.size === items.length ? '☑' : '☐'} Chọn tất cả ({selectedItemIds.size}/{items.length})
+          </Text>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.clearCartButton}
           onPress={handleClearCart}
@@ -389,6 +430,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     position: 'relative',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 5,
+    borderWidth: 2,
+    borderColor: '#9ca3af',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+    marginTop: 32,
+  },
+  checkboxSelected: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  checkmark: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   itemImageContainer: {
     width: 90,

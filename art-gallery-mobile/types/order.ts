@@ -7,6 +7,10 @@ export interface CreateOrderRequest {
   phuongThucThanhToan?: string;
   phuongThucTT?: string;
   ghiChu?: string;
+  mode?: 'CART' | 'BUY_NOW';
+  cartItemIds?: number[];
+  maTacPham?: number;
+  soLuong?: number;
 }
 
 export interface OrderItem {

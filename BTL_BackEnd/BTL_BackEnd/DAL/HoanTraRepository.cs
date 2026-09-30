@@ -16,7 +16,7 @@ public class HoanTraRepository : IHoanTraRepository
                y.LyDoTuChoi, y.CoTheBanLai, y.SoTienHoan, y.PhuongThucHoanTien,
                y.TrangThaiHoanTien, y.NgayNhanHang, y.NgayHoanTien, y.NgayTao, y.NgayCapNhat,
                t.TenTacPham, t.HinhAnh AS HinhAnhTacPham,
-               ISNULL(c.DonGia, t.Gia) AS GiaTacPham, ISNULL(c.SoLuong, 1) AS SoLuong,
+               c.DonGia AS GiaTacPham, ISNULL(c.SoLuong, 1) AS SoLuong,
                nd.Ten AS TenNguoiDung, nd.Email AS EmailNguoiDung,
                nd.DienThoai AS SoDienThoaiNguoiDung,
                dh.NgayDat AS NgayDatHang, dh.TongTien AS TongTienDonHang
@@ -387,7 +387,7 @@ public class HoanTraRepository : IHoanTraRepository
     {
         MaYeuCau=Convert.ToInt32(r["MaYeuCau"]),MaDonHang=Convert.ToInt32(r["MaDonHang"]),MaNguoiDung=Convert.ToInt32(r["MaNguoiDung"]),TenNguoiDung=r["TenNguoiDung"] as string,
         MaTacPham=Convert.ToInt32(r["MaTacPham"]),MaChiTietDH=NullableInt(r,"MaChiTietDH"),TenTacPham=r["TenTacPham"] as string,HinhAnhTacPham=r["HinhAnhTacPham"] as string,
-        GiaTacPham=DecimalValue(r,"GiaTacPham"),SoLuongTra=NullableInt(r,"SoLuongTra")??Convert.ToInt32(r["SoLuong"]),LyDo=r["LyDo"]?.ToString()??string.Empty,
+        GiaTacPham=RequiredSnapshotPrice(r),SoLuongTra=NullableInt(r,"SoLuongTra")??Convert.ToInt32(r["SoLuong"]),LyDo=r["LyDo"]?.ToString()??string.Empty,
         LyDoKhac=r["LyDoKhac"] as string,MoTa=r["MoTa"] as string,HinhAnh=MapImages(Convert.ToInt32(r["MaYeuCau"]),r["HinhAnh"] as string),TrangThai=r["TrangThai"]?.ToString()??string.Empty,
         LyDoTuChoi=r["LyDoTuChoi"] as string,CoTheBanLai=NullableBool(r,"CoTheBanLai"),SoTienHoan=NullableDecimal(r,"SoTienHoan"),PhuongThucHoanTien=r["PhuongThucHoanTien"] as string,
         TrangThaiHoanTien=r["TrangThaiHoanTien"] as string,NgayNhanHang=NullableDate(r,"NgayNhanHang"),NgayHoanTien=NullableDate(r,"NgayHoanTien"),NgayTao=Convert.ToDateTime(r["NgayTao"])
@@ -397,7 +397,7 @@ public class HoanTraRepository : IHoanTraRepository
     {
         MaYeuCau=Convert.ToInt32(r["MaYeuCau"]),MaDonHang=Convert.ToInt32(r["MaDonHang"]),MaNguoiDung=Convert.ToInt32(r["MaNguoiDung"]),TenNguoiDung=r["TenNguoiDung"] as string,
         EmailNguoiDung=r["EmailNguoiDung"] as string,SoDienThoaiNguoiDung=r["SoDienThoaiNguoiDung"] as string,MaTacPham=Convert.ToInt32(r["MaTacPham"]),MaChiTietDH=NullableInt(r,"MaChiTietDH"),
-        TenTacPham=r["TenTacPham"] as string,HinhAnhTacPham=r["HinhAnhTacPham"] as string,GiaTacPham=DecimalValue(r,"GiaTacPham"),SoLuong=Convert.ToInt32(r["SoLuong"]),
+        TenTacPham=r["TenTacPham"] as string,HinhAnhTacPham=r["HinhAnhTacPham"] as string,GiaTacPham=RequiredSnapshotPrice(r),SoLuong=Convert.ToInt32(r["SoLuong"]),
         SoLuongTra=NullableInt(r,"SoLuongTra")??Convert.ToInt32(r["SoLuong"]),LyDo=r["LyDo"]?.ToString()??string.Empty,LyDoKhac=r["LyDoKhac"] as string,MoTa=r["MoTa"] as string,
         HinhAnh=MapImages(Convert.ToInt32(r["MaYeuCau"]),r["HinhAnh"] as string),TrangThai=r["TrangThai"]?.ToString()??string.Empty,LyDoTuChoi=r["LyDoTuChoi"] as string,CoTheBanLai=NullableBool(r,"CoTheBanLai"),
         SoTienHoan=NullableDecimal(r,"SoTienHoan"),PhuongThucHoanTien=r["PhuongThucHoanTien"] as string,TrangThaiHoanTien=r["TrangThaiHoanTien"] as string,
@@ -426,4 +426,10 @@ public class HoanTraRepository : IHoanTraRepository
     private static decimal? NullableDecimal(SqlDataReader r,string n)=>r[n]==DBNull.Value?null:Convert.ToDecimal(r[n]);
     private static DateTime? NullableDate(SqlDataReader r,string n)=>r[n]==DBNull.Value?null:Convert.ToDateTime(r[n]);
     private static decimal DecimalValue(SqlDataReader r,string n)=>r[n]==DBNull.Value?0:Convert.ToDecimal(r[n]);
+    private static decimal RequiredSnapshotPrice(SqlDataReader r)
+    {
+        if (r["GiaTacPham"] == DBNull.Value)
+            throw new InvalidOperationException("Dữ liệu lịch sử thiếu đơn giá snapshot; cần quản trị viên xử lý");
+        return Convert.ToDecimal(r["GiaTacPham"]);
+    }
 }

@@ -6,6 +6,8 @@ public interface IThanhToanRepository
 {
     Task<ThanhToan?> GetByDonHang(int maDonHang);
     Task<ThanhToan?> GetById(int maThanhToan);
+    Task<List<ThanhToan>> GetAll();
     Task<int> Create(ThanhToan thanhToan);
     Task<bool> Update(ThanhToan thanhToan);
+    Task<bool> ConfirmBankTransfer(int maThanhToan, int maTaiKhoan, string? maGiaoDich);
 }

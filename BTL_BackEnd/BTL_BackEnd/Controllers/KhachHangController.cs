@@ -14,7 +14,7 @@ public class HuyDonHangRequest
 
 [ApiController]
 [Route("api")]
-[Authorize(Roles = "Admin,NguoiDung")]
+[Authorize(Roles = "NguoiDung")]
 public class KhachHangController : ControllerBase
 {
     private readonly IKhachHangBusiness _khachHangBusiness;
@@ -113,9 +113,17 @@ public class KhachHangController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+            return StatusCode(500, new { message = "Lỗi server khi cập nhật giỏ hàng" });
         }
     }
 
@@ -146,9 +154,17 @@ public class KhachHangController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+            return StatusCode(500, new { message = "Lỗi server khi tạo đơn hàng" });
         }
     }
 
@@ -216,9 +232,13 @@ public class KhachHangController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+            return StatusCode(500, new { message = "Lỗi server khi yêu cầu hủy đơn" });
         }
     }
 

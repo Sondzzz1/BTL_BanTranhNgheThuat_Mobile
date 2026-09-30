@@ -141,50 +141,7 @@ public class KhachHangBusiness : IKhachHangBusiness
     {
         if (request.SoLuong < 1)
             throw new ArgumentException("Số lượng phải lớn hơn 0");
-
-        var tacPham = await _tacPhamRepo.GetById(request.MaTacPham);
-        if (tacPham == null) throw new InvalidOperationException("Tác phẩm không tồn tại");
-        if (tacPham.TrangThai != 1) // chỉ cho phép thêm tác phẩm đang bán
-            throw new InvalidOperationException("Tác phẩm hiện không khả dụng");
-
-        var gioHang = await _gioHangRepo.GetByNguoiDung(maNguoiDung);
-        if (gioHang == null)
-        {
-            var maGioHang = await _gioHangRepo.CreateGioHang(maNguoiDung);
-            gioHang = new GioHang { MaGioHang = maGioHang, MaNguoiDung = maNguoiDung };
-        }
-
-        // Kiểm tra sản phẩm đã có trong giỏ chưa
-        var chiTietExist = await _gioHangRepo.GetChiTietByTacPham(gioHang.MaGioHang, request.MaTacPham);
-        
-        int newQuantity = request.SoLuong;
-        if (chiTietExist != null)
-        {
-            newQuantity += chiTietExist.SoLuong;
-        }
-
-        if (tacPham.SoLuong < newQuantity)
-        {
-            throw new InvalidOperationException(
-                $"Sản phẩm '{tacPham.TenTacPham}' không đủ số lượng (chỉ còn {tacPham.SoLuong})");
-        }
-
-        if (chiTietExist != null)
-        {
-            chiTietExist.SoLuong = newQuantity;
-            return await _gioHangRepo.UpdateChiTiet(chiTietExist);
-        }
-        else
-        {
-            var chiTiet = new ChiTietGioHang
-            {
-                MaGioHang = gioHang.MaGioHang,
-                MaTacPham = request.MaTacPham,
-                SoLuong = request.SoLuong
-            };
-            await _gioHangRepo.AddChiTiet(chiTiet);
-            return true;
-        }
+        return await _gioHangRepo.AddOrIncrementTransactional(maNguoiDung, request.MaTacPham, request.SoLuong);
     }
 
     public async Task<bool> CapNhatGioHang(int maNguoiDung, int maChiTietGH, CapNhatGioHangRequest request)
@@ -231,113 +188,44 @@ public class KhachHangBusiness : IKhachHangBusiness
 
     public async Task<int> TaoDonHang(int maNguoiDung, TaoDonHangRequest request)
     {
-        // Validate input
         if (string.IsNullOrWhiteSpace(request.TenNguoiNhan))
             throw new ArgumentException("Tên người nhận không được để trống");
-        if (string.IsNullOrWhiteSpace(request.SoDienThoai))
-            throw new ArgumentException("Số điện thoại không được để trống");
         if (string.IsNullOrWhiteSpace(request.DiaChiGiao))
             throw new ArgumentException("Địa chỉ giao hàng không được để trống");
+        var phone = request.SoDienThoai?.Trim() ?? string.Empty;
+        if (!System.Text.RegularExpressions.Regex.IsMatch(phone, @"^(0|\+84)[0-9]{9}$"))
+            throw new ArgumentException("Số điện thoại Việt Nam không hợp lệ");
 
-        var allowedPayments = new[] { "COD", "BankTransfer", "Momo", "VNPay" };
-        var phuongThuc = string.IsNullOrWhiteSpace(request.PhuongThucThanhToan)
-            ? "COD"
-            : request.PhuongThucThanhToan;
-        if (!allowedPayments.Contains(phuongThuc))
+        request.PhuongThucThanhToan = request.PhuongThucThanhToan?.Trim() ?? "COD";
+        request.PhuongThucThanhToan = request.PhuongThucThanhToan.ToUpperInvariant() switch
+        {
+            "COD" => "COD",
+            "BANKTRANSFER" => "BankTransfer",
+            _ => string.Empty
+        };
+        if (string.IsNullOrEmpty(request.PhuongThucThanhToan))
             throw new ArgumentException("Phương thức thanh toán không hợp lệ");
 
-        // Lấy giỏ hàng
-        var gioHang = await _gioHangRepo.GetByNguoiDung(maNguoiDung);
-        if (gioHang == null) throw new InvalidOperationException("Giỏ hàng không tồn tại");
+        request.Mode = string.IsNullOrWhiteSpace(request.Mode) ? "CART" : request.Mode.Trim().ToUpperInvariant();
+        if (request.Mode is not ("CART" or "BUY_NOW"))
+            throw new ArgumentException("Chế độ checkout không hợp lệ");
+        if (request.Mode == "CART" && request.CartItemIds is { Count: 0 })
+            throw new ArgumentException("Vui lòng chọn ít nhất một sản phẩm trong giỏ hàng");
+        if (request.Mode == "CART" && request.CartItemIds?.Any(id => id <= 0) == true)
+            throw new ArgumentException("Dòng giỏ hàng không hợp lệ");
+        if (request.Mode == "BUY_NOW" && (!request.MaTacPham.HasValue || request.MaTacPham <= 0))
+            throw new ArgumentException("Tác phẩm mua ngay không hợp lệ");
+        if (request.Mode == "BUY_NOW" && (!request.SoLuong.HasValue || request.SoLuong <= 0))
+            throw new ArgumentException("Số lượng mua ngay phải lớn hơn 0");
 
-        var chiTietList = await _gioHangRepo.GetChiTiet(gioHang.MaGioHang);
-        if (chiTietList.Count == 0) throw new InvalidOperationException("Giỏ hàng trống");
+        request.TenNguoiNhan = request.TenNguoiNhan.Trim();
+        request.SoDienThoai = phone;
+        request.DiaChiGiao = request.DiaChiGiao.Trim();
+        request.GhiChu = string.IsNullOrWhiteSpace(request.GhiChu) ? null : request.GhiChu.Trim();
+        if (request.GhiChu?.Length > 1000)
+            throw new ArgumentException("Ghi chú quá dài");
 
-        // Kiểm tra tồn kho + trạng thái + tính tổng tiền TRƯỚC khi tạo đơn
-        var snapshots = new List<(Models.TacPham tacPham, int soLuong, decimal donGia)>();
-        decimal tongTien = 0;
-        foreach (var chiTiet in chiTietList)
-        {
-            var tacPham = await _tacPhamRepo.GetById(chiTiet.MaTacPham);
-            if (tacPham == null)
-                throw new InvalidOperationException("Một tác phẩm trong giỏ không còn tồn tại");
-            if (tacPham.TrangThai != 1)
-                throw new InvalidOperationException($"Tác phẩm '{tacPham.TenTacPham}' không còn được bán");
-            if (tacPham.SoLuong < chiTiet.SoLuong)
-                throw new InvalidOperationException(
-                    $"Tác phẩm '{tacPham.TenTacPham}' không đủ số lượng (còn {tacPham.SoLuong})");
-
-            snapshots.Add((tacPham, chiTiet.SoLuong, tacPham.Gia));
-            tongTien += tacPham.Gia * chiTiet.SoLuong;
-        }
-
-        // Tạo đơn hàng
-        var donHang = new DonHang
-        {
-            MaNguoiDung = maNguoiDung,
-            NgayDat = DateTime.UtcNow,
-            TongTien = tongTien,
-            TenNguoiNhan = request.TenNguoiNhan.Trim(),
-            SoDienThoai = request.SoDienThoai.Trim(),
-            DiaChiGiao = request.DiaChiGiao.Trim(),
-            TrangThai = DonHangStatus.ChoXacNhan
-        };
-
-        var maDonHang = await _donHangRepo.Create(donHang);
-
-        try
-        {
-            foreach (var (tacPham, soLuong, donGia) in snapshots)
-            {
-                var chiTietDH = new ChiTietDonHang
-                {
-                    MaDonHang = maDonHang,
-                    MaTacPham = tacPham.MaTacPham,
-                    SoLuong = soLuong,
-                    DonGia = donGia
-                };
-                await _donHangRepo.CreateChiTiet(chiTietDH);
-
-                // Trừ tồn kho
-                tacPham.SoLuong -= soLuong;
-                await _tacPhamRepo.Update(tacPham);
-            }
-
-            // Tạo thanh toán
-            var thanhToan = new ThanhToan
-            {
-                MaDonHang = maDonHang,
-                PhuongThuc = phuongThuc,
-                TrangThai = "ChoThanhToan"
-            };
-            await _thanhToanRepo.Create(thanhToan);
-
-            // Xóa giỏ hàng
-            await _gioHangRepo.ClearGioHang(gioHang.MaGioHang);
-        }
-        catch
-        {
-            // Rollback "đơn giản": đánh dấu đơn là Đã huỷ và hoàn lại tồn kho cho phần đã trừ.
-            // (DAL hiện không expose Transaction nên xử lý ở mức nghiệp vụ.)
-            try
-            {
-                await _donHangRepo.UpdateTrangThai(maDonHang, DonHangStatus.DaHuy, "Lỗi hệ thống khi tạo đơn");
-                var createdDetails = await _donHangRepo.GetChiTiet(maDonHang);
-                foreach (var ct in createdDetails)
-                {
-                    var tp = await _tacPhamRepo.GetById(ct.MaTacPham);
-                    if (tp != null)
-                    {
-                        tp.SoLuong += ct.SoLuong;
-                        await _tacPhamRepo.Update(tp);
-                    }
-                }
-            }
-            catch { /* nuốt lỗi rollback để propagate exception gốc */ }
-            throw;
-        }
-
-        return maDonHang;
+        return await _donHangRepo.CreateTransactional(maNguoiDung, request);
     }
 
     public async Task<List<DonHangResponse>> GetDonHangCuaToi(int maNguoiDung)
@@ -423,15 +311,17 @@ public class KhachHangBusiness : IKhachHangBusiness
         if (donHang.MaNguoiDung != maNguoiDung)
             throw new UnauthorizedAccessException("Không có quyền hủy đơn hàng này");
 
-        // Chỉ cho phép yêu cầu hủy nếu đơn đang Chờ xác nhận hoặc Đã xác nhận
-        if (donHang.TrangThai != DonHangStatus.ChoXacNhan && donHang.TrangThai != DonHangStatus.DaXacNhan)
+        // Customer chỉ được yêu cầu hủy khi đơn còn Chờ xác nhận.
+        if (donHang.TrangThai != DonHangStatus.ChoXacNhan)
             throw new InvalidOperationException("Đơn hàng không ở trạng thái có thể yêu cầu hủy");
 
         var trimmedLyDo = string.IsNullOrWhiteSpace(lyDo) ? null : lyDo.Trim();
         if (trimmedLyDo != null && trimmedLyDo.Length > 500)
             throw new ArgumentException("Lý do hủy quá dài (tối đa 500 ký tự)");
 
-        return await _donHangRepo.UpdateTrangThai(maDonHang, DonHangStatus.YeuCauHuy, trimmedLyDo);
+        if (!await _donHangRepo.RequestCancellation(maNguoiDung, maDonHang, trimmedLyDo))
+            throw new BusinessConflictException("Đơn hàng đã được xử lý bởi một yêu cầu khác");
+        return true;
     }
 
     private string GetTrangThaiText(byte trangThai) => DonHangStatus.GetText(trangThai);

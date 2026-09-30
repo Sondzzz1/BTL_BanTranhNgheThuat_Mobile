@@ -24,7 +24,15 @@ export interface ProductReviewSummary {
   maTacPham: number;
   diemTrungBinh: number; // Average rating
   tongSoDanhGia: number; // Total reviews
-  phanTramTheoSao: {
-    [key: number]: number; // 5: 60%, 4: 20%, etc.
-  };
+  soLuong1Sao: number;
+  soLuong2Sao: number;
+  soLuong3Sao: number;
+  soLuong4Sao: number;
+  soLuong5Sao: number;
+}
+
+export interface ReviewPermission {
+  canReview: boolean;
+  reason?: string;
+  existingReview?: Review;
 }

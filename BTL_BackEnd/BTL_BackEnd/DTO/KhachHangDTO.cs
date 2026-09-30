@@ -61,7 +61,12 @@ public class TaoDonHangRequest
     public string TenNguoiNhan { get; set; } = null!;
     public string SoDienThoai { get; set; } = null!;
     public string DiaChiGiao { get; set; } = null!;
-    public string PhuongThucThanhToan { get; set; } = "COD"; // COD, BankTransfer, Momo, VNPay
+    public string PhuongThucThanhToan { get; set; } = "COD"; // COD, BankTransfer
+    public string Mode { get; set; } = "CART"; // CART, BUY_NOW
+    public List<int>? CartItemIds { get; set; }
+    public int? MaTacPham { get; set; }
+    public int? SoLuong { get; set; }
+    public string? GhiChu { get; set; }
 }
 
 public class DonHangResponse

@@ -48,6 +48,18 @@ public class ThanhToanRepository : IThanhToanRepository
         return null;
     }
 
+    public async Task<List<ThanhToan>> GetAll()
+    {
+        var result = new List<ThanhToan>();
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        const string query = "SELECT * FROM ThanhToan ORDER BY MaThanhToan DESC";
+        await using var command = new SqlCommand(query, connection);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) result.Add(MapToThanhToan(reader));
+        return result;
+    }
+
     public async Task<int> Create(ThanhToan thanhToan)
     {
         using var connection = new SqlConnection(_connectionString);
@@ -89,6 +101,22 @@ public class ThanhToanRepository : IThanhToanRepository
         return rowsAffected > 0;
     }
 
+    public async Task<bool> ConfirmBankTransfer(int maThanhToan, int maTaiKhoan, string? maGiaoDich)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        const string query = @"
+            UPDATE ThanhToan
+            SET TrangThai='DaThanhToan',NgayThanhToan=GETDATE(),NguoiXacNhan=@NguoiXacNhan,
+                MaGiaoDich=COALESCE(@MaGiaoDich,MaGiaoDich)
+            WHERE MaThanhToan=@MaThanhToan AND PhuongThuc='BankTransfer' AND TrangThai='ChoThanhToan';";
+        await using var command = new SqlCommand(query, connection);
+        command.Parameters.AddWithValue("@MaThanhToan", maThanhToan);
+        command.Parameters.AddWithValue("@NguoiXacNhan", maTaiKhoan);
+        command.Parameters.AddWithValue("@MaGiaoDich", (object?)maGiaoDich ?? DBNull.Value);
+        return await command.ExecuteNonQueryAsync() == 1;
+    }
+
     private ThanhToan MapToThanhToan(SqlDataReader reader)
     {
         return new ThanhToan
@@ -102,7 +130,17 @@ public class ThanhToanRepository : IThanhToanRepository
                 : reader.GetDateTime(reader.GetOrdinal("NgayThanhToan")),
             MaGiaoDich = reader.IsDBNull(reader.GetOrdinal("MaGiaoDich")) 
                 ? null 
-                : reader.GetString(reader.GetOrdinal("MaGiaoDich"))
+                : reader.GetString(reader.GetOrdinal("MaGiaoDich")),
+            NguoiXacNhan = HasColumn(reader, "NguoiXacNhan") && !reader.IsDBNull(reader.GetOrdinal("NguoiXacNhan"))
+                ? reader.GetInt32(reader.GetOrdinal("NguoiXacNhan"))
+                : null
         };
+    }
+
+    private static bool HasColumn(SqlDataReader reader, string name)
+    {
+        for (var index = 0; index < reader.FieldCount; index++)
+            if (reader.GetName(index).Equals(name, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
     }
 }

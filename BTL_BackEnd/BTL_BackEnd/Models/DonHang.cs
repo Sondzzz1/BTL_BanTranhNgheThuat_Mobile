@@ -9,6 +9,7 @@ public class DonHang
     public string? TenNguoiNhan { get; set; }
     public string? SoDienThoai { get; set; }
     public string? DiaChiGiao { get; set; }
+    public string? GhiChu { get; set; }
     public byte TrangThai { get; set; }
     public string? LyDoHuy { get; set; }
     public DateTime? NgayGiao { get; set; }

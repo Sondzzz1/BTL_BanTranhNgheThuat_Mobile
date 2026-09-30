@@ -146,7 +146,7 @@ public class HoanTraBusiness : IHoanTraBusiness
 
     public async Task XacNhanHoanTien(int maYeuCau, int maTaiKhoan, XacNhanHoanTienRequest request)
     {
-        var methods = new[] { "COD", "BANKTRANSFER", "MOMO", "VNPAY", "CHUYEN_KHOAN", "TIEN_MAT" };
+        var methods = new[] { "COD", "BANKTRANSFER", "CHUYEN_KHOAN", "TIEN_MAT" };
         request.PhuongThucHoanTien = request.PhuongThucHoanTien.Trim().ToUpperInvariant();
         if (!methods.Contains(request.PhuongThucHoanTien))
             throw new ArgumentException("Phương thức hoàn tiền không hợp lệ");

@@ -55,8 +55,10 @@ export const API_ENDPOINTS = {
   // Reviews
   REVIEWS: '/danh-gia',
   REVIEW_BY_PRODUCT: (productId: number) => `/danh-gia/tac-pham/${productId}`,
-  REVIEW_ADD: '/danh-gia/them',
-  REVIEW_CHECK_PURCHASED: (productId: number) => `/danh-gia/kiem-tra-mua-hang/${productId}`,
+  REVIEW_SUMMARY: (productId: number) => `/danh-gia/tac-pham/${productId}/tong-hop`,
+  REVIEW_PERMISSION: (productId: number) => `/danh-gia/tac-pham/${productId}/quyen-cua-toi`,
+  REVIEW_UPDATE: (id: number) => `/danh-gia/${id}`,
+  REVIEW_DELETE: (id: number) => `/danh-gia/${id}`,
   REVIEW_FIVE_STARS: '/danh-gia/5-sao',
 
   // Hoàn trả sản phẩm

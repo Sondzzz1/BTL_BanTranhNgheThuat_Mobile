@@ -1,4 +1,6 @@
+using System.Data;
 using DoAn2_BackEnd.DAL.Interfaces;
+using DoAn2_BackEnd.Helpers;
 using DoAn2_BackEnd.Models;
 using Microsoft.Data.SqlClient;
 
@@ -180,5 +182,99 @@ public class GioHangRepository : IGioHangRepository
 
         var rowsAffected = await command.ExecuteNonQueryAsync();
         return rowsAffected > 0;
+    }
+
+    public async Task<bool> AddOrIncrementTransactional(int maNguoiDung, int maTacPham, int soLuong)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            const string productSql = @"
+                SELECT TenTacPham,SoLuong,TrangThai
+                FROM TacPham WITH (UPDLOCK,HOLDLOCK)
+                WHERE MaTacPham=@MaTacPham;";
+            await using var product = new SqlCommand(productSql, connection, transaction);
+            product.Parameters.AddWithValue("@MaTacPham", maTacPham);
+            string productName;
+            int stock;
+            byte status;
+            await using (var reader = await product.ExecuteReaderAsync())
+            {
+                if (!await reader.ReadAsync()) throw new KeyNotFoundException("Tác phẩm không tồn tại");
+                productName = reader.GetString(0);
+                stock = reader.GetInt32(1);
+                status = reader.GetByte(2);
+            }
+            if (status != 1) throw new BusinessConflictException("Tác phẩm hiện không khả dụng");
+
+            const string cartSql = "SELECT MaGioHang FROM GioHang WITH (UPDLOCK,HOLDLOCK) WHERE MaNguoiDung=@MaNguoiDung;";
+            await using var cart = new SqlCommand(cartSql, connection, transaction);
+            cart.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
+            var cartValue = await cart.ExecuteScalarAsync();
+            int cartId;
+            if (cartValue == null || cartValue == DBNull.Value)
+            {
+                const string createCartSql = "INSERT INTO GioHang(MaNguoiDung) OUTPUT INSERTED.MaGioHang VALUES(@MaNguoiDung);";
+                await using var createCart = new SqlCommand(createCartSql, connection, transaction);
+                createCart.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
+                cartId = Convert.ToInt32(await createCart.ExecuteScalarAsync());
+            }
+            else
+            {
+                cartId = Convert.ToInt32(cartValue);
+            }
+
+            const string lineSql = @"
+                SELECT MaChiTietGH,SoLuong
+                FROM ChiTietGioHang WITH (UPDLOCK,HOLDLOCK)
+                WHERE MaGioHang=@MaGioHang AND MaTacPham=@MaTacPham;";
+            await using var line = new SqlCommand(lineSql, connection, transaction);
+            line.Parameters.AddWithValue("@MaGioHang", cartId);
+            line.Parameters.AddWithValue("@MaTacPham", maTacPham);
+            int? lineId = null;
+            var currentQuantity = 0;
+            await using (var reader = await line.ExecuteReaderAsync())
+            {
+                if (await reader.ReadAsync())
+                {
+                    lineId = reader.GetInt32(0);
+                    currentQuantity = reader.GetInt32(1);
+                }
+            }
+
+            var nextQuantity = checked(currentQuantity + soLuong);
+            if (nextQuantity > stock)
+                throw new BusinessConflictException($"Sản phẩm '{productName}' không đủ số lượng (chỉ còn {stock})");
+
+            if (lineId.HasValue)
+            {
+                const string updateSql = "UPDATE ChiTietGioHang SET SoLuong=@SoLuong WHERE MaChiTietGH=@MaChiTietGH;";
+                await using var update = new SqlCommand(updateSql, connection, transaction);
+                update.Parameters.AddWithValue("@SoLuong", nextQuantity);
+                update.Parameters.AddWithValue("@MaChiTietGH", lineId.Value);
+                if (await update.ExecuteNonQueryAsync() != 1) throw new DBConcurrencyException("Giỏ hàng đã thay đổi");
+            }
+            else
+            {
+                const string insertSql = @"
+                    INSERT INTO ChiTietGioHang(MaGioHang,MaTacPham,SoLuong)
+                    VALUES(@MaGioHang,@MaTacPham,@SoLuong);";
+                await using var insert = new SqlCommand(insertSql, connection, transaction);
+                insert.Parameters.AddWithValue("@MaGioHang", cartId);
+                insert.Parameters.AddWithValue("@MaTacPham", maTacPham);
+                insert.Parameters.AddWithValue("@SoLuong", soLuong);
+                if (await insert.ExecuteNonQueryAsync() != 1) throw new DBConcurrencyException("Không thể thêm sản phẩm vào giỏ hàng");
+            }
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }

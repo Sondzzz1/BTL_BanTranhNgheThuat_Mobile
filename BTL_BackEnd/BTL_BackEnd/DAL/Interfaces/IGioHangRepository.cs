@@ -13,4 +13,5 @@ public interface IGioHangRepository
     Task<bool> UpdateChiTiet(ChiTietGioHang chiTiet);
     Task<bool> DeleteChiTiet(int maChiTietGH);
     Task<bool> ClearGioHang(int maGioHang);
+    Task<bool> AddOrIncrementTransactional(int maNguoiDung, int maTacPham, int soLuong);
 }

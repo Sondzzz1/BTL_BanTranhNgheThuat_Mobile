@@ -10,7 +10,7 @@ public interface IAdminBusiness
     
     Task<List<DonHangAdminResponse>> GetAllDonHang(byte? trangThai = null, DateTime? tuNgay = null, DateTime? denNgay = null);
     Task<DonHangResponse> GetDonHangById(int id);
-    Task<bool> CapNhatTrangThaiDonHang(int id, CapNhatTrangThaiDonHangRequest request);
+    Task<bool> CapNhatTrangThaiDonHang(int id, int maTaiKhoan, CapNhatTrangThaiDonHangRequest request);
     Task<bool> XoaDonHang(int id);
     Task<List<DonHangAdminResponse>> TimKiemDonHang(string? keyword, byte? trangThai, DateTime? tuNgay, DateTime? denNgay, decimal? tuGia, decimal? denGia, int pageNumber, int pageSize);
     
@@ -57,7 +57,7 @@ public interface IAdminBusiness
     
     Task<List<ThanhToanResponse>> GetAllThanhToan(string? trangThai, DateTime? tuNgay, DateTime? denNgay);
     Task<ThanhToanResponse> GetThanhToanById(int id);
-    Task<bool> XacNhanThanhToan(int id);
+    Task<bool> XacNhanThanhToan(int id, int maTaiKhoan, string? maGiaoDich);
     
     Task<List<DoanhThuTheoThangResponse>> GetDoanhThuTheoThang(int nam);
     Task<List<DoanhThuTheoHoaSiResponse>> GetDoanhThuTheoHoaSi(DateTime? tuNgay, DateTime? denNgay);

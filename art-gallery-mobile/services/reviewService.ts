@@ -1,150 +1,65 @@
-// Review Service - Placeholder (waiting for backend API)
+import apiClient from './api';
+import { API_ENDPOINTS } from '../constants/api';
+import { AddReviewRequest, ProductReviewSummary, Review, ReviewPermission } from '../types/review';
 
-import { Review, AddReviewRequest, ProductReviewSummary } from '../types/review';
-import { orderService } from './orderService';
-
-// Mock data for now - will connect to backend later
-const mockReviews: { [key: number]: Review[] } = {
-  1: [
-    {
-      maDanhGia: 1,
-      maTacPham: 1,
-      tenTacPham: 'Tranh Sơn Dầu Phong Cảnh',
-      hinhAnhTacPham: undefined,
-      maNguoiDung: 1,
-      tenNguoiDung: 'Nguyễn Văn A',
-      danhGia: 5,
-      binhLuan: 'Tranh rất đẹp, chất lượng tuyệt vời! Dịch vụ chuyên nghiệp, giao hàng nhanh chóng.',
-      hinhAnhDanhGia: undefined,
-      ngayDanhGia: '2024-01-15',
-    },
-    {
-      maDanhGia: 2,
-      maTacPham: 1,
-      tenTacPham: 'Tranh Sơn Dầu Phong Cảnh',
-      hinhAnhTacPham: undefined,
-      maNguoiDung: 2,
-      tenNguoiDung: 'Trần Thị B',
-      danhGia: 4,
-      binhLuan: 'Đẹp nhưng giao hàng hơi lâu',
-      ngayDanhGia: '2024-01-10',
-    },
-  ],
-};
+const getMessage = (error: any, fallback: string) =>
+  error?.response?.data?.message || error?.message || fallback;
 
 export const reviewService = {
-  // Lấy tất cả đánh giá 5 sao (cho trang chủ)
-  getAllFiveStarReviews: async (): Promise<Review[]> => {
-    // TODO: Connect to backend when API is ready
-    // const response = await api.get('/danhgia/5-sao');
-    // return response.data;
-    
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Get all 5-star reviews from all products
-        const allFiveStarReviews: Review[] = [];
-        Object.values(mockReviews).forEach(productReviews => {
-          const fiveStarOnly = productReviews.filter(r => r.danhGia === 5);
-          allFiveStarReviews.push(...fiveStarOnly);
-        });
-        resolve(allFiveStarReviews);
-      }, 500);
-    });
-  },
-
-  // Kiểm tra xem user đã mua sản phẩm này chưa
-  checkUserPurchased: async (maTacPham: number): Promise<boolean> => {
+  async getAllFiveStarReviews(): Promise<Review[]> {
     try {
-      const orders = await orderService.getMyOrders();
-      
-      // Kiểm tra xem có đơn hàng nào chứa sản phẩm này không
-      // Chỉ tính các đơn đã hoàn thành (trangThai = 3)
-      const hasPurchased = orders.some(order => 
-        order.trangThai === 3 && // Đã giao hàng
-        order.chiTiet?.some(item => item.maTacPham === maTacPham)
-      );
-      
-      return hasPurchased;
-    } catch (error) {
-      console.error('Error checking user purchase:', error);
-      return false;
+      return (await apiClient.get<Review[]>(API_ENDPOINTS.REVIEW_FIVE_STARS)).data;
+    } catch (error: any) {
+      throw new Error(getMessage(error, 'Không thể tải đánh giá nổi bật'));
     }
   },
 
-  // Lấy danh sách đánh giá của sản phẩm
-  getProductReviews: async (maTacPham: number): Promise<Review[]> => {
-    // TODO: Connect to backend when API is ready
-    // const response = await api.get(`/danhgia/tacpham/${maTacPham}`);
-    // return response.data;
-    
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve(mockReviews[maTacPham] || []);
-      }, 500);
-    });
-  },
-
-  // Lấy tóm tắt đánh giá
-  getProductReviewSummary: async (maTacPham: number): Promise<ProductReviewSummary> => {
-    // TODO: Connect to backend when API is ready
-    const reviews = mockReviews[maTacPham] || [];
-    
-    if (reviews.length === 0) {
-      return {
-        maTacPham,
-        diemTrungBinh: 0,
-        tongSoDanhGia: 0,
-        phanTramTheoSao: {},
-      };
+  async getProductReviews(maTacPham: number): Promise<Review[]> {
+    try {
+      return (await apiClient.get<Review[]>(API_ENDPOINTS.REVIEW_BY_PRODUCT(maTacPham))).data;
+    } catch (error: any) {
+      throw new Error(getMessage(error, 'Không thể tải đánh giá'));
     }
-
-    const totalStars = reviews.reduce((sum, r) => sum + r.danhGia, 0);
-    const avgRating = totalStars / reviews.length;
-
-    const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    reviews.forEach((r) => {
-      starCounts[r.danhGia]++;
-    });
-
-    const starPercentages: { [key: number]: number } = {};
-    Object.entries(starCounts).forEach(([star, count]) => {
-      starPercentages[parseInt(star)] = (count / reviews.length) * 100;
-    });
-
-    return {
-      maTacPham,
-      diemTrungBinh: avgRating,
-      tongSoDanhGia: reviews.length,
-      phanTramTheoSao: starPercentages,
-    };
   },
 
-  // Thêm đánh giá mới
-  addReview: async (request: AddReviewRequest): Promise<Review> => {
-    // TODO: Connect to backend when API is ready
-    // const response = await api.post('/danhgia', request);
-    // return response.data;
+  async getProductReviewSummary(maTacPham: number): Promise<ProductReviewSummary> {
+    try {
+      return (await apiClient.get<ProductReviewSummary>(API_ENDPOINTS.REVIEW_SUMMARY(maTacPham))).data;
+    } catch (error: any) {
+      throw new Error(getMessage(error, 'Không thể tải tổng hợp đánh giá'));
+    }
+  },
 
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const newReview: Review = {
-          maDanhGia: Date.now(),
-          maTacPham: request.maTacPham,
-          maNguoiDung: 1, // Current user
-          tenNguoiDung: 'Tôi',
-          danhGia: request.danhGia,
-          binhLuan: request.binhLuan,
-          ngayDanhGia: new Date().toISOString(),
-        };
+  async getMyPermission(maTacPham: number): Promise<ReviewPermission> {
+    try {
+      return (await apiClient.get<ReviewPermission>(API_ENDPOINTS.REVIEW_PERMISSION(maTacPham))).data;
+    } catch (error: any) {
+      throw new Error(getMessage(error, 'Không thể kiểm tra quyền đánh giá'));
+    }
+  },
 
-        if (!mockReviews[request.maTacPham]) {
-          mockReviews[request.maTacPham] = [];
-        }
-        mockReviews[request.maTacPham].unshift(newReview);
+  async addReview(request: AddReviewRequest): Promise<Review> {
+    try {
+      return (await apiClient.post<Review>(API_ENDPOINTS.REVIEWS, request)).data;
+    } catch (error: any) {
+      throw new Error(getMessage(error, 'Không thể gửi đánh giá'));
+    }
+  },
 
-        resolve(newReview);
-      }, 500);
-    });
+  async updateReview(id: number, request: Omit<AddReviewRequest, 'maTacPham'>): Promise<Review> {
+    try {
+      return (await apiClient.put<Review>(API_ENDPOINTS.REVIEW_UPDATE(id), request)).data;
+    } catch (error: any) {
+      throw new Error(getMessage(error, 'Không thể cập nhật đánh giá'));
+    }
+  },
+
+  async deleteReview(id: number): Promise<void> {
+    try {
+      await apiClient.delete(API_ENDPOINTS.REVIEW_DELETE(id));
+    } catch (error: any) {
+      throw new Error(getMessage(error, 'Không thể xóa đánh giá'));
+    }
   },
 };
 

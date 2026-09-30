@@ -535,25 +535,8 @@ public class AdminBusiness : IAdminBusiness
 
         return result;
     }
-    public async Task<bool> CapNhatTrangThaiDonHang(int id, CapNhatTrangThaiDonHangRequest request)
+    public async Task<bool> CapNhatTrangThaiDonHang(int id, int maTaiKhoan, CapNhatTrangThaiDonHangRequest request)
     {
-        var currentOrder = await _donHangRepo.GetById(id);
-        if (currentOrder == null) return false;
-
-        // Đơn đã huỷ/đã giao thì không cho đổi nữa
-        if (currentOrder.TrangThai == DonHangStatus.DaHuy || currentOrder.TrangThai == DonHangStatus.DaGiao)
-        {
-            throw new InvalidOperationException("Đơn hàng đã ở trạng thái cuối, không thể đổi nữa.");
-        }
-
-        // Không cho lùi từ Đang giao về Chờ xác nhận / Đã xác nhận
-        if (currentOrder.TrangThai == DonHangStatus.DangGiao
-            && (request.TrangThai == DonHangStatus.ChoXacNhan || request.TrangThai == DonHangStatus.DaXacNhan))
-        {
-            throw new InvalidOperationException("Không thể chuyển trạng thái từ 'Đang giao' về 'Chờ xác nhận' hoặc 'Đã xác nhận'.");
-        }
-
-        // Validate trạng thái mới
         var allowed = new byte[]
         {
             DonHangStatus.ChoXacNhan, DonHangStatus.DaXacNhan, DonHangStatus.DangGiao,
@@ -561,33 +544,68 @@ public class AdminBusiness : IAdminBusiness
         };
         if (!allowed.Contains(request.TrangThai))
             throw new ArgumentException("Trạng thái không hợp lệ");
-
-        // Khi admin chuyển sang "Đã hủy" → hoàn tồn kho
-        if (request.TrangThai == DonHangStatus.DaHuy && currentOrder.TrangThai != DonHangStatus.DaHuy)
-        {
-            var details = await _donHangRepo.GetChiTiet(id);
-            foreach (var ct in details)
-            {
-                var tp = await _tacPhamRepo.GetById(ct.MaTacPham);
-                if (tp != null)
-                {
-                    tp.SoLuong += ct.SoLuong;
-                    await _tacPhamRepo.Update(tp);
-                }
-            }
-        }
-
-        return await _donHangRepo.UpdateTrangThai(id, request.TrangThai, request.GhiChu);
+        var note = string.IsNullOrWhiteSpace(request.GhiChu) ? null : request.GhiChu.Trim();
+        if (note?.Length > 500) throw new ArgumentException("Ghi chú quá dài");
+        return await _donHangRepo.UpdateStatusTransactional(id, request.TrangThai, note, maTaiKhoan);
     }
     public Task<bool> XoaDonHang(int id) => throw new NotImplementedException("IDonHangRepository does not have a Delete method");
     public Task<List<DonHangAdminResponse>> TimKiemDonHang(string? keyword, byte? trangThai, DateTime? tuNgay, DateTime? denNgay, decimal? tuGia, decimal? denGia, int pageNumber, int pageSize) => throw new NotImplementedException();
     public Task<TimKiemDonHangResponse> TimKiemDonHangNangCao(TimKiemDonHangRequest request) => throw new NotImplementedException();
     public Task<List<DonHangAdminResponse>> SapXepDonHang(string sapXepTheo, string thuTu) => throw new NotImplementedException();
 
-    public Task<List<ThanhToanResponse>> GetAllThanhToan(string? trangThai, DateTime? tuNgay, DateTime? denNgay) => throw new NotImplementedException();
-    public Task<ThanhToanResponse> GetThanhToanById(int id) => throw new NotImplementedException();
-    public Task<bool> XacNhanThanhToan(int id) => throw new NotImplementedException();
+    public async Task<List<ThanhToanResponse>> GetAllThanhToan(string? trangThai, DateTime? tuNgay, DateTime? denNgay)
+    {
+        var payments = await _thanhToanRepo.GetAll();
+        if (!string.IsNullOrWhiteSpace(trangThai))
+            payments = payments.Where(x => x.TrangThai.Equals(trangThai.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+        if (tuNgay.HasValue) payments = payments.Where(x => x.NgayThanhToan >= tuNgay.Value.Date).ToList();
+        if (denNgay.HasValue) payments = payments.Where(x => x.NgayThanhToan < denNgay.Value.Date.AddDays(1)).ToList();
+
+        var result = new List<ThanhToanResponse>();
+        foreach (var payment in payments)
+            result.Add(await MapPayment(payment));
+        return result;
+    }
+
+    public async Task<ThanhToanResponse> GetThanhToanById(int id)
+    {
+        var payment = await _thanhToanRepo.GetById(id);
+        return payment == null ? null! : await MapPayment(payment);
+    }
+
+    public async Task<bool> XacNhanThanhToan(int id, int maTaiKhoan, string? maGiaoDich)
+    {
+        var payment = await _thanhToanRepo.GetById(id);
+        if (payment == null) return false;
+        if (!payment.PhuongThuc.Equals("BankTransfer", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Chỉ thanh toán chuyển khoản mới cần Admin xác nhận");
+        if (!payment.TrangThai.Equals("ChoThanhToan", StringComparison.OrdinalIgnoreCase))
+            throw new BusinessConflictException("Thanh toán đã được xử lý");
+        var transactionCode = string.IsNullOrWhiteSpace(maGiaoDich) ? null : maGiaoDich.Trim();
+        if (transactionCode?.Length > 100) throw new ArgumentException("Mã giao dịch quá dài");
+        if (!await _thanhToanRepo.ConfirmBankTransfer(id, maTaiKhoan, transactionCode))
+            throw new BusinessConflictException("Thanh toán đã được xử lý bởi một yêu cầu khác");
+        return true;
+    }
     public Task<List<ThanhToanResponse>> TimKiemThanhToan(string? keyword, string? phuongThuc, string? trangThai, DateTime? tuNgay, DateTime? denNgay, decimal? tuSoTien, decimal? denSoTien, int pageNumber, int pageSize) => throw new NotImplementedException();
+
+    private async Task<ThanhToanResponse> MapPayment(ThanhToan payment)
+    {
+        var order = await _donHangRepo.GetById(payment.MaDonHang);
+        var customer = order == null ? null : await _nguoiDungRepo.GetById(order.MaNguoiDung);
+        return new ThanhToanResponse
+        {
+            MaThanhToan = payment.MaThanhToan,
+            MaDonHang = payment.MaDonHang,
+            PhuongThuc = payment.PhuongThuc,
+            TrangThai = payment.TrangThai,
+            NgayThanhToan = payment.NgayThanhToan,
+            MaGiaoDich = payment.MaGiaoDich,
+            NguoiXacNhan = payment.NguoiXacNhan,
+            SoTien = order?.TongTien ?? 0,
+            TenKhachHang = customer?.Ten
+        };
+    }
 
     public Task<List<HoaDonResponse>> GetAllHoaDon(DateTime? tuNgay, DateTime? denNgay) => throw new NotImplementedException();
     public Task<HoaDonChiTietResponse> GetHoaDonById(int id) => throw new NotImplementedException();

@@ -140,15 +140,25 @@ public class AdminController : ControllerBase
     {
         try
         {
-            var success = await _adminBusiness.CapNhatTrangThaiDonHang(id, request);
+            var maTaiKhoan = Helpers.JwtHelper.GetMaTaiKhoan(User);
+            if (!maTaiKhoan.HasValue) return Unauthorized(new { message = "Token không có MaTaiKhoan" });
+            var success = await _adminBusiness.CapNhatTrangThaiDonHang(id, maTaiKhoan.Value, request);
             if (!success)
-                return BadRequest(new { message = "Cập nhật thất bại" });
+                return NotFound(new { message = "Không tìm thấy đơn hàng" });
             
             return Ok(new { message = "Cập nhật trạng thái thành công" });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Helpers.BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+            return StatusCode(500, new { message = "Lỗi server khi cập nhật trạng thái đơn hàng" });
         }
     }
 
@@ -878,19 +888,29 @@ public class AdminController : ControllerBase
     }
 
     [HttpPut("thanh-toan/{id}/update/xac-nhan")]
-    public async Task<ActionResult> XacNhanThanhToan(int id)
+    public async Task<ActionResult> XacNhanThanhToan(int id, [FromBody] XacNhanThanhToanRequest? request = null)
     {
         try
         {
-            var success = await _adminBusiness.XacNhanThanhToan(id);
+            var maTaiKhoan = Helpers.JwtHelper.GetMaTaiKhoan(User);
+            if (!maTaiKhoan.HasValue) return Unauthorized(new { message = "Token không có MaTaiKhoan" });
+            var success = await _adminBusiness.XacNhanThanhToan(id, maTaiKhoan.Value, request?.MaGiaoDich);
             if (!success)
-                return BadRequest(new { message = "Xác nhận thất bại" });
+                return NotFound(new { message = "Không tìm thấy thanh toán" });
             
             return Ok(new { message = "Xác nhận thanh toán thành công" });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Helpers.BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+            return StatusCode(500, new { message = "Lỗi server khi xác nhận thanh toán" });
         }
     }
 

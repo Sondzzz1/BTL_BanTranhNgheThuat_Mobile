@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,11 +15,13 @@ import {
 import StarRating from './StarRating';
 import Colors from '../constants/colors';
 import { reviewService } from '../services/reviewService';
+import { Review } from '../types/review';
 
 interface AddReviewModalProps {
   visible: boolean;
   productId: number;
   productName: string;
+  existingReview?: Review;
   onClose: () => void;
   onReviewAdded: () => void;
 }
@@ -28,12 +30,19 @@ export default function AddReviewModal({
   visible,
   productId,
   productName,
+  existingReview,
   onClose,
   onReviewAdded,
 }: AddReviewModalProps) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!visible) return;
+    setRating(existingReview?.danhGia ?? 5);
+    setComment(existingReview?.binhLuan ?? '');
+  }, [visible, existingReview]);
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -43,13 +52,20 @@ export default function AddReviewModal({
 
     try {
       setIsSubmitting(true);
-      await reviewService.addReview({
-        maTacPham: productId,
-        danhGia: rating,
-        binhLuan: comment.trim() || undefined,
-      });
+      if (existingReview) {
+        await reviewService.updateReview(existingReview.maDanhGia, {
+          danhGia: rating,
+          binhLuan: comment.trim() || undefined,
+        });
+      } else {
+        await reviewService.addReview({
+          maTacPham: productId,
+          danhGia: rating,
+          binhLuan: comment.trim() || undefined,
+        });
+      }
 
-      Alert.alert('Thành công', 'Đánh giá của bạn đã được gửi');
+      Alert.alert('Thành công', existingReview ? 'Đánh giá đã được cập nhật' : 'Đánh giá của bạn đã được gửi');
       handleClose();
       onReviewAdded();
     } catch (error: any) {
@@ -85,7 +101,7 @@ export default function AddReviewModal({
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Đánh giá sản phẩm</Text>
+            <Text style={styles.headerTitle}>{existingReview ? 'Sửa đánh giá' : 'Đánh giá sản phẩm'}</Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
@@ -149,7 +165,7 @@ export default function AddReviewModal({
               {isSubmitting ? (
                 <ActivityIndicator color={Colors.white} />
               ) : (
-                <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
+                <Text style={styles.submitButtonText}>{existingReview ? 'Lưu thay đổi' : 'Gửi đánh giá'}</Text>
               )}
             </TouchableOpacity>
           </View>

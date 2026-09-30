@@ -12,15 +12,21 @@ import {
 import { cartService } from '../services/cartService';
 import { orderService } from '../services/orderService';
 import { customerService } from '../services/customerService';
+import { productService } from '../services/productService';
 import { Cart } from '../types/cart';
 import Loading from '../components/Loading';
 import { formatVnd } from '../utils/currency';
 
 interface CheckoutScreenProps {
   navigation: any;
+  route: any;
 }
 
-export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
+export default function CheckoutScreen({ navigation, route }: CheckoutScreenProps) {
+  const mode: 'cart' | 'buyNow' = route.params?.mode === 'buyNow' ? 'buyNow' : 'cart';
+  const cartItemIds: number[] = Array.isArray(route.params?.cartItemIds) ? route.params.cartItemIds : [];
+  const buyNowProductId: number | undefined = route.params?.maTacPham;
+  const buyNowQuantity: number = Number(route.params?.soLuong || 1);
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,12 +46,44 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [cartData, profileData] = await Promise.all([
-        cartService.getCart(),
-        customerService.getProfile(),
-      ]);
-      
-      setCart(cartData);
+      const profilePromise = customerService.getProfile();
+      const orderDataPromise = mode === 'buyNow'
+        ? productService.getProductById(buyNowProductId as number)
+        : cartService.getCart();
+      const [orderData, profileData] = await Promise.all([orderDataPromise, profilePromise]);
+
+      if (mode === 'buyNow') {
+        const product = orderData as Awaited<ReturnType<typeof productService.getProductById>>;
+        if (!buyNowProductId || buyNowQuantity <= 0 || buyNowQuantity > product.soLuong) {
+          throw new Error('Sản phẩm đã hết hoặc không đủ tồn kho');
+        }
+        setCart({
+          maGioHang: 0,
+          tongTien: product.gia * buyNowQuantity,
+          danhSachSanPham: [{
+            maChiTietGH: -product.maTacPham,
+            maTacPham: product.maTacPham,
+            tenTacPham: product.tenTacPham,
+            tenHoaSi: product.tenHoaSi,
+            gia: product.gia,
+            soLuong: buyNowQuantity,
+            thanhTien: product.gia * buyNowQuantity,
+            hinhAnh: product.hinhAnh,
+            soLuongTon: product.soLuong,
+          }],
+        });
+      } else {
+        const fullCart = orderData as Cart;
+        const selected = fullCart.danhSachSanPham.filter(item => cartItemIds.includes(item.maChiTietGH));
+        if (selected.length !== cartItemIds.length || selected.length === 0) {
+          throw new Error('Các sản phẩm đã chọn không còn hợp lệ trong giỏ hàng');
+        }
+        setCart({
+          ...fullCart,
+          danhSachSanPham: selected,
+          tongTien: selected.reduce((sum, item) => sum + (item.thanhTien || item.gia * item.soLuong), 0),
+        });
+      }
       
       // Pre-fill with profile data
       setFormData({
@@ -56,7 +94,7 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
       });
     } catch (err: any) {
       console.error('Error loading checkout data:', err);
-      Alert.alert('Lỗi', 'Không thể tải thông tin');
+      Alert.alert('Lỗi', err.message || 'Không thể tải thông tin');
       navigation.goBack();
     } finally {
       setIsLoading(false);
@@ -120,7 +158,10 @@ export default function CheckoutScreen({ navigation }: CheckoutScreenProps) {
                 formData.soDienThoai.trim(),
                 formData.diaChiGiao.trim(),
                 paymentMethod,
-                formData.ghiChu.trim() || undefined
+                formData.ghiChu.trim() || undefined,
+                mode === 'buyNow'
+                  ? { mode: 'BUY_NOW', maTacPham: buyNowProductId, soLuong: buyNowQuantity }
+                  : { mode: 'CART', cartItemIds }
               );
               
               // Navigate to success screen

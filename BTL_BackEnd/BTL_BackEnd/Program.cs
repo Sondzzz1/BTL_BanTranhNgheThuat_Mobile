@@ -72,6 +72,7 @@ builder.Services.AddScoped<IChiTietTacPhamRepository, ChiTietTacPhamRepository>(
 builder.Services.AddScoped<ITacPhamChinhSuaRepository, TacPhamChinhSuaRepository>();
 builder.Services.AddScoped<IYeuThichRepository, YeuThichRepository>();
 builder.Services.AddScoped<IHoanTraRepository, HoanTraRepository>();
+builder.Services.AddScoped<IDanhGiaRepository, DanhGiaRepository>();
 builder.Services.AddScoped<ICustomArtRepository, CustomArtRepository>();
 builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
 
@@ -83,6 +84,7 @@ builder.Services.AddScoped<IAdminBusiness, AdminBusiness>();
 builder.Services.AddScoped<IContentBusiness, ContentBusiness>();
 builder.Services.AddScoped<IChiTietTacPhamBusiness, ChiTietTacPhamBusiness>();
 builder.Services.AddScoped<IHoanTraBusiness, HoanTraBusiness>();
+builder.Services.AddScoped<IDanhGiaBusiness, DanhGiaBusiness>();
 builder.Services.AddSingleton<ReturnFileHelper>();
 builder.Services.AddScoped<ICustomArtBusiness, CustomArtBusiness>();
 builder.Services.AddScoped<IConsultationBusiness, ConsultationBusiness>();

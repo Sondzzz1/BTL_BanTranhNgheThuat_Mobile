@@ -10,7 +10,13 @@ export const orderService = {
     soDienThoai: string,
     diaChiGiao: string,
     phuongThucThanhToan: string = 'COD',
-    ghiChu?: string
+    ghiChu?: string,
+    checkout?: {
+      mode: 'CART' | 'BUY_NOW';
+      cartItemIds?: number[];
+      maTacPham?: number;
+      soLuong?: number;
+    }
   ): Promise<{ message: string; maDonHang: number }> {
     try {
       const request: CreateOrderRequest = {
@@ -20,6 +26,10 @@ export const orderService = {
         phuongThucThanhToan,
         phuongThucTT: phuongThucThanhToan,
         ghiChu,
+        mode: checkout?.mode || 'CART',
+        cartItemIds: checkout?.cartItemIds,
+        maTacPham: checkout?.maTacPham,
+        soLuong: checkout?.soLuong,
       };
       const response = await apiClient.post<{ message: string; maDonHang: number }>(
         API_ENDPOINTS.ORDER_CREATE,

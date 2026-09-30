@@ -49,6 +49,8 @@ export default function ProductDetailScreen({
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [isLoadingReviews, setIsLoadingReviews] = useState(false);
   const [canReview, setCanReview] = useState(false);
+  const [existingReview, setExistingReview] = useState<Review | undefined>();
+  const [reviewReason, setReviewReason] = useState<string | undefined>();
   const [isCheckingPurchase, setIsCheckingPurchase] = useState(false);
 
   useEffect(() => {
@@ -103,11 +105,14 @@ export default function ProductDetailScreen({
 
     try {
       setIsCheckingPurchase(true);
-      const hasPurchased = await reviewService.checkUserPurchased(productId);
-      setCanReview(hasPurchased);
+      const permission = await reviewService.getMyPermission(productId);
+      setCanReview(permission.canReview);
+      setExistingReview(permission.existingReview);
+      setReviewReason(permission.reason);
     } catch (error) {
       console.error('Error checking purchase status:', error);
       setCanReview(false);
+      setExistingReview(undefined);
     } finally {
       setIsCheckingPurchase(false);
     }
@@ -132,7 +137,7 @@ export default function ProductDetailScreen({
     if (!canReview) {
       Alert.alert(
         'Không thể đánh giá',
-        'Bạn cần mua và nhận sản phẩm này trước khi có thể đánh giá.',
+        reviewReason || 'Bạn cần mua và nhận sản phẩm này trước khi có thể đánh giá.',
         [{ text: 'Đã hiểu' }]
       );
       return;
@@ -210,8 +215,8 @@ export default function ProductDetailScreen({
     }
   };
 
-  // Mua ngay: thêm vào giỏ rồi navigate thẳng đến Checkout (giống React web)
-  const handleBuyNow = async () => {
+  // BUY_NOW không thêm vào giỏ, tránh mua nhầm các dòng giỏ hàng cũ.
+  const handleBuyNow = () => {
     if (!product) return;
 
     if (product.soLuong === 0) {
@@ -221,15 +226,30 @@ export default function ProductDetailScreen({
 
     if (!checkAuthCanBuy()) return;
 
-    try {
-      setIsAddingToCart(true);
-      await cartService.addToCart(product.maTacPham, quantity);
-      navigation.navigate('Checkout');
-    } catch (err: any) {
-      Alert.alert('Lỗi', err.message || 'Không thể thêm vào giỏ hàng');
-    } finally {
-      setIsAddingToCart(false);
-    }
+    navigation.navigate('Checkout', {
+      mode: 'buyNow',
+      maTacPham: product.maTacPham,
+      soLuong: quantity,
+    });
+  };
+
+  const handleDeleteReview = () => {
+    if (!existingReview) return;
+    Alert.alert('Xóa đánh giá', 'Bạn có chắc muốn xóa đánh giá này?', [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await reviewService.deleteReview(existingReview.maDanhGia);
+            await Promise.all([loadReviews(), checkPurchaseStatus()]);
+          } catch (err: any) {
+            Alert.alert('Lỗi', err.message || 'Không thể xóa đánh giá');
+          }
+        },
+      },
+    ]);
   };
 
   const handleSuggestionPress = (suggestionId: number) => {
@@ -390,7 +410,7 @@ export default function ProductDetailScreen({
                 <>
                   <Text style={styles.addReviewButtonText}>
                     {isAuthenticated 
-                      ? (canReview ? '✍️ Viết đánh giá' : '🔒 Chưa thể đánh giá')
+                      ? (canReview ? (existingReview ? '✏️ Sửa đánh giá' : '✍️ Viết đánh giá') : '🔒 Chưa thể đánh giá')
                       : '🔒 Đăng nhập để đánh giá'
                     }
                   </Text>
@@ -403,6 +423,12 @@ export default function ProductDetailScreen({
               )}
             </TouchableOpacity>
 
+            {existingReview && (
+              <TouchableOpacity style={styles.deleteReviewButton} onPress={handleDeleteReview}>
+                <Text style={styles.deleteReviewButtonText}>Xóa đánh giá của tôi</Text>
+              </TouchableOpacity>
+            )}
+
             <ReviewsList reviews={reviews} loading={isLoadingReviews} />
           </View>
         </View>
@@ -412,6 +438,7 @@ export default function ProductDetailScreen({
           visible={showReviewModal}
           productId={productId}
           productName={product.tenTacPham}
+          existingReview={existingReview}
           onClose={() => setShowReviewModal(false)}
           onReviewAdded={() => {
             loadReviews();
@@ -676,6 +703,17 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 4,
     textAlign: 'center',
+  },
+  deleteReviewButton: {
+    alignSelf: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: -8,
+    marginBottom: 16,
+  },
+  deleteReviewButtonText: {
+    color: '#dc2626',
+    fontWeight: '600',
   },
   bottomBar: {
     backgroundColor: '#fff',
