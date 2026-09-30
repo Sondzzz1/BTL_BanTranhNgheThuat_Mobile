@@ -88,8 +88,14 @@ public class CustomArtBusiness : ICustomArtBusiness
         return _customArtRepo.UpdateArtistStatus(maYeuCau, maHoaSi, CustomArtStatus.InProgress);
     }
 
-    public Task<int?> HoanThanhYeuCau(int maYeuCau, int maHoaSi, HoanThanhYeuCauRequest request) =>
-        _customArtRepo.CompleteRequest(maYeuCau, maHoaSi, request);
+    public Task<int?> HoanThanhYeuCau(int maYeuCau, int maHoaSi, HoanThanhYeuCauRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.HinhAnhTacPham))
+            throw new ArgumentException("Ảnh tác phẩm hoàn thiện là bắt buộc");
+        request.HinhAnhTacPham = Path.GetFileName(request.HinhAnhTacPham);
+        request.GhiChuHoanThien = request.GhiChuHoanThien?.Trim();
+        return _customArtRepo.CompleteRequest(maYeuCau, maHoaSi, request);
+    }
 
     public async Task<CustomArtQuoteResponse> TaoBaoGia(BaoGiaTranhRequest request, int maHoaSi)
     {
@@ -123,6 +129,10 @@ public class CustomArtBusiness : ICustomArtBusiness
     {
         if (string.IsNullOrWhiteSpace(request.TieuDe) || string.IsNullOrWhiteSpace(request.MoTa))
             throw new ArgumentException("Tiêu đề và mô tả tiến độ không được để trống");
+        request.TieuDe = request.TieuDe.Trim();
+        request.MoTa = request.MoTa.Trim();
+        // Chỉ luồng hoàn thành multipart mới được tạo progress COMPLETED.
+        request.TrangThai = "IN_PROGRESS";
         return await _customArtRepo.CreateProgress(request, maHoaSi);
     }
 
@@ -165,7 +175,8 @@ public class CustomArtBusiness : ICustomArtBusiness
         if (string.IsNullOrWhiteSpace(request.MoTa)) throw new ArgumentException("Mô tả yêu cầu không được để trống");
         if (string.IsNullOrWhiteSpace(request.LoaiTranh) || string.IsNullOrWhiteSpace(request.KichThuoc))
             throw new ArgumentException("Vui lòng nhập loại tranh và kích thước");
-        if (request.GiaDuKien < 0) throw new ArgumentException("Ngân sách dự kiến không hợp lệ");
+        if (request.GiaDuKien <= 0 || decimal.Truncate(request.GiaDuKien) != request.GiaDuKien)
+            throw new ArgumentException("Ngân sách dự kiến phải là số nguyên lớn hơn 0");
         if (request.ReferenceArtworkId.HasValue && request.ReferenceArtworkId <= 0)
             throw new ArgumentException("Mã tác phẩm nguồn không hợp lệ");
         RejectLocalDeviceUri(request.AnhThamKhao);

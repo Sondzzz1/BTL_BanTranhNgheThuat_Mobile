@@ -44,6 +44,12 @@ public class HoanThanhYeuCauRequest
     public string? TenTacPhamMoi { get; set; }
     public string? HinhAnhTacPham { get; set; }
     public string? MoTaNguonGoc { get; set; }
+    public string? GhiChuHoanThien { get; set; }
+}
+
+public class HoanThanhYeuCauForm : HoanThanhYeuCauRequest
+{
+    public IFormFile? AnhTacPhamFile { get; set; }
 }
 
 public class TaoYeuCauTranhForm : TaoYeuCauTranhRequest

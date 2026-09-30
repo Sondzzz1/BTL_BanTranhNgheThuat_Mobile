@@ -67,6 +67,9 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
   const referenceUrl = customArtService.absoluteFileUrl(item.referenceImageUrl || item.anhThamKhao);
   const evidenceUrl = customArtService.absoluteFileUrl(item.bangChungQuyenSuDung);
   const imageHeaders = authToken ? { Authorization: `Bearer ${authToken}` } : undefined;
+  const finalProgress = [...(item.progress || [])].reverse().find((progress) =>
+    progress.trangThai?.toUpperCase() === 'COMPLETED');
+  const finalImageUrl = customArtService.absoluteFileUrl(finalProgress?.anhPreview);
 
   return (
     <ScrollView
@@ -92,6 +95,9 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
           <Section label="Ngày dự kiến hoàn thành" value={new Date(`${item.quote.thoiGianHoanThanh}T00:00:00`).toLocaleDateString('vi-VN')} />
           <Section label="Ghi chú" value={item.quote.ghiChu || 'Không có'} />
           <Section label="Trạng thái báo giá" value={quoteStatusLabel(item.quote.trangThai)} />
+          {Number(item.quote.giaBaoGia) > Number(item.giaDuKien) && (
+            <Text style={styles.budgetWarning}>Báo giá của họa sĩ cao hơn ngân sách dự kiến của bạn.</Text>
+          )}
           {item.quote.trangThai === 'PendingCustomerApproval' && (
             <TouchableOpacity style={styles.acceptButton} onPress={acceptQuote} disabled={accepting}>
               {accepting ? <ActivityIndicator color="#fff" /> : <Text style={styles.acceptText}>Chấp nhận báo giá</Text>}
@@ -118,6 +124,14 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
 
       {referenceUrl && <View style={styles.imageBox}><Text style={styles.imageLabel}>Ảnh tham khảo</Text><Image source={{ uri: referenceUrl, headers: imageHeaders }} style={styles.image} /></View>}
       {evidenceUrl && <View style={styles.imageBox}><Text style={styles.imageLabel}>Bằng chứng quyền sử dụng</Text><Image source={{ uri: evidenceUrl, headers: imageHeaders }} style={styles.image} /></View>}
+
+      {item.trangThai === 'COMPLETED' && finalProgress && (
+        <View style={styles.completedBox}>
+          <Text style={styles.completedHeading}>Tác phẩm đã hoàn thành</Text>
+          {finalImageUrl && <Image source={{ uri: finalImageUrl, headers: finalImageUrl.startsWith('data:image/') ? undefined : imageHeaders }} style={styles.completedImage} />}
+          <Text style={styles.completedNote}>{finalProgress.moTa || 'Tác phẩm đã được hoàn thiện.'}</Text>
+        </View>
+      )}
 
       <View style={styles.timelineBox}>
         <Text style={styles.boxHeading}>Tiến độ thực hiện</Text>
@@ -169,9 +183,14 @@ const styles = StyleSheet.create({
   boxHeading: { color: '#065f46', fontSize: 18, fontWeight: '800', marginBottom: 10 },
   acceptButton: { backgroundColor: '#059669', padding: 13, borderRadius: 10, alignItems: 'center' },
   acceptText: { color: '#fff', fontWeight: '800' },
+  budgetWarning: { color: '#b45309', backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fcd34d', borderRadius: 9, padding: 10, marginBottom: 10, fontWeight: '700', lineHeight: 20 },
   imageBox: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12 },
   imageLabel: { fontWeight: '700', color: '#374151', marginBottom: 8 },
   image: { width: '100%', height: 230, borderRadius: 10, resizeMode: 'contain', backgroundColor: '#f3f4f6' },
+  completedBox: { backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#6ee7b7', borderRadius: 14, padding: 14, marginBottom: 12 },
+  completedHeading: { color: '#047857', fontSize: 20, fontWeight: '900', marginBottom: 10 },
+  completedImage: { width: '100%', height: 260, borderRadius: 10, resizeMode: 'contain', backgroundColor: '#fff' },
+  completedNote: { color: '#065f46', marginTop: 10, lineHeight: 20, fontWeight: '600' },
   timelineBox: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' },
   timelineItem: { position: 'relative', flexDirection: 'row', paddingBottom: 18 },
   timelineDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#ea580c', marginTop: 5, marginRight: 12, zIndex: 2 },

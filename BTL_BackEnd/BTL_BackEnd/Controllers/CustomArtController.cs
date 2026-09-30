@@ -263,14 +263,47 @@ public class CustomArtController : ControllerBase
 
     [HttpPost("hoa-si/{id:int}/hoan-thanh")]
     [Authorize(Roles = "HoaSi")]
-    public async Task<ActionResult> HoanThanhYeuCau(int id, [FromBody] HoanThanhYeuCauRequest request)
+    public ActionResult HoanThanhYeuCauCu(int id)
+    {
+        return BadRequest(new { message = "Hoàn thành tác phẩm bắt buộc tải ảnh qua endpoint multipart /hoan-thanh-co-tep" });
+    }
+
+    [HttpPost("hoa-si/{id:int}/hoan-thanh-co-tep")]
+    [Authorize(Roles = "HoaSi")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<ActionResult> HoanThanhYeuCauCoTep(
+        int id,
+        [FromForm] HoanThanhYeuCauForm request,
+        CancellationToken cancellationToken)
     {
         var maHoaSi = RequireArtistId();
         if (!maHoaSi.HasValue) return Unauthorized(new { message = "Token không có MaHoaSi" });
-        var artworkId = await _customArtBusiness.HoanThanhYeuCau(id, maHoaSi.Value, request);
-        return artworkId.HasValue
-            ? Ok(new { message = "Đã hoàn thành yêu cầu và tạo tác phẩm mới", maTacPham = artworkId.Value })
-            : Conflict(new { message = "Yêu cầu không thuộc họa sĩ hoặc không ở trạng thái có thể hoàn thành" });
+        if (request.AnhTacPhamFile == null)
+            return BadRequest(new { message = "Ảnh tác phẩm hoàn thiện là bắt buộc" });
+
+        string? savedName = null;
+        try
+        {
+            savedName = await _fileHelper.SaveAsync(request.AnhTacPhamFile, "final-artwork", cancellationToken);
+            request.HinhAnhTacPham = savedName;
+            var artworkId = await _customArtBusiness.HoanThanhYeuCau(id, maHoaSi.Value, request);
+            if (!artworkId.HasValue)
+            {
+                _fileHelper.DeleteIfExists(savedName);
+                return Conflict(new { message = "Yêu cầu không thuộc họa sĩ hoặc không ở trạng thái IN_PROGRESS" });
+            }
+            return Ok(new { message = "Đã lưu tác phẩm hoàn thiện", maTacPham = artworkId.Value });
+        }
+        catch (ArgumentException ex)
+        {
+            _fileHelper.DeleteIfExists(savedName);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch
+        {
+            _fileHelper.DeleteIfExists(savedName);
+            throw;
+        }
     }
 
     // Route cũ được giữ để không làm hỏng Web hiện tại, nhưng kết quả vẫn lọc theo role/JWT.

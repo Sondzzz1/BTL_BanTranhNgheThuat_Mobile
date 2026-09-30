@@ -21,6 +21,16 @@ import {
 } from '../../types/customArt';
 
 type FileField = 'reference' | 'source' | 'evidence';
+type SelectField = 'loaiTranh' | 'kichThuoc' | 'phongCach' | 'mauSac' | 'chatLieu';
+
+const OTHER_OPTION = 'Khác';
+const SELECT_OPTIONS: Record<SelectField, string[]> = {
+  loaiTranh: ['Tranh sơn dầu', 'Acrylic', 'Màu nước', 'Chì', 'Digital', OTHER_OPTION],
+  kichThuoc: ['30x40 cm', '40x60 cm', '50x70 cm', '60x80 cm', '80x100 cm', OTHER_OPTION],
+  phongCach: ['Hiện thực', 'Tối giản', 'Trừu tượng', 'Chân dung', 'Phong cảnh', 'Vintage', OTHER_OPTION],
+  mauSac: ['Tông ấm', 'Tông lạnh', 'Trung tính', 'Pastel', 'Tươi sáng', 'Tông tối', 'Tự do', OTHER_OPTION],
+  chatLieu: ['Canvas', 'Giấy mỹ thuật', 'Gỗ', 'Vải', 'Digital', OTHER_OPTION],
+};
 
 const makeUploadFile = (asset: ImagePicker.ImagePickerAsset): LocalUploadFile => ({
   uri: asset.uri,
@@ -34,14 +44,19 @@ export default function CreateCustomArtScreen({ navigation }: any) {
   const [permission, setPermission] = useState<PermissionUsageStatus>('AUTHOR_OR_RIGHTS_OWNER');
   const [confirmedPersonalRights, setConfirmedPersonalRights] = useState(false);
   const [files, setFiles] = useState<Partial<Record<FileField, LocalUploadFile>>>({});
+  const [selections, setSelections] = useState<Record<SelectField, string>>({
+    loaiTranh: SELECT_OPTIONS.loaiTranh[0],
+    kichThuoc: SELECT_OPTIONS.kichThuoc[0],
+    phongCach: SELECT_OPTIONS.phongCach[0],
+    mauSac: SELECT_OPTIONS.mauSac[0],
+    chatLieu: SELECT_OPTIONS.chatLieu[0],
+  });
+  const [customValues, setCustomValues] = useState<Record<SelectField, string>>({
+    loaiTranh: '', kichThuoc: '', phongCach: '', mauSac: '', chatLieu: '',
+  });
   const [form, setForm] = useState({
     tieuDe: '',
     moTa: '',
-    loaiTranh: 'Tranh sơn dầu',
-    kichThuoc: '50x70 cm',
-    phongCach: '',
-    mauSac: '',
-    chatLieu: 'Canvas',
     giaDuKien: '',
     ngayHoanThanhDuKien: '',
     referenceArtworkName: '',
@@ -52,6 +67,9 @@ export default function CreateCustomArtScreen({ navigation }: any) {
 
   const update = (field: keyof typeof form, value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
+
+  const selectedValue = (field: SelectField) =>
+    selections[field] === OTHER_OPTION ? customValues[field].trim() : selections[field];
 
   const pickImage = async (field: FileField) => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -70,7 +88,8 @@ export default function CreateCustomArtScreen({ navigation }: any) {
 
   const validate = () => {
     if (!form.tieuDe.trim() || !form.moTa.trim()) return 'Vui lòng nhập tiêu đề và mô tả.';
-    if (!form.loaiTranh.trim() || !form.kichThuoc.trim()) return 'Vui lòng nhập loại tranh và kích thước.';
+    if ((Object.keys(selections) as SelectField[]).some((field) => !selectedValue(field)))
+      return 'Vui lòng nhập giá trị cho các lựa chọn Khác.';
     if (type === 'PERSONAL_REFERENCE' && !confirmedPersonalRights)
       return 'Bạn phải xác nhận có quyền sử dụng ảnh/tài liệu cá nhân.';
     if (type === 'EXISTING_ARTWORK') {
@@ -79,8 +98,9 @@ export default function CreateCustomArtScreen({ navigation }: any) {
       if (!files.source && !form.nguonTacPhamGoc.trim())
         return 'Vui lòng tải ảnh hoặc nhập nguồn tác phẩm gốc.';
     }
-    if (form.giaDuKien && Number(form.giaDuKien.replace(/\D/g, '')) < 0)
-      return 'Ngân sách dự kiến không hợp lệ.';
+    const budget = Number(form.giaDuKien);
+    if (!/^\d+$/.test(form.giaDuKien) || !Number.isSafeInteger(budget) || budget <= 0)
+      return 'Ngân sách dự kiến phải là số nguyên lớn hơn 0.';
     return null;
   };
 
@@ -91,12 +111,12 @@ export default function CreateCustomArtScreen({ navigation }: any) {
       tieuDe: form.tieuDe.trim(),
       moTa: form.moTa.trim(),
       type,
-      loaiTranh: form.loaiTranh.trim(),
-      kichThuoc: form.kichThuoc.trim(),
-      phongCach: form.phongCach.trim(),
-      mauSac: form.mauSac.trim(),
-      chatLieu: form.chatLieu.trim(),
-      giaDuKien: Number(form.giaDuKien.replace(/\D/g, '')) || 0,
+      loaiTranh: selectedValue('loaiTranh'),
+      kichThuoc: selectedValue('kichThuoc'),
+      phongCach: selectedValue('phongCach'),
+      mauSac: selectedValue('mauSac'),
+      chatLieu: selectedValue('chatLieu'),
+      giaDuKien: Number(form.giaDuKien),
       ngayHoanThanhDuKien: form.ngayHoanThanhDuKien.trim() || undefined,
       daXacNhanQuyenTaiLieu: type === 'PERSONAL_REFERENCE' ? confirmedPersonalRights : false,
       referenceArtworkName: type === 'EXISTING_ARTWORK' ? form.referenceArtworkName.trim() : undefined,
@@ -144,15 +164,21 @@ export default function CreateCustomArtScreen({ navigation }: any) {
 
       <Input label="Tiêu đề *" value={form.tieuDe} onChangeText={(v: string) => update('tieuDe', v)} />
       <Input label="Mô tả yêu cầu *" value={form.moTa} onChangeText={(v: string) => update('moTa', v)} multiline />
-      <Input label="Loại tranh *" value={form.loaiTranh} onChangeText={(v: string) => update('loaiTranh', v)} />
-      <Input label="Kích thước *" value={form.kichThuoc} onChangeText={(v: string) => update('kichThuoc', v)} />
-      <Input label="Phong cách" value={form.phongCach} onChangeText={(v: string) => update('phongCach', v)} />
-      <Input label="Màu sắc" value={form.mauSac} onChangeText={(v: string) => update('mauSac', v)} />
-      <Input label="Chất liệu" value={form.chatLieu} onChangeText={(v: string) => update('chatLieu', v)} />
-      <Input label="Ngân sách dự kiến" value={form.giaDuKien} onChangeText={(v: string) => {
-        const digits = v.replace(/\D/g, '');
-        update('giaDuKien', digits ? Number(digits).toLocaleString('vi-VN') : '');
-      }} keyboardType="numeric" />
+      {(Object.keys(SELECT_OPTIONS) as SelectField[]).map((field) => (
+        <SelectWithOther
+          key={field}
+          label={({ loaiTranh: 'Loại tranh *', kichThuoc: 'Kích thước *', phongCach: 'Phong cách', mauSac: 'Màu sắc', chatLieu: 'Chất liệu' } as Record<SelectField, string>)[field]}
+          options={SELECT_OPTIONS[field]}
+          selected={selections[field]}
+          customValue={customValues[field]}
+          onSelect={(value) => setSelections((current) => ({ ...current, [field]: value }))}
+          onCustomChange={(value) => setCustomValues((current) => ({ ...current, [field]: value }))}
+        />
+      ))}
+      <Input label="Ngân sách dự kiến *" value={form.giaDuKien} onChangeText={(v: string) => {
+        update('giaDuKien', v.replace(/\D/g, ''));
+      }} keyboardType="number-pad" />
+      {!!form.giaDuKien && <Text style={styles.moneyPreview}>{Number(form.giaDuKien).toLocaleString('vi-VN')} ₫</Text>}
       <Input label="Hạn mong muốn (YYYY-MM-DD)" value={form.ngayHoanThanhDuKien} onChangeText={(v: string) => update('ngayHoanThanhDuKien', v)} />
 
       {type !== 'EXISTING_ARTWORK' && filePicker('reference', 'Ảnh tham khảo')}
@@ -203,6 +229,35 @@ function Input({ label, multiline, ...props }: any) {
   );
 }
 
+function SelectWithOther({ label, options, selected, customValue, onSelect, onCustomChange }: {
+  label: string;
+  options: string[];
+  selected: string;
+  customValue: string;
+  onSelect: (value: string) => void;
+  onCustomChange: (value: string) => void;
+}) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={[styles.pickerBox, styles.inlinePicker]}>
+        <Picker selectedValue={selected} onValueChange={onSelect}>
+          {options.map((option) => <Picker.Item key={option} label={option} value={option} />)}
+        </Picker>
+      </View>
+      {selected === OTHER_OPTION && (
+        <TextInput
+          value={customValue}
+          onChangeText={onCustomChange}
+          style={styles.input}
+          placeholder="Nhập giá trị khác"
+          placeholderTextColor="#9ca3af"
+        />
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#f8fafc' },
   content: { padding: 16, paddingBottom: 40 },
@@ -213,6 +268,8 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 11, color: '#111827' },
   multiline: { minHeight: 90, textAlignVertical: 'top' },
   pickerBox: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, overflow: 'hidden', marginBottom: 14 },
+  inlinePicker: { marginBottom: 0 },
+  moneyPreview: { color: '#c2410c', fontWeight: '700', marginTop: -8, marginBottom: 14 },
   sourceBox: { backgroundColor: '#fff7ed', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#fed7aa', marginTop: 4 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#9a3412', marginBottom: 14 },
   upload: { borderWidth: 1, borderStyle: 'dashed', borderColor: '#ea580c', borderRadius: 10, padding: 14, alignItems: 'center', backgroundColor: '#fff' },

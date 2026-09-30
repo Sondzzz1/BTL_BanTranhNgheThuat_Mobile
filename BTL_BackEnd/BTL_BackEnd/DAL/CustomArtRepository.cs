@@ -243,17 +243,25 @@ public class CustomArtRepository : ICustomArtRepository
                 existingArtworkId = reader.IsDBNull(reader.GetOrdinal("ExistingArtworkId")) ? null : reader.GetInt32(reader.GetOrdinal("ExistingArtworkId"));
             }
 
-            if (existingArtworkId.HasValue)
-            {
-                await transaction.CommitAsync();
-                return existingArtworkId.Value;
-            }
-
             if (currentStatus is not (CustomArtStatus.InProgress or CustomArtStatus.PreviewSent or CustomArtStatus.RevisionRequested))
             {
                 await transaction.RollbackAsync();
                 return null;
             }
+
+            const string insertFinalProgressSql = @"
+                INSERT INTO TienDoVeTranh
+                    (MaYeuCau, TieuDe, MoTa, AnhPreview, TrangThai, NgayTao)
+                VALUES
+                    (@MaYeuCau, N'Tác phẩm hoàn thiện', @GhiChuHoanThien, @AnhPreview, N'COMPLETED', GETDATE());";
+            await using var insertFinalProgress = new SqlCommand(insertFinalProgressSql, connection, transaction);
+            insertFinalProgress.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+            insertFinalProgress.Parameters.AddWithValue("@GhiChuHoanThien",
+                string.IsNullOrWhiteSpace(request.GhiChuHoanThien)
+                    ? "Tác phẩm đã được hoàn thiện."
+                    : request.GhiChuHoanThien.Trim());
+            insertFinalProgress.Parameters.AddWithValue("@AnhPreview", request.HinhAnhTacPham!);
+            await insertFinalProgress.ExecuteNonQueryAsync();
 
             var artworkType = type switch
             {
@@ -262,42 +270,54 @@ public class CustomArtRepository : ICustomArtRepository
                 _ => (byte)1
             };
 
-            const string insertArtworkSql = @"
-                INSERT INTO TacPham
-                    (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, MoTa, HinhAnh, ChatLieu,
-                     ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo, LoaiTacPham,
-                     TacGiaGoc, MaTacPhamGoc, MaYeuCauVeTranh, MoTaNguonGoc)
-                OUTPUT INSERTED.MaTacPham
-                VALUES
-                    (@TenTacPham, @MaHoaSi, NULL, @Gia, 1, @MoTa, @HinhAnh, @ChatLieu,
-                     NULL, @KichThuoc, 0, GETDATE(), NULL, @LoaiTacPham,
-                     @TacGiaGoc, @MaTacPhamGoc, @MaYeuCau, @MoTaNguonGoc);";
-            await using var insertArtwork = new SqlCommand(insertArtworkSql, connection, transaction);
-            insertArtwork.Parameters.AddWithValue("@TenTacPham", string.IsNullOrWhiteSpace(request.TenTacPhamMoi) ? title : request.TenTacPhamMoi.Trim());
-            insertArtwork.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
-            insertArtwork.Parameters.AddWithValue("@Gia", price);
-            insertArtwork.Parameters.AddWithValue("@MoTa", (object?)description ?? DBNull.Value);
-            insertArtwork.Parameters.AddWithValue("@HinhAnh", (object?)request.HinhAnhTacPham ?? DBNull.Value);
-            insertArtwork.Parameters.AddWithValue("@ChatLieu", (object?)material ?? DBNull.Value);
-            insertArtwork.Parameters.AddWithValue("@KichThuoc", (object?)size ?? DBNull.Value);
-            insertArtwork.Parameters.AddWithValue("@LoaiTacPham", artworkType);
-            insertArtwork.Parameters.AddWithValue("@TacGiaGoc", (object?)originalAuthor ?? DBNull.Value);
-            insertArtwork.Parameters.AddWithValue("@MaTacPhamGoc", (object?)sourceArtworkId ?? DBNull.Value);
-            insertArtwork.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
-            insertArtwork.Parameters.AddWithValue("@MoTaNguonGoc", (object?)(request.MoTaNguonGoc ?? sourceDescription) ?? DBNull.Value);
-            var artworkId = Convert.ToInt32(await insertArtwork.ExecuteScalarAsync());
+            var artworkId = existingArtworkId;
+            if (!artworkId.HasValue)
+            {
+                const string insertArtworkSql = @"
+                    INSERT INTO TacPham
+                        (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, MoTa, HinhAnh, ChatLieu,
+                         ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo, LoaiTacPham,
+                         TacGiaGoc, MaTacPhamGoc, MaYeuCauVeTranh, MoTaNguonGoc)
+                    OUTPUT INSERTED.MaTacPham
+                    VALUES
+                        (@TenTacPham, @MaHoaSi, NULL, @Gia, 1, @MoTa, @HinhAnh, @ChatLieu,
+                         NULL, @KichThuoc, 0, GETDATE(), NULL, @LoaiTacPham,
+                         @TacGiaGoc, @MaTacPhamGoc, @MaYeuCau, @MoTaNguonGoc);";
+                await using var insertArtwork = new SqlCommand(insertArtworkSql, connection, transaction);
+                insertArtwork.Parameters.AddWithValue("@TenTacPham", string.IsNullOrWhiteSpace(request.TenTacPhamMoi) ? title : request.TenTacPhamMoi.Trim());
+                insertArtwork.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
+                insertArtwork.Parameters.AddWithValue("@Gia", price);
+                insertArtwork.Parameters.AddWithValue("@MoTa", (object?)description ?? DBNull.Value);
+                insertArtwork.Parameters.AddWithValue("@HinhAnh", request.HinhAnhTacPham!);
+                insertArtwork.Parameters.AddWithValue("@ChatLieu", (object?)material ?? DBNull.Value);
+                insertArtwork.Parameters.AddWithValue("@KichThuoc", (object?)size ?? DBNull.Value);
+                insertArtwork.Parameters.AddWithValue("@LoaiTacPham", artworkType);
+                insertArtwork.Parameters.AddWithValue("@TacGiaGoc", (object?)originalAuthor ?? DBNull.Value);
+                insertArtwork.Parameters.AddWithValue("@MaTacPhamGoc", (object?)sourceArtworkId ?? DBNull.Value);
+                insertArtwork.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+                insertArtwork.Parameters.AddWithValue("@MoTaNguonGoc", (object?)(request.MoTaNguonGoc ?? sourceDescription) ?? DBNull.Value);
+                artworkId = Convert.ToInt32(await insertArtwork.ExecuteScalarAsync());
+            }
 
             const string completeSql = @"
                 UPDATE YeuCauVeTranh SET TrangThai=@Completed, NgayCapNhat=GETDATE()
-                WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi;";
+                WHERE MaYeuCau=@MaYeuCau AND MaHoaSi=@MaHoaSi
+                  AND TrangThai IN (@InProgress,@PreviewSent,@RevisionRequested);";
             await using var complete = new SqlCommand(completeSql, connection, transaction);
             complete.Parameters.AddWithValue("@Completed", (int)CustomArtStatus.Completed);
+            complete.Parameters.AddWithValue("@InProgress", (int)CustomArtStatus.InProgress);
+            complete.Parameters.AddWithValue("@PreviewSent", (int)CustomArtStatus.PreviewSent);
+            complete.Parameters.AddWithValue("@RevisionRequested", (int)CustomArtStatus.RevisionRequested);
             complete.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
             complete.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
-            await complete.ExecuteNonQueryAsync();
+            if (await complete.ExecuteNonQueryAsync() != 1)
+            {
+                await transaction.RollbackAsync();
+                return null;
+            }
 
             await transaction.CommitAsync();
-            return artworkId;
+            return artworkId.Value;
         }
         catch
         {

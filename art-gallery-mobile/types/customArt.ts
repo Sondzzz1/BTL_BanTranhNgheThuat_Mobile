@@ -95,7 +95,7 @@ export interface CommissionCreateInput {
   tinhTrangQuyenSuDung?: PermissionUsageStatus;
   daXacNhanQuyenTaiLieu?: boolean;
   moTaQuyenSuDung?: string;
-  giaDuKien?: number;
+  giaDuKien: number;
   ngayHoanThanhDuKien?: string;
 }
 

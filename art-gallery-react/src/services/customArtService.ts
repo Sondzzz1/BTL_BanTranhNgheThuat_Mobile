@@ -139,8 +139,14 @@ export const customArtService = {
     return (await apiClient.put(`/tranh-theo-yeu-cau/hoa-si/${id}/trang-thai`, { trangThai })).data;
   },
 
-  async complete(id: number, payload: { tenTacPhamMoi?: string; hinhAnhTacPham?: string; moTaNguonGoc?: string }) {
-    return (await apiClient.post(`/tranh-theo-yeu-cau/hoa-si/${id}/hoan-thanh`, payload)).data;
+  async complete(id: number, input: { image: File; note?: string; title?: string }) {
+    const form = new FormData();
+    form.append('AnhTacPhamFile', input.image);
+    if (input.note) form.append('GhiChuHoanThien', input.note);
+    if (input.title) form.append('TenTacPhamMoi', input.title);
+    return (await apiClient.post(`/tranh-theo-yeu-cau/hoa-si/${id}/hoan-thanh-co-tep`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })).data;
   },
 
   async createQuote(payload: CustomArtQuoteRequest): Promise<CustomArtQuoteResponse> {
