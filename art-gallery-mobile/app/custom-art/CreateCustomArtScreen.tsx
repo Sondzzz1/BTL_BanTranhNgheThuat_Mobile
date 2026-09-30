@@ -16,9 +16,9 @@ import { customArtService } from '../../services/customArtService';
 import {
   CommissionCreateInput,
   CommissionType,
-  LocalUploadFile,
   PermissionUsageStatus,
 } from '../../types/customArt';
+import { NormalizedUploadImage, normalizeImageForUpload } from '../../utils/imageUpload';
 
 type FileField = 'reference' | 'source' | 'evidence';
 type SelectField = 'loaiTranh' | 'kichThuoc' | 'phongCach' | 'mauSac' | 'chatLieu';
@@ -32,18 +32,12 @@ const SELECT_OPTIONS: Record<SelectField, string[]> = {
   chatLieu: ['Canvas', 'Giấy mỹ thuật', 'Gỗ', 'Vải', 'Digital', OTHER_OPTION],
 };
 
-const makeUploadFile = (asset: ImagePicker.ImagePickerAsset): LocalUploadFile => ({
-  uri: asset.uri,
-  name: asset.fileName || `commission-${Date.now()}.jpg`,
-  type: asset.mimeType || 'image/jpeg',
-});
-
 export default function CreateCustomArtScreen({ navigation }: any) {
   const [submitting, setSubmitting] = useState(false);
   const [type, setType] = useState<CommissionType>('ORIGINAL_COMMISSION');
   const [permission, setPermission] = useState<PermissionUsageStatus>('AUTHOR_OR_RIGHTS_OWNER');
   const [confirmedPersonalRights, setConfirmedPersonalRights] = useState(false);
-  const [files, setFiles] = useState<Partial<Record<FileField, LocalUploadFile>>>({});
+  const [files, setFiles] = useState<Partial<Record<FileField, NormalizedUploadImage>>>({});
   const [selections, setSelections] = useState<Record<SelectField, string>>({
     loaiTranh: SELECT_OPTIONS.loaiTranh[0],
     kichThuoc: SELECT_OPTIONS.kichThuoc[0],
@@ -82,7 +76,12 @@ export default function CreateCustomArtScreen({ navigation }: any) {
       quality: 0.9,
     });
     if (!result.canceled && result.assets[0]) {
-      setFiles((current) => ({ ...current, [field]: makeUploadFile(result.assets[0]) }));
+      try {
+        const normalized = await normalizeImageForUpload(result.assets[0], `commission-${field}`);
+        setFiles((current) => ({ ...current, [field]: normalized }));
+      } catch {
+        Alert.alert('Không thể xử lý ảnh', 'Ảnh này không thể chuyển sang định dạng hỗ trợ. Vui lòng chọn ảnh khác.');
+      }
     }
   };
 

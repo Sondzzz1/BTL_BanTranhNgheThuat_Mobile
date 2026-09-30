@@ -15,6 +15,7 @@ import { returnService } from '../../services/returnService';
 import { OrderItem } from '../../types/order';
 import { RETURN_REASONS, ReturnUploadFile, TaoHoanTraRequest } from '../../types/return';
 import { formatVnd } from '../../utils/currency';
+import { normalizeImageForUpload } from '../../utils/imageUpload';
 
 interface ReturnRequestScreenProps {
   route: any;
@@ -78,12 +79,12 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
     });
 
     if (!result.canceled) {
-      const asset = result.assets[0];
-      setImages([...images, {
-        uri: asset.uri,
-        name: asset.fileName || `return-${Date.now()}.jpg`,
-        type: asset.mimeType || 'image/jpeg',
-      }]);
+      try {
+        const normalized = await normalizeImageForUpload(result.assets[0], 'return');
+        setImages((current) => [...current, normalized]);
+      } catch {
+        Alert.alert('Không thể xử lý ảnh', 'Ảnh này không thể chuyển sang định dạng hỗ trợ. Vui lòng chọn ảnh khác.');
+      }
     }
   };
 
@@ -107,12 +108,12 @@ export default function ReturnRequestScreen({ route, navigation }: ReturnRequest
     });
 
     if (!result.canceled) {
-      const asset = result.assets[0];
-      setImages([...images, {
-        uri: asset.uri,
-        name: asset.fileName || `return-${Date.now()}.jpg`,
-        type: asset.mimeType || 'image/jpeg',
-      }]);
+      try {
+        const normalized = await normalizeImageForUpload(result.assets[0], 'return-camera');
+        setImages((current) => [...current, normalized]);
+      } catch {
+        Alert.alert('Không thể xử lý ảnh', 'Ảnh này không thể chuyển sang định dạng hỗ trợ. Vui lòng chụp lại.');
+      }
     }
   };
 
