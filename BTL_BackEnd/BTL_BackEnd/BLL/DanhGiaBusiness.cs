@@ -36,7 +36,8 @@ public class DanhGiaBusiness : IDanhGiaBusiness
         var canCreate = await _repository.CanCreate(maNguoiDung, maTacPham);
         return new QuyenDanhGiaResponse
         {
-            CanReview = canCreate,
+            // Review đã tồn tại vẫn được sửa/xóa kể cả khi hàng sau đó hoàn trả toàn bộ.
+            CanReview = existing != null || canCreate,
             ExistingReview = existing,
             Reason = existing != null
                 ? "Bạn đã đánh giá tác phẩm này"

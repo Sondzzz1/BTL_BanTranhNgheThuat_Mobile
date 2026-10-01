@@ -121,7 +121,7 @@ public class KhachHangController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(500, new { message = "Lỗi server khi cập nhật giỏ hàng" });
         }
@@ -154,17 +154,13 @@ public class KhachHangController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(403, new { message = ex.Message });
-        }
         catch (BusinessConflictException ex)
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "Lỗi server khi tạo đơn hàng" });
+            return StatusCode(500, new { message = "Lỗi server khi cập nhật giỏ hàng" });
         }
     }
 
@@ -232,13 +228,17 @@ public class KhachHangController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
         catch (BusinessConflictException ex)
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            return StatusCode(500, new { message = "Lỗi server khi yêu cầu hủy đơn" });
+            return StatusCode(500, new { message = "Lỗi server khi tạo đơn hàng" });
         }
     }
 

@@ -88,6 +88,8 @@ const AdminCustomArt: React.FC = () => {
     }
   };
 
+  const finalProgress = selected?.progress?.find((entry) => entry.trangThai?.toUpperCase() === 'COMPLETED');
+
   return (
     <div className="commission-page">
       <div className="page-header"><h4><i className="ti-paint-bucket" /> Commission Requests</h4></div>
@@ -131,6 +133,8 @@ const AdminCustomArt: React.FC = () => {
               <Field label="Loại yêu cầu" value={getCustomArtTypeLabel(selected.type)} />
               <Field label="Họa sĩ thực hiện" value={selected.tenHoaSiThucHien || 'Chưa có'} />
               <Field label="Ngân sách" value={formatVnd(selected.giaDuKien)} />
+              <Field label="Báo giá đã chấp nhận" value={selected.quote?.trangThai === 'CustomerAccepted' ? formatVnd(selected.quote.giaBaoGia) : 'Chưa ghi nhận'} />
+              <Field label="Mã TacPham nội bộ" value={selected.maTacPhamKetQua ? `#${selected.maTacPhamKetQua}` : '—'} />
             </div>
             <Field label="Mô tả" value={selected.moTa || '—'} />
             {selected.type === 'EXISTING_ARTWORK' && <div className="commission-source">
@@ -143,6 +147,12 @@ const AdminCustomArt: React.FC = () => {
             </div>}
             {referencePreview && <><h4>Ảnh tham khảo</h4><img className="commission-image" src={referencePreview} alt="Ảnh tham khảo" /></>}
             {evidencePreview && <><h4>Bằng chứng quyền sử dụng</h4><a href={evidencePreview} target="_blank" rel="noreferrer">Mở bằng chứng</a></>}
+            {selected.trangThaiNoiBo === 'Completed' && <div className="commission-completed-summary">
+              <h3>Yêu cầu đã hoàn thành</h3>
+              <Field label="Ngày hoàn thành" value={finalProgress ? new Date(finalProgress.ngayTao).toLocaleString('vi-VN') : '—'} />
+              <Field label="Ghi chú hoàn thiện" value={finalProgress?.moTa || '—'} />
+              {finalProgress && progressPreviews[finalProgress.maTienDo] && <img className="commission-progress-image" src={progressPreviews[finalProgress.maTienDo]} alt="Tác phẩm hoàn thiện" />}
+            </div>}
             <div className="commission-progress-panel">
               <div className="commission-progress-header"><h3>Tiến độ thực hiện</h3><span>{selected.progress?.length || 0} cập nhật</span></div>
               {selected.progress?.length ? selected.progress.map((entry) => <div className="commission-progress-item" key={entry.maTienDo}>

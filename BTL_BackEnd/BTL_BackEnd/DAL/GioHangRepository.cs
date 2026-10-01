@@ -192,7 +192,7 @@ public class GioHangRepository : IGioHangRepository
         try
         {
             const string productSql = @"
-                SELECT TenTacPham,SoLuong,TrangThai
+                SELECT TenTacPham,SoLuong,TrangThai,MaYeuCauVeTranh
                 FROM TacPham WITH (UPDLOCK,HOLDLOCK)
                 WHERE MaTacPham=@MaTacPham;";
             await using var product = new SqlCommand(productSql, connection, transaction);
@@ -200,13 +200,17 @@ public class GioHangRepository : IGioHangRepository
             string productName;
             int stock;
             byte status;
+            bool isCommission;
             await using (var reader = await product.ExecuteReaderAsync())
             {
                 if (!await reader.ReadAsync()) throw new KeyNotFoundException("Tác phẩm không tồn tại");
                 productName = reader.GetString(0);
                 stock = reader.GetInt32(1);
                 status = reader.GetByte(2);
+                isCommission = !reader.IsDBNull(3);
             }
+            if (isCommission)
+                throw new BusinessConflictException("Tác phẩm nội bộ của yêu cầu vẽ tranh không được thêm vào giỏ hàng");
             if (status != 1) throw new BusinessConflictException("Tác phẩm hiện không khả dụng");
 
             const string cartSql = "SELECT MaGioHang FROM GioHang WITH (UPDLOCK,HOLDLOCK) WHERE MaNguoiDung=@MaNguoiDung;";

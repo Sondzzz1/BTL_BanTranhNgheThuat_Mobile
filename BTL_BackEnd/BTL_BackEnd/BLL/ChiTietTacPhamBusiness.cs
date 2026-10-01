@@ -30,7 +30,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     public async Task<int> TaoChiTiet(int maHoaSi, int maTacPham, TaoChiTietTacPhamRequest request)
     {
         // Kiểm tra tác phẩm có thuộc họa sĩ không
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null)
             throw new ArgumentException("Không tìm thấy tác phẩm");
         if (tacPham.MaHoaSi != maHoaSi)
@@ -71,7 +71,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     public async Task<bool> CapNhatChiTiet(int maHoaSi, int maTacPham, TaoChiTietTacPhamRequest request)
     {
         // Kiểm tra quyền
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null)
             throw new ArgumentException("Không tìm thấy tác phẩm");
         if (tacPham.MaHoaSi != maHoaSi)
@@ -110,7 +110,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     public async Task<bool> XoaChiTiet(int maHoaSi, int maTacPham)
     {
         // Kiểm tra quyền
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null)
             throw new ArgumentException("Không tìm thấy tác phẩm");
         if (tacPham.MaHoaSi != maHoaSi)
@@ -127,7 +127,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         var chiTiet = await _chiTietRepo.GetByMaTacPham(maTacPham);
         if (chiTiet == null) return null;
 
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null) return null;
 
         var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
@@ -180,7 +180,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
 
         foreach (var chiTiet in list)
         {
-            var tacPham = await _tacPhamRepo.GetById(chiTiet.MaTacPham);
+            var tacPham = await _tacPhamRepo.GetMarketplaceById(chiTiet.MaTacPham);
             if (tacPham == null) continue;
 
             var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
@@ -228,6 +228,8 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     // ================================================================
     public async Task<bool> DuyetChiTiet(int maTacPham, int maNguoiDuyet, DuyetChiTietTacPhamRequest request)
     {
+        if (await _tacPhamRepo.GetMarketplaceById(maTacPham) == null)
+            throw new ArgumentException("Không tìm thấy tác phẩm marketplace");
         var chiTiet = await _chiTietRepo.GetByMaTacPham(maTacPham);
         if (chiTiet == null)
             throw new ArgumentException("Không tìm thấy chi tiết tác phẩm");
@@ -246,7 +248,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         var chiTiet = await _chiTietRepo.GetCongKhai(maTacPham);
         if (chiTiet == null) return null;
 
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null) return null;
 
         var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);

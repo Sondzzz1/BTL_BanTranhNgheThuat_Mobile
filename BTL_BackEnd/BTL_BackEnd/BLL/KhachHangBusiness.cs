@@ -112,6 +112,7 @@ public class KhachHangBusiness : IKhachHangBusiness
         {
             var tacPham = await _tacPhamRepo.GetById(chiTiet.MaTacPham);
             if (tacPham == null) continue;
+            if (tacPham.MaYeuCauVeTranh.HasValue) continue;
 
             var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
             var thanhTien = tacPham.Gia * chiTiet.SoLuong;
@@ -159,6 +160,10 @@ public class KhachHangBusiness : IKhachHangBusiness
 
         var tacPham = await _tacPhamRepo.GetById(chiTiet.MaTacPham);
         if (tacPham == null) throw new InvalidOperationException("Tác phẩm không tồn tại");
+        if (tacPham.MaYeuCauVeTranh.HasValue)
+            throw new BusinessConflictException("Tác phẩm nội bộ của yêu cầu vẽ tranh không được cập nhật trong giỏ hàng");
+        if (tacPham.TrangThai != 1)
+            throw new BusinessConflictException("Tác phẩm hiện không khả dụng");
         if (tacPham.SoLuong < request.SoLuong)
             throw new InvalidOperationException(
                 $"Sản phẩm '{tacPham.TenTacPham}' không đủ số lượng (chỉ còn {tacPham.SoLuong})");

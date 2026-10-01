@@ -11,7 +11,7 @@ public interface IHoaSiBusiness
 
     // Tác phẩm
     Task<List<TacPhamHoaSiResponse>> GetTacPhamCuaToi(int maHoaSi);
-    Task<TacPhamHoaSiResponse?> GetTacPhamById(int maTacPham);
+    Task<TacPhamHoaSiResponse?> GetTacPhamById(int maHoaSi, int maTacPham);
     Task<int> TaoTacPham(int maHoaSi, TaoTacPhamRequest request);
     Task<bool> CapNhatTacPham(int maHoaSi, int maTacPham, CapNhatTacPhamRequest request);
     Task<bool> XoaTacPham(int maHoaSi, int maTacPham);

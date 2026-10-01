@@ -33,7 +33,7 @@ public class PublicController : ControllerBase
     {
         try
         {
-            var tacPhamList = await _tacPhamRepo.GetAll();
+            var tacPhamList = await _tacPhamRepo.GetMarketplaceAll();
             // Preload họa sĩ và danh mục để tránh N+1
             var hoaSiList = await _hoaSiRepo.GetAll();
             var hoaSiMap = hoaSiList.ToDictionary(h => h.MaHoaSi, h => h.TenHoaSi);
@@ -86,7 +86,7 @@ public class PublicController : ControllerBase
     {
         try
         {
-            var tacPham = await _tacPhamRepo.GetById(id);
+            var tacPham = await _tacPhamRepo.GetMarketplaceById(id);
             if (tacPham == null)
                 return NotFound(new { message = "Không tìm thấy tác phẩm" });
             if (tacPham.TrangThai != 1) // Chỉ Approved mới khả dụng
@@ -134,12 +134,14 @@ public class PublicController : ControllerBase
     {
         try
         {
-            var tacPham = await _tacPhamRepo.GetById(id);
+            var tacPham = await _tacPhamRepo.GetMarketplaceById(id);
             if (tacPham == null)
                 return NotFound(new { message = "Không tìm thấy tác phẩm" });
+            if (tacPham.TrangThai != 1)
+                return NotFound(new { message = "Tác phẩm không khả dụng" });
 
             // Lấy tất cả tác phẩm đang bán (trừ tác phẩm hiện tại)
-            var allTacPham = await _tacPhamRepo.GetAll();
+            var allTacPham = await _tacPhamRepo.GetMarketplaceAll();
             var hoaSiList = await _hoaSiRepo.GetAll();
             var hoaSiMap = hoaSiList.ToDictionary(h => h.MaHoaSi, h => h.TenHoaSi);
             var danhMucList = await _danhMucRepo.GetAll();
@@ -224,7 +226,7 @@ public class PublicController : ControllerBase
 
             foreach (var hoaSi in hoaSiList)
             {
-                var tacPhamList = await _tacPhamRepo.GetByHoaSi(hoaSi.MaHoaSi);
+                var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(hoaSi.MaHoaSi);
                 
                 result.Add(new HoaSiPublicResponse
                 {
@@ -232,7 +234,7 @@ public class PublicController : ControllerBase
                     TenHoaSi = hoaSi.TenHoaSi,
                     TieuSu = hoaSi.TieuSu,
                     AnhDaiDien = hoaSi.AnhDaiDien,
-                    SoTacPham = tacPhamList.Count
+                    SoTacPham = tacPhamList.Count(x => x.TrangThai == 1)
                 });
             }
 
@@ -253,7 +255,7 @@ public class PublicController : ControllerBase
             if (hoaSi == null)
                 return NotFound(new { message = "Không tìm thấy họa sĩ" });
 
-            var tacPhamList = await _tacPhamRepo.GetByHoaSi(hoaSi.MaHoaSi);
+            var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(hoaSi.MaHoaSi);
             
             // Lấy danh sách tác phẩm đã được duyệt và công khai (TrangThai = 1)
             var cacTacPham = new List<TacPhamCongKhaiResponse>();

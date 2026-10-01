@@ -1,5 +1,14 @@
 namespace DoAn2_BackEnd.Models;
 
+public static class TacPhamStatus
+{
+    public const byte PendingApproval = 0;
+    public const byte OnSale = 1;
+    public const byte Hidden = 2;
+    public const byte Rejected = 3;
+    public const byte Deleted = 99;
+}
+
 public class TacPham
 {
     public int MaTacPham { get; set; }

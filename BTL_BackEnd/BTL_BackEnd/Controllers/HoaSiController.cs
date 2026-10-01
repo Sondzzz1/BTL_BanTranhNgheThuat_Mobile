@@ -111,7 +111,10 @@ public class HoaSiController : ControllerBase
     {
         try
         {
-            var result = await _hoaSiBusiness.GetTacPhamById(id);
+            var maHoaSi = JwtHelper.GetMaHoaSi(User);
+            if (maHoaSi == null)
+                return BadRequest(new { message = "Không tìm thấy thông tin họa sĩ" });
+            var result = await _hoaSiBusiness.GetTacPhamById(maHoaSi.Value, id);
             if (result == null)
                 return NotFound(new { message = "Không tìm thấy tác phẩm" });
             

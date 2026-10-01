@@ -100,6 +100,8 @@ export default function ProductDetailScreen({
   const checkPurchaseStatus = async () => {
     if (!isAuthenticated || !user) {
       setCanReview(false);
+      setExistingReview(undefined);
+      setReviewReason(undefined);
       return;
     }
 

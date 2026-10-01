@@ -25,6 +25,7 @@ const ArtistCustomArt: React.FC = () => {
   const [progressPreviews, setProgressPreviews] = useState<Record<number, string>>({});
   const [progressUploadPreview, setProgressUploadPreview] = useState<string>();
   const [completionUploadPreview, setCompletionUploadPreview] = useState<string>();
+  const [view, setView] = useState<'active' | 'completed'>('active');
 
   const load = useCallback(async () => {
     try { setLoading(true); setItems(await customArtService.getArtistRequests()); }
@@ -153,11 +154,20 @@ const ArtistCustomArt: React.FC = () => {
     }
   };
 
+  const visibleItems = items.filter((item) => view === 'completed'
+    ? item.trangThaiNoiBo === 'Completed'
+    : item.trangThaiNoiBo !== 'Completed');
+  const finalProgress = selected?.progress?.find((entry) => entry.trangThai?.toUpperCase() === 'COMPLETED');
+
   return <div className="artist-commission">
     <div className="artist-commission-header"><div><h2>Yêu cầu tranh đã duyệt</h2><p>Chỉ hiển thị yêu cầu APPROVED hoặc yêu cầu do bạn nhận.</p></div><button className="artist-secondary" onClick={load}>Làm mới</button></div>
+    <div className="artist-commission-tabs">
+      <button className={view === 'active' ? 'active' : ''} onClick={() => setView('active')}>Đang xử lý</button>
+      <button className={view === 'completed' ? 'active' : ''} onClick={() => setView('completed')}>Đã hoàn thành</button>
+    </div>
     {message && <div className="artist-commission-message">{message}</div>}
     {loading ? <p>Đang tải...</p> : <div className="artist-commission-grid">
-      {items.map((item) => {
+      {visibleItems.map((item) => {
         const mine = item.maHoaSi === artistId;
         const canUpdateProgress = mine && ['InProgress', 'PreviewSent', 'RevisionRequested'].includes(item.trangThaiNoiBo || '');
         return <article className="artist-commission-card" key={item.maYeuCau}>
@@ -166,6 +176,7 @@ const ArtistCustomArt: React.FC = () => {
           <p className="artist-commission-meta">{getCustomArtTypeLabel(item.type)} · {item.loaiTranh} · {item.kichThuoc}</p>
           <p>{item.moTa || 'Không có mô tả'}</p>
           {!!item.soLuongTienDo && <div className="artist-progress-alert">✓ Đã có {item.soLuongTienDo} cập nhật tiến độ</div>}
+          {item.trangThaiNoiBo === 'Completed' && <p><strong>Mã tác phẩm nội bộ:</strong> {item.maTacPhamKetQua ? `#${item.maTacPhamKetQua}` : '—'}</p>}
           {item.type === 'EXISTING_ARTWORK' && <p><strong>Tác giả gốc:</strong> {item.referenceArtistName}</p>}
           <div className="artist-commission-actions">
             <button className="artist-secondary" onClick={() => openDetail(item)}>Chi tiết</button>
@@ -175,7 +186,7 @@ const ArtistCustomArt: React.FC = () => {
           </div>
         </article>;
       })}
-      {!items.length && <p>Chưa có yêu cầu phù hợp.</p>}
+      {!visibleItems.length && <p>Chưa có yêu cầu phù hợp.</p>}
     </div>}
 
     {selected && <div className="artist-modal-overlay" onMouseDown={closeDetail}><div className="artist-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -186,6 +197,14 @@ const ArtistCustomArt: React.FC = () => {
       {selected.type === 'EXISTING_ARTWORK' && <div className="artist-source"><h3>Nguồn gốc và điều kiện sử dụng</h3><p><strong>Tác phẩm gốc:</strong> {selected.referenceArtworkName}</p><p><strong>Tác giả gốc:</strong> {selected.referenceArtistName}</p><p><strong>Nguồn:</strong> {selected.nguonTacPhamGoc || '—'}</p><p><strong>Quyền sử dụng:</strong> {selected.tinhTrangQuyenSuDung || '—'}</p><p><strong>Ghi chú quyền:</strong> {selected.moTaQuyenSuDung || '—'}</p></div>}
       {referencePreview && <img className="artist-reference" src={referencePreview} alt="Tham khảo" />}
       {selected.quote && <div className="artist-source"><h3>Báo giá hiện tại</h3><p><strong>Số tiền:</strong> {formatVnd(selected.quote.giaBaoGia)}</p><p><strong>Ngày hoàn thành:</strong> {new Date(`${selected.quote.thoiGianHoanThanh}T00:00:00`).toLocaleDateString('vi-VN')}</p><p><strong>Ghi chú:</strong> {selected.quote.ghiChu || '—'}</p><p><strong>Trạng thái:</strong> {selected.quote.trangThai === 'CustomerAccepted' ? 'Khách hàng đã chấp nhận' : 'Chờ khách hàng chấp nhận'}</p></div>}
+      {selected.trangThaiNoiBo === 'Completed' && <div className="artist-completed-summary">
+        <h3>Yêu cầu đã hoàn thành</h3>
+        <p><strong>Mã TacPham nội bộ:</strong> {selected.maTacPhamKetQua ? `#${selected.maTacPhamKetQua}` : '—'}</p>
+        <p><strong>Báo giá đã chấp nhận:</strong> {selected.quote?.trangThai === 'CustomerAccepted' ? formatVnd(selected.quote.giaBaoGia) : 'Dữ liệu legacy chưa ghi nhận trạng thái chấp nhận'}</p>
+        <p><strong>Ngày hoàn thành:</strong> {finalProgress ? new Date(finalProgress.ngayTao).toLocaleString('vi-VN') : '—'}</p>
+        <p><strong>Ghi chú hoàn thiện:</strong> {finalProgress?.moTa || '—'}</p>
+        {finalProgress && progressPreviews[finalProgress.maTienDo] && <img className="artist-reference" src={progressPreviews[finalProgress.maTienDo]} alt="Tác phẩm hoàn thiện" />}
+      </div>}
       {selected.maHoaSi === artistId && ['Assigned', 'Quoted'].includes(selected.trangThaiNoiBo || '') && <div className="artist-quote"><h3>Báo giá</h3><input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="Giá báo giá" value={quote.price} onChange={(e) => setQuote({ ...quote, price: e.target.value.replace(/\D/g, '') })} />{!!quote.price && <small className="artist-money-preview">Hiển thị: {formatVnd(Number(quote.price))}</small>}<input type="date" value={quote.time} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setQuote({ ...quote, time: e.target.value })} /><textarea placeholder="Ghi chú" value={quote.note} onChange={(e) => setQuote({ ...quote, note: e.target.value })} /><button className="artist-primary" onClick={submitQuote}>Gửi báo giá</button></div>}
       <div className="artist-source"><h3>Tiến độ</h3>{(selected.progress || []).length ? selected.progress.map((entry) => <div key={entry.maTienDo} style={{ borderBottom: '1px solid #e5e7eb', paddingBottom: 12, marginBottom: 12 }}><strong>{new Date(entry.ngayTao).toLocaleDateString('vi-VN')} — {entry.tieuDe}</strong><p>{entry.moTa}</p>{progressPreviews[entry.maTienDo] && <img className="artist-reference" src={progressPreviews[entry.maTienDo]} alt={entry.tieuDe} />}</div>) : <p>Chưa có cập nhật tiến độ.</p>}</div>
       {selected.maHoaSi === artistId && ['InProgress', 'PreviewSent', 'RevisionRequested'].includes(selected.trangThaiNoiBo || '') && <>

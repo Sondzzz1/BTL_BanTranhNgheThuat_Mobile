@@ -8,7 +8,7 @@ namespace DoAn2_BackEnd.Controllers;
 
 [ApiController]
 [Route("api/admin")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 [AdminOnly]
 public class AdminController : ControllerBase
 {
@@ -156,7 +156,7 @@ public class AdminController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(500, new { message = "Lỗi server khi cập nhật trạng thái đơn hàng" });
         }
@@ -523,6 +523,10 @@ public class AdminController : ControllerBase
             
             return Ok(new { message = request.PheDuyet ? "Đã phê duyệt" : "Đã từ chối" });
         }
+        catch (Helpers.BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
@@ -539,6 +543,10 @@ public class AdminController : ControllerBase
                 return BadRequest(new { message = "Ẩn tác phẩm thất bại" });
 
             return Ok(new { message = "Đã ẩn tác phẩm" });
+        }
+        catch (Helpers.BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -557,6 +565,10 @@ public class AdminController : ControllerBase
 
             return Ok(new { message = "Đã mở hiển thị tác phẩm" });
         }
+        catch (Helpers.BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
@@ -573,6 +585,10 @@ public class AdminController : ControllerBase
                 return BadRequest(new { message = "Xóa thất bại. Tác phẩm có thể không tồn tại." });
             
             return Ok(new { message = "Xóa thành công" });
+        }
+        catch (Helpers.BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 547)
         {
@@ -908,7 +924,7 @@ public class AdminController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return StatusCode(500, new { message = "Lỗi server khi xác nhận thanh toán" });
         }

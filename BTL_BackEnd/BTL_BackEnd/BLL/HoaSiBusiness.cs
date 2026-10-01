@@ -40,7 +40,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         var hoaSi = await _hoaSiRepo.GetById(maHoaSi);
         if (hoaSi == null) return null;
 
-        var tacPhamList = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
         var tongDoanhThu = await TinhTongDoanhThu(maHoaSi);
 
         return new HoSoHoaSiResponse
@@ -80,7 +80,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Tác phẩm
     public async Task<List<TacPhamHoaSiResponse>> GetTacPhamCuaToi(int maHoaSi)
     {
-        var tacPhamList = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
         var result = new List<TacPhamHoaSiResponse>();
 
         foreach (var tacPham in tacPhamList.Where(tp => tp.TrangThai != 99))
@@ -114,10 +114,12 @@ public class HoaSiBusiness : IHoaSiBusiness
         return result;
     }
 
-    public async Task<TacPhamHoaSiResponse?> GetTacPhamById(int maTacPham)
+    public async Task<TacPhamHoaSiResponse?> GetTacPhamById(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null) return null;
+        if (tacPham.MaHoaSi != maHoaSi)
+            throw new UnauthorizedAccessException("Không có quyền xem tác phẩm này");
 
         string? tenDanhMuc = null;
         if (tacPham.MaDanhMuc.HasValue)
@@ -182,7 +184,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (request.SoLuong < 0)
             throw new ArgumentException("Số lượng không được âm");
 
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
         if (tacPham == null) return false;
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền sửa tác phẩm này");
@@ -262,7 +264,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> XoaTacPham(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
         if (tacPham == null) return false;
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền xoá tác phẩm này");
@@ -277,7 +279,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> KhoiPhucTacPham(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
         if (tacPham == null) 
             return false;
             
@@ -294,7 +296,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<List<TacPhamHoaSiResponse>> GetTacPhamDaXoa(int maHoaSi)
     {
-        var tacPhams = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        var tacPhams = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
         var result = new List<TacPhamHoaSiResponse>();
         
         foreach (var tp in tacPhams.Where(tp => tp.TrangThai == 99))
@@ -330,7 +332,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> CapNhatTrangThaiTacPham(int maHoaSi, int maTacPham, CapNhatTrangThaiTacPhamRequest request)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
         if (tacPham == null) return false;
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền cập nhật trạng thái tác phẩm này");
@@ -350,7 +352,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> GuiDuyetLaiTacPham(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
         if (tacPham == null) 
             return false;
             
@@ -555,7 +557,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<List<DoanhThuTheoTacPhamResponse>> GetDoanhThuTheoTacPham(int maHoaSi)
     {
-        var tacPhamList = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
         var result = new List<DoanhThuTheoTacPhamResponse>();
 
         foreach (var tacPham in tacPhamList)
@@ -606,7 +608,7 @@ public class HoaSiBusiness : IHoaSiBusiness
             .ToList();
 
         // Doanh thu của họa sĩ chỉ tính phần các tác phẩm của họ trong đơn
-        var tacPhamCuaHoaSi = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        var tacPhamCuaHoaSi = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
         var maTacPhamSet = tacPhamCuaHoaSi.Select(tp => tp.MaTacPham).ToHashSet();
 
         decimal tong = 0;
@@ -622,7 +624,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     private async Task<int> TinhSoTacPhamDaBan(int maHoaSi)
     {
-        var tacPhamList = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
         int tongSoLuong = 0;
 
         foreach (var tacPham in tacPhamList)
@@ -637,7 +639,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     private async Task<List<DonHang>> GetDonHangCoTacPhamCuaHoaSi(int maHoaSi)
     {
         var allDonHang = await _donHangRepo.GetAll();
-        var tacPhamCuaHoaSi = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        var tacPhamCuaHoaSi = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
         var maTacPhamList = tacPhamCuaHoaSi.Select(tp => tp.MaTacPham).ToList();
 
         var result = new List<DonHang>();
@@ -688,12 +690,20 @@ public class HoaSiBusiness : IHoaSiBusiness
         };
     }
 
+    private async Task<TacPham?> GetMarketplaceArtworkForArtistMutation(int maTacPham)
+    {
+        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        if (tacPham?.MaYeuCauVeTranh != null)
+            throw new UnauthorizedAccessException("Tác phẩm nội bộ của yêu cầu vẽ tranh không thể thao tác trong mục Tác phẩm");
+        return tacPham;
+    }
+
     private string GetTrangThaiDonHangText(byte trangThai) => DonHangStatus.GetText(trangThai);
 
     // Chi tiết tác phẩm - Thống kê
     public async Task<TacPhamThongKeResponse?> GetTacPhamThongKe(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi) return null;
 
         var allDonHang = (await _donHangRepo.GetAll())
@@ -743,7 +753,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Chi tiết tác phẩm - Đơn hàng
     public async Task<List<TacPhamDonHangResponse>> GetTacPhamDonHang(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi)
             return new List<TacPhamDonHangResponse>();
 
@@ -784,7 +794,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Chi tiết tác phẩm - Doanh thu theo tháng
     public async Task<List<TacPhamDoanhThuTheoThangResponse>> GetTacPhamDoanhThuTheoThang(int maHoaSi, int maTacPham, int nam)
     {
-        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi)
             return new List<TacPhamDoanhThuTheoThangResponse>();
 

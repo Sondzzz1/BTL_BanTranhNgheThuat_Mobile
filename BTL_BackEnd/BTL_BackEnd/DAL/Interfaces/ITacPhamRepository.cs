@@ -8,6 +8,10 @@ public interface ITacPhamRepository
     Task<TacPham?> GetById(int maTacPham);
     Task<List<TacPham>> GetByHoaSi(int maHoaSi);
     Task<List<TacPham>> GetByDanhMuc(int maDanhMuc);
+    Task<List<TacPham>> GetMarketplaceAll();
+    Task<TacPham?> GetMarketplaceById(int maTacPham);
+    Task<List<TacPham>> GetMarketplaceByArtist(int maHoaSi);
+    Task<List<TacPham>> GetMarketplaceByCategory(int maDanhMuc);
     Task<int> Create(TacPham tacPham);
     Task<bool> Update(TacPham tacPham);
     Task<bool> Delete(int maTacPham);

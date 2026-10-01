@@ -220,7 +220,7 @@ const ReturnRequests: React.FC = () => {
             {detail.trangThai === 'DA_NHAN_HANG' && <div style={{ marginTop: 18, padding: 14, background: '#f8fafc' }}>
               <label>Số tiền hoàn <input type="text" inputMode="numeric" value={refundAmount} onChange={(e) => { const digits = e.target.value.replace(/\D/g, ''); setRefundAmount(digits ? Number(digits).toLocaleString('vi-VN') : ''); }} /> ₫</label>
               <label style={{ marginLeft: 12 }}>Phương thức <select value={refundMethod} onChange={(e) => setRefundMethod(e.target.value)}>
-                <option value="CHUYEN_KHOAN">Chuyển khoản</option><option value="TIEN_MAT">Tiền mặt</option><option value="MOMO">MoMo</option><option value="VNPAY">VNPay</option>
+                <option value="CHUYEN_KHOAN">Chuyển khoản</option><option value="TIEN_MAT">Tiền mặt</option>
               </select></label>
               <div><button onClick={refund} disabled={busy} style={{ marginTop: 12, padding: '9px 16px' }}>Xác nhận đã hoàn tiền</button></div>
             </div>}

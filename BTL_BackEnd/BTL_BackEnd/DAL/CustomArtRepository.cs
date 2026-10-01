@@ -207,10 +207,29 @@ public class CustomArtRepository : ICustomArtRepository
         {
             const string selectSql = @"
                 SELECT y.*,
-                       COALESCE((SELECT TOP (1) b.GiaBaoGia FROM BaoGiaVeTranh b
-                                 WHERE b.MaYeuCau=y.MaYeuCau AND b.IsActive=1 ORDER BY b.MaBaoGia DESC), y.GiaDuKien, 0) AS GiaTacPham,
-                       (SELECT TOP (1) t.MaTacPham FROM TacPham t WHERE t.MaYeuCauVeTranh=y.MaYeuCau ORDER BY t.MaTacPham DESC) AS ExistingArtworkId
+                       q.GiaBaoGia AS GiaTacPham,
+                       existing.MaTacPham AS ExistingArtworkId,
+                       validSource.MaTacPham AS ValidSourceArtworkId
                 FROM YeuCauVeTranh y WITH (UPDLOCK, HOLDLOCK)
+                OUTER APPLY (
+                    SELECT TOP (1) b.GiaBaoGia
+                    FROM BaoGiaVeTranh b WITH (UPDLOCK, HOLDLOCK)
+                    WHERE b.MaYeuCau=y.MaYeuCau AND b.IsActive=1
+                      AND b.TrangThai=N'CustomerAccepted'
+                    ORDER BY b.MaBaoGia DESC
+                ) q
+                OUTER APPLY (
+                    SELECT TOP (1) t.MaTacPham
+                    FROM TacPham t WITH (UPDLOCK, HOLDLOCK)
+                    WHERE t.MaYeuCauVeTranh=y.MaYeuCau
+                    ORDER BY t.MaTacPham
+                ) existing
+                OUTER APPLY (
+                    SELECT TOP (1) source.MaTacPham
+                    FROM TacPham source
+                    WHERE source.MaTacPham=y.ReferenceArtworkId
+                      AND source.MaYeuCauVeTranh IS NULL
+                ) validSource
                 WHERE y.MaYeuCau=@MaYeuCau AND y.MaHoaSi=@MaHoaSi
                   AND EXISTS (
                       SELECT 1 FROM TienDoVeTranh p
@@ -244,7 +263,9 @@ public class CustomArtRepository : ICustomArtRepository
                 size = GetNullableString(reader, "KichThuoc");
                 originalAuthor = GetNullableString(reader, "ReferenceArtistName");
                 sourceDescription = GetNullableString(reader, "NguonTacPhamGoc");
-                sourceArtworkId = reader.IsDBNull(reader.GetOrdinal("ReferenceArtworkId")) ? null : reader.GetInt32(reader.GetOrdinal("ReferenceArtworkId"));
+                sourceArtworkId = reader.IsDBNull(reader.GetOrdinal("ValidSourceArtworkId")) ? null : reader.GetInt32(reader.GetOrdinal("ValidSourceArtworkId"));
+                if (reader.IsDBNull(reader.GetOrdinal("GiaTacPham")))
+                    throw new ArgumentException("Không thể hoàn thành yêu cầu vì chưa có báo giá được Customer chấp nhận");
                 price = reader.GetDecimal(reader.GetOrdinal("GiaTacPham"));
                 existingArtworkId = reader.IsDBNull(reader.GetOrdinal("ExistingArtworkId")) ? null : reader.GetInt32(reader.GetOrdinal("ExistingArtworkId"));
             }
@@ -275,6 +296,15 @@ public class CustomArtRepository : ICustomArtRepository
                 CustomArtType.PersonalReference => (byte)4,
                 _ => (byte)1
             };
+            if (type is not (CustomArtType.BasedOnArtwork or CustomArtType.Reproduction))
+                sourceArtworkId = null;
+
+            var artworkName = string.IsNullOrWhiteSpace(request.TenTacPhamMoi)
+                ? title
+                : request.TenTacPhamMoi.Trim();
+            var originDescription = string.IsNullOrWhiteSpace(request.MoTaNguonGoc)
+                ? sourceDescription
+                : request.MoTaNguonGoc.Trim();
 
             var artworkId = existingArtworkId;
             if (!artworkId.HasValue)
@@ -286,23 +316,62 @@ public class CustomArtRepository : ICustomArtRepository
                          TacGiaGoc, MaTacPhamGoc, MaYeuCauVeTranh, MoTaNguonGoc)
                     OUTPUT INSERTED.MaTacPham
                     VALUES
-                        (@TenTacPham, @MaHoaSi, NULL, @Gia, 1, @MoTa, @HinhAnh, @ChatLieu,
-                         NULL, @KichThuoc, 0, GETDATE(), NULL, @LoaiTacPham,
+                        (@TenTacPham, @MaHoaSi, NULL, @Gia, 0, @MoTa, @HinhAnh, @ChatLieu,
+                         NULL, @KichThuoc, @HiddenStatus, GETDATE(), NULL, @LoaiTacPham,
                          @TacGiaGoc, @MaTacPhamGoc, @MaYeuCau, @MoTaNguonGoc);";
                 await using var insertArtwork = new SqlCommand(insertArtworkSql, connection, transaction);
-                insertArtwork.Parameters.AddWithValue("@TenTacPham", string.IsNullOrWhiteSpace(request.TenTacPhamMoi) ? title : request.TenTacPhamMoi.Trim());
+                insertArtwork.Parameters.AddWithValue("@TenTacPham", artworkName);
                 insertArtwork.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
                 insertArtwork.Parameters.AddWithValue("@Gia", price);
                 insertArtwork.Parameters.AddWithValue("@MoTa", (object?)description ?? DBNull.Value);
                 insertArtwork.Parameters.AddWithValue("@HinhAnh", request.HinhAnhTacPham!);
                 insertArtwork.Parameters.AddWithValue("@ChatLieu", (object?)material ?? DBNull.Value);
                 insertArtwork.Parameters.AddWithValue("@KichThuoc", (object?)size ?? DBNull.Value);
+                insertArtwork.Parameters.AddWithValue("@HiddenStatus", TacPhamStatus.Hidden);
                 insertArtwork.Parameters.AddWithValue("@LoaiTacPham", artworkType);
                 insertArtwork.Parameters.AddWithValue("@TacGiaGoc", (object?)originalAuthor ?? DBNull.Value);
                 insertArtwork.Parameters.AddWithValue("@MaTacPhamGoc", (object?)sourceArtworkId ?? DBNull.Value);
                 insertArtwork.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
-                insertArtwork.Parameters.AddWithValue("@MoTaNguonGoc", (object?)(request.MoTaNguonGoc ?? sourceDescription) ?? DBNull.Value);
+                insertArtwork.Parameters.AddWithValue("@MoTaNguonGoc", (object?)originDescription ?? DBNull.Value);
                 artworkId = Convert.ToInt32(await insertArtwork.ExecuteScalarAsync());
+            }
+            else
+            {
+                const string updateArtworkSql = @"
+                    UPDATE TacPham
+                    SET TenTacPham=@TenTacPham,
+                        MaHoaSi=@MaHoaSi,
+                        Gia=@Gia,
+                        SoLuong=0,
+                        MoTa=@MoTa,
+                        HinhAnh=@HinhAnh,
+                        ChatLieu=@ChatLieu,
+                        KichThuoc=@KichThuoc,
+                        TrangThai=@HiddenStatus,
+                        LyDo=NULL,
+                        LoaiTacPham=@LoaiTacPham,
+                        TacGiaGoc=@TacGiaGoc,
+                        MaTacPhamGoc=@MaTacPhamGoc,
+                        MaYeuCauVeTranh=@MaYeuCau,
+                        MoTaNguonGoc=@MoTaNguonGoc
+                    WHERE MaTacPham=@MaTacPham AND MaYeuCauVeTranh=@MaYeuCau;";
+                await using var updateArtwork = new SqlCommand(updateArtworkSql, connection, transaction);
+                updateArtwork.Parameters.AddWithValue("@MaTacPham", artworkId.Value);
+                updateArtwork.Parameters.AddWithValue("@TenTacPham", artworkName);
+                updateArtwork.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
+                updateArtwork.Parameters.AddWithValue("@Gia", price);
+                updateArtwork.Parameters.AddWithValue("@MoTa", (object?)description ?? DBNull.Value);
+                updateArtwork.Parameters.AddWithValue("@HinhAnh", request.HinhAnhTacPham!);
+                updateArtwork.Parameters.AddWithValue("@ChatLieu", (object?)material ?? DBNull.Value);
+                updateArtwork.Parameters.AddWithValue("@KichThuoc", (object?)size ?? DBNull.Value);
+                updateArtwork.Parameters.AddWithValue("@HiddenStatus", TacPhamStatus.Hidden);
+                updateArtwork.Parameters.AddWithValue("@LoaiTacPham", artworkType);
+                updateArtwork.Parameters.AddWithValue("@TacGiaGoc", (object?)originalAuthor ?? DBNull.Value);
+                updateArtwork.Parameters.AddWithValue("@MaTacPhamGoc", (object?)sourceArtworkId ?? DBNull.Value);
+                updateArtwork.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+                updateArtwork.Parameters.AddWithValue("@MoTaNguonGoc", (object?)originDescription ?? DBNull.Value);
+                if (await updateArtwork.ExecuteNonQueryAsync() != 1)
+                    throw new InvalidOperationException("Không thể cập nhật tác phẩm nội bộ của yêu cầu");
             }
 
             const string completeSql = @"

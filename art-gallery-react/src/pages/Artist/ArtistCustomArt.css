@@ -1,6 +1,9 @@
 .artist-commission { padding: 24px; }
 .artist-commission-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
 .artist-commission-message { background: #eff6ff; color: #1d4ed8; padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; }
+.artist-commission-tabs { display: flex; gap: 8px; margin: 0 0 16px; }
+.artist-commission-tabs button { border: 1px solid #fed7aa; background: #fff; color: #9a3412; padding: 9px 14px; border-radius: 999px; cursor: pointer; font-weight: 700; }
+.artist-commission-tabs button.active { background: #ea580c; color: #fff; border-color: #ea580c; }
 .artist-commission-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .artist-commission-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px; }
 .artist-commission-card h3 { margin: 0 0 6px; }
@@ -28,3 +31,5 @@
 .artist-progress-required { margin-top: 14px; padding: 12px; border: 1px solid #fcd34d; border-radius: 10px; background: #fffbeb; color: #92400e; font-weight: 700; }
 .artist-completion-ready { display: grid; gap: 6px; margin-top: 14px; padding: 14px; border: 1px solid #86efac; border-radius: 10px; background: #f0fdf4; color: #166534; }
 .artist-completion-ready button { justify-self: start; margin-top: 6px; }
+.artist-completed-summary { margin: 14px 0; padding: 14px; border: 1px solid #86efac; border-radius: 10px; background: #f0fdf4; color: #166534; }
+.artist-completed-summary h3 { margin-top: 0; }

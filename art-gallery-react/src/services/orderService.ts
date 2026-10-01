@@ -7,7 +7,7 @@ interface TaoDonHangRequest {
   tenNguoiNhan: string;
   soDienThoai: string;
   diaChiGiao: string;
-  phuongThucThanhToan?: string; // COD, BankTransfer, Momo, VNPay
+  phuongThucThanhToan?: string; // COD, BankTransfer
 }
 
 // Interface khớp với DonHangResponse từ backend

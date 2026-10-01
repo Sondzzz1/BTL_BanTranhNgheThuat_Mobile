@@ -31,9 +31,9 @@ public class AdminRepository : IAdminRepository
                 (SELECT COUNT(*) FROM DonHang) AS TongDonHang,
                 (SELECT COUNT(*) FROM NguoiDung) AS TongKhachHang,
                 (SELECT COUNT(*) FROM HoaSi WHERE TrangThai = 1) AS TongHoaSi,
-                (SELECT COUNT(*) FROM TacPham WHERE TrangThai = 1) AS TongTacPham,
+                (SELECT COUNT(*) FROM TacPham WHERE TrangThai = 1 AND MaYeuCauVeTranh IS NULL) AS TongTacPham,
                 (SELECT COUNT(*) FROM DonHang WHERE TrangThai IN (0, 1, 4)) AS DonHangChoXuLy,
-                (SELECT COUNT(*) FROM TacPham WHERE TrangThai = 0) AS TacPhamChoDuyet,
+                (SELECT COUNT(*) FROM TacPham WHERE TrangThai = 0 AND MaYeuCauVeTranh IS NULL) AS TacPhamChoDuyet,
                 (SELECT COUNT(*) FROM BaiViet WHERE TrangThai = 1) AS BaiVietChoDuyet
         ";
 
@@ -110,6 +110,7 @@ public class AdminRepository : IAdminRepository
             LEFT JOIN ChiTietDonHang ct ON tp.MaTacPham = ct.MaTacPham
             LEFT JOIN DonHang dh ON ct.MaDonHang = dh.MaDonHang AND dh.TrangThai = 3
             LEFT JOIN HoaSi hs ON tp.MaHoaSi = hs.MaHoaSi
+            WHERE tp.MaYeuCauVeTranh IS NULL
             GROUP BY tp.MaTacPham, tp.TenTacPham, hs.TenHoaSi
             ORDER BY SoLuongBan DESC";
 
@@ -169,7 +170,7 @@ public class AdminRepository : IAdminRepository
                 ISNULL(SUM(ct.SoLuong), 0) AS SoLuongBan,
                 ISNULL(SUM(ct.SoLuong * ct.DonGia), 0) AS DoanhThu
             FROM HoaSi hs
-            LEFT JOIN TacPham tp ON hs.MaHoaSi = tp.MaHoaSi
+            LEFT JOIN TacPham tp ON hs.MaHoaSi = tp.MaHoaSi AND tp.MaYeuCauVeTranh IS NULL
             LEFT JOIN ChiTietDonHang ct ON tp.MaTacPham = ct.MaTacPham
             LEFT JOIN DonHang dh ON ct.MaDonHang = dh.MaDonHang AND dh.TrangThai = 3
             GROUP BY hs.MaHoaSi, hs.TenHoaSi
@@ -216,7 +217,7 @@ public class AdminRepository : IAdminRepository
                     SELECT 1 FROM DonHang d WHERE d.MaNguoiDung = NguoiDung.MaNguoiDung
                         AND CAST(d.NgayDat AS DATE) = @Ngay
                 )) AS KhachHangMoi,
-                (SELECT COUNT(*) FROM TacPham WHERE CAST(NgayTao AS DATE) = @Ngay) AS TacPhamMoi";
+                (SELECT COUNT(*) FROM TacPham WHERE CAST(NgayTao AS DATE) = @Ngay AND MaYeuCauVeTranh IS NULL) AS TacPhamMoi";
 
         using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@Ngay", ngay.Date);
@@ -319,7 +320,7 @@ public class AdminRepository : IAdminRepository
                 ISNULL(SUM(CASE WHEN dh.MaDonHang IS NOT NULL THEN ct.SoLuong ELSE 0 END), 0) AS SoLuongBan,
                 ISNULL(SUM(CASE WHEN dh.MaDonHang IS NOT NULL THEN ct.SoLuong * ct.DonGia ELSE 0 END), 0) AS DoanhThu
             FROM HoaSi hs
-            LEFT JOIN TacPham tp ON hs.MaHoaSi = tp.MaHoaSi
+            LEFT JOIN TacPham tp ON hs.MaHoaSi = tp.MaHoaSi AND tp.MaYeuCauVeTranh IS NULL
             LEFT JOIN ChiTietDonHang ct ON tp.MaTacPham = ct.MaTacPham
             LEFT JOIN DonHang dh ON ct.MaDonHang = dh.MaDonHang AND dh.TrangThai = 3 {whereClause}
             GROUP BY hs.MaHoaSi, hs.TenHoaSi
@@ -366,6 +367,7 @@ public class AdminRepository : IAdminRepository
             LEFT JOIN HoaSi hs ON tp.MaHoaSi = hs.MaHoaSi
             LEFT JOIN ChiTietDonHang ct ON tp.MaTacPham = ct.MaTacPham
             LEFT JOIN DonHang dh ON ct.MaDonHang = dh.MaDonHang AND dh.TrangThai = 3
+            WHERE tp.MaYeuCauVeTranh IS NULL
             GROUP BY tp.MaTacPham, tp.TenTacPham, hs.TenHoaSi
             ORDER BY SoLuongBan DESC";
 

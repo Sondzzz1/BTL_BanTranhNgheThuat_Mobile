@@ -84,6 +84,34 @@ public class TacPhamRepository : ITacPhamRepository
         return list;
     }
 
+    public Task<List<TacPham>> GetMarketplaceAll() =>
+        QueryList("SELECT * FROM TacPham WHERE MaYeuCauVeTranh IS NULL ORDER BY NgayTao DESC");
+
+    public async Task<TacPham?> GetMarketplaceById(int maTacPham)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        const string query = @"SELECT * FROM TacPham
+                               WHERE MaTacPham=@MaTacPham AND MaYeuCauVeTranh IS NULL";
+        using var command = new SqlCommand(query, connection);
+        command.Parameters.AddWithValue("@MaTacPham", maTacPham);
+        using var reader = await command.ExecuteReaderAsync();
+        return await reader.ReadAsync() ? MapToTacPham(reader) : null;
+    }
+
+    public Task<List<TacPham>> GetMarketplaceByArtist(int maHoaSi) => QueryList(
+        @"SELECT * FROM TacPham
+          WHERE MaHoaSi=@MaHoaSi AND MaYeuCauVeTranh IS NULL
+          ORDER BY NgayTao DESC",
+        command => command.Parameters.AddWithValue("@MaHoaSi", maHoaSi));
+
+    public Task<List<TacPham>> GetMarketplaceByCategory(int maDanhMuc) => QueryList(
+        @"SELECT * FROM TacPham
+          WHERE MaDanhMuc=@MaDanhMuc AND MaYeuCauVeTranh IS NULL
+          ORDER BY NgayTao DESC",
+        command => command.Parameters.AddWithValue("@MaDanhMuc", maDanhMuc));
+
     public async Task<int> Create(TacPham tacPham)
     {
         using var connection = new SqlConnection(_connectionString);
@@ -177,6 +205,18 @@ public class TacPhamRepository : ITacPhamRepository
 
         var count = await command.ExecuteScalarAsync();
         return Convert.ToInt32(count) > 0;
+    }
+
+    private async Task<List<TacPham>> QueryList(string query, Action<SqlCommand>? configure = null)
+    {
+        var list = new List<TacPham>();
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var command = new SqlCommand(query, connection);
+        configure?.Invoke(command);
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) list.Add(MapToTacPham(reader));
+        return list;
     }
 
     private TacPham MapToTacPham(SqlDataReader reader)

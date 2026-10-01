@@ -88,7 +88,7 @@ public class YeuThichController : ControllerBase
             var result = new List<YeuThichResponse>();
             foreach (var yt in danhSach)
             {
-                var tacPham = await _tacPhamRepo.GetById(yt.MaTacPham);
+                var tacPham = await _tacPhamRepo.GetMarketplaceById(yt.MaTacPham);
                 if (tacPham == null) continue;
 
                 var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
@@ -139,9 +139,11 @@ public class YeuThichController : ControllerBase
             var maNguoiDung = await GetCurrentUserId();
 
             // Kiểm tra tác phẩm tồn tại
-            var tacPham = await _tacPhamRepo.GetById(maTacPham);
+            var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
             if (tacPham == null)
                 return NotFound(new { message = "Không tìm thấy tác phẩm" });
+            if (tacPham.TrangThai != 1)
+                return BadRequest(new { message = "Tác phẩm hiện không khả dụng" });
 
             // Kiểm tra đã tồn tại chưa
             var exists = await _yeuThichRepo.Exists(maNguoiDung, maTacPham);

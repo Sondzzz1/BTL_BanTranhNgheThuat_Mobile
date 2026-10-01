@@ -1,7 +1,7 @@
 
 
 // Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
-export const API_BASE_URL = 'http://192.168.1.108:5273/api';
+export const API_BASE_URL = 'http://192.168.1.6:5273/api';
 
 
 export const API_TIMEOUT = 60000; // 60 seconds (tăng từ 30s)
