@@ -26,6 +26,7 @@ import MyReturnsScreen from './app/orders/MyReturnsScreen';
 import ReturnDetailScreen from './app/orders/ReturnDetailScreen';
 // New screens
 import NewsScreen from './app/NewsScreen';
+import NewsDetailScreen from './app/NewsDetailScreen';
 import AboutScreen from './app/AboutScreen';
 import ArtistsScreen from './app/ArtistsScreen';
 import ArtistDetailScreen from './app/ArtistDetailScreen';
@@ -35,6 +36,9 @@ import CreateCustomArtScreen from './app/custom-art/CreateCustomArtScreen';
 import CustomArtDetailScreen from './app/custom-art/CustomArtDetailScreen';
 import ConsultationListScreen from './app/consultation/ConsultationListScreen';
 import ConsultationBookingScreen from './app/consultation/ConsultationBookingScreen';
+import ArtServicesScreen from './app/services/ArtServicesScreen';
+import CustomArtIntroScreen from './app/services/CustomArtIntroScreen';
+import ConsultationIntroScreen from './app/services/ConsultationIntroScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -200,6 +204,11 @@ function MainStackNavigator() {
         options={{ title: 'Tin Tức' }}
       />
       <Stack.Screen
+        name="NewsDetail"
+        component={NewsDetailScreen}
+        options={{ title: 'Bài viết nghệ thuật' }}
+      />
+      <Stack.Screen
         name="About"
         component={AboutScreen}
         options={{ title: 'Giới Thiệu' }}
@@ -220,9 +229,24 @@ function MainStackNavigator() {
         options={{ title: 'Liên Hệ' }}
       />
       <Stack.Screen
+        name="ArtServices"
+        component={ArtServicesScreen}
+        options={{ title: 'Dịch vụ nghệ thuật' }}
+      />
+      <Stack.Screen
+        name="CustomArtIntro"
+        component={CustomArtIntroScreen}
+        options={{ title: 'Vẽ tranh theo yêu cầu' }}
+      />
+      <Stack.Screen
+        name="ConsultationIntro"
+        component={ConsultationIntroScreen}
+        options={{ title: 'Tư vấn nghệ thuật & không gian' }}
+      />
+      <Stack.Screen
         name="CustomArtList"
         component={CustomArtListScreen}
-        options={{ title: 'Vẽ theo yêu cầu' }}
+        options={{ title: 'Yêu cầu vẽ tranh của tôi' }}
       />
       <Stack.Screen
         name="CreateCustomArt"

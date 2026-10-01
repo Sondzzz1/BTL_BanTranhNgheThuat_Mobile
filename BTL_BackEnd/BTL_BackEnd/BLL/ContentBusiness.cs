@@ -52,7 +52,7 @@ public class ContentBusiness : IContentBusiness
     {
         var item = await _baiVietRepo.GetById(id);
         if (item == null) return null!;
-        var hoaSi = await _hoaSiRepo.GetById(item.MaHoaSi);
+        var hoaSi = item.MaHoaSi.HasValue ? await _hoaSiRepo.GetById(item.MaHoaSi.Value) : null;
         var dictHoaSi = new Dictionary<int, string>();
         if (hoaSi != null) dictHoaSi[hoaSi.MaHoaSi] = hoaSi.TenHoaSi;
 
@@ -199,11 +199,21 @@ public class ContentBusiness : IContentBusiness
         TieuDe = x.TieuDe,
         NoiDung = x.NoiDung,
         MaHoaSi = x.MaHoaSi,
-        TenHoaSi = dictHoaSi != null && dictHoaSi.ContainsKey(x.MaHoaSi) ? dictHoaSi[x.MaHoaSi] : "N/A",
+        MaTaiKhoanTacGia = x.MaTaiKhoanTacGia,
+        TenHoaSi = x.MaHoaSi.HasValue && dictHoaSi != null && dictHoaSi.ContainsKey(x.MaHoaSi.Value) ? dictHoaSi[x.MaHoaSi.Value] : "N/A",
+        TenTacGia = x.MaHoaSi.HasValue && dictHoaSi != null && dictHoaSi.ContainsKey(x.MaHoaSi.Value) ? dictHoaSi[x.MaHoaSi.Value] : "N/A",
+        TomTat = x.TomTat,
+        MaDanhMucBaiViet = x.MaDanhMucBaiViet,
         NgayDang = x.NgayDang,
         TrangThai = x.TrangThai,
         LyDo = x.LyDo,
-        AnhTieuDe = x.AnhTieuDe
+        AnhTieuDe = x.AnhTieuDe,
+        NgayCapNhat = x.NgayCapNhat,
+        NgayXuatBan = x.NgayXuatBan,
+        NgayBatDauSuKien = x.NgayBatDauSuKien,
+        NgayKetThucSuKien = x.NgayKetThucSuKien,
+        DiaDiemSuKien = x.DiaDiemSuKien,
+        NguonNoiDung = x.NguonNoiDung
     };
 
     private NoiDungResponse MapToNoiDungResponse(NoiDung x, Dictionary<int, string>? dictTenTP = null) => new NoiDungResponse

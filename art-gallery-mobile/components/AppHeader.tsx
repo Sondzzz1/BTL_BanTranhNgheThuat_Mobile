@@ -207,10 +207,10 @@ export default function AppHeader({ navigation, cartCount: propCartCount }: AppH
 
               <TouchableOpacity
                 style={styles.menuItemRow}
-                onPress={() => handleNav('Home')}
+                onPress={() => handleNav('ArtServices')}
               >
                 <Text style={styles.menuItemText}>DỊCH VỤ</Text>
-                <Text style={styles.chevronText}>∨</Text>
+                <Text style={styles.chevronText}>→</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

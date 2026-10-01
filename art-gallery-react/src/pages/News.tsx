@@ -35,33 +35,24 @@ const News: React.FC = () => {
             {/* News Content */}
             <section className="news-content">
                 <div className="container" style={{ display: 'block', maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-                    {/* Featured News */}
-                    <div className="featured-news fade-in">
+                    {articles[0] && <div className="featured-news fade-in">
                         <div className="featured-image">
-                            {/* Assuming images are copied to public or accessible. Using placeholder if not */}
-                            <img src="/assets/tintucnoibat/camtucau.webp" alt="Triển lãm tranh" />
-                            <div className="featured-overlay">
-                                <span className="featured-badge">NỔI BẬT</span>
-                            </div>
+                            <img src={articles[0].anhTieuDe || '/assets/images/no-image.svg'} alt={articles[0].tieuDe} />
+                            <div className="featured-overlay"><span className="featured-badge">MỚI NHẤT</span></div>
                         </div>
                         <div className="featured-info">
-                            <span className="news-date">
-                                <i className="ti-calendar"></i> 15/01/2025
-                            </span>
-                            <h2>Triển lãm tranh "Cảm Từ Cầu" - Họa sĩ Lân Vũ</h2>
-                            <p>Triển lãm tranh đặc biệt của họa sĩ Lân Vũ với chủ đề "Cảm Từ Cầu" sẽ được tổ chức tại LanVu Gallery từ ngày 20/01 đến 28/01/2025. Đây là cơ hội để người yêu nghệ thuật chiêm ngưỡng những tác phẩm độc đáo...</p>
-                            <a href="#" className="read-more-btn">
-                                Đọc thêm <i className="ti-arrow-right"></i>
-                            </a>
+                            <span className="news-date"><i className="ti-calendar"></i> {new Date(articles[0].ngayXuatBan || articles[0].ngayDang).toLocaleDateString('vi-VN')}</span>
+                            <h2>{articles[0].tieuDe}</h2>
+                            <p>{articles[0].tomTat || articles[0].noiDung || 'Bài viết chưa có phần tóm tắt.'}</p>
                         </div>
-                    </div>
+                    </div>}
 
                     {/* News Grid */}
                     <div className="news-grid">
                         {loading ? (
                             <div className="loading-state">Đang tải tin tức...</div>
                         ) : articles.length > 0 ? (
-                            articles.map(article => (
+                            articles.slice(1).map(article => (
                                 <article key={article.maBaiViet} className="news-card fade-in">
                                     <div className="news-card-image">
                                         <img 
@@ -78,9 +69,9 @@ const News: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="news-card-content">
-                                        <span className="news-category">Tin tức</span>
+                                        <span className="news-category">{article.tenDanhMuc || 'Góc nghệ thuật'}</span>
                                         <span className="news-date">
-                                            <i className="ti-calendar"></i> {new Date(article.ngayDang).toLocaleDateString('vi-VN')}
+                                            <i className="ti-calendar"></i> {new Date(article.ngayXuatBan || article.ngayDang).toLocaleDateString('vi-VN')}
                                         </span>
                                         <h3>{article.tieuDe}</h3>
                                         <p style={{ 
@@ -89,10 +80,10 @@ const News: React.FC = () => {
                                             WebkitBoxOrient: 'vertical', 
                                             overflow: 'hidden' 
                                         }}>
-                                            {article.noiDung ? article.noiDung.replace(/<[^>]+>/g, '') : 'Chưa có nội dung...'}
+                                            {article.tomTat || (article.noiDung ? article.noiDung.replace(/<[^>]+>/g, '') : 'Chưa có nội dung...')}
                                         </p>
                                         <p className="author-name" style={{ fontSize: '0.9em', color: '#666', marginTop: '10px' }}>
-                                            Đăng bởi: <strong>{article.tenHoaSi}</strong>
+                                            Đăng bởi: <strong>{article.tenTacGia || article.tenHoaSi}</strong>
                                         </p>
                                         <a href="#" className="read-more">Đọc thêm →</a>
                                     </div>

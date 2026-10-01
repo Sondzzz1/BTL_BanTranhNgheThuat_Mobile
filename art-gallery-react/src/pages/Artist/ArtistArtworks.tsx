@@ -1,9 +1,15 @@
 // Artist Artworks - Quản lý tác phẩm của họa sĩ
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { artistDashboardService, TacPhamHoaSiResponse } from '../../services/artistDashboardService';
+import {
+  artistDashboardService,
+  ChiTietTacPhamPayload,
+  ChiTietTacPhamResponse,
+  TacPhamHoaSiResponse,
+} from '../../services/artistDashboardService';
 import { categoryService } from '../../services/categoryService';
 import { formatVnd } from '../../utils/currency';
+import './ArtistArtworks.css';
 
 const STATUS_LABEL: Record<number, { text: string; cls: string; icon: string }> = {
   0: { text: 'Chờ duyệt',  cls: 'pending',   icon: 'ti-time' },
@@ -28,12 +34,15 @@ const ArtistArtworks: React.FC = () => {
     gia: '',
     maDanhMuc: '',
     soLuong: '1',
-    anhTranh: '',
     moTa: '',
     kichThuoc: '',
     chatLieu: '',
     chatLieuKhung: '',
   });
+  const [imageUrls, setImageUrls] = useState<string[]>(['']);
+  const [failedImageIndexes, setFailedImageIndexes] = useState<number[]>([]);
+  const [loadedDetail, setLoadedDetail] = useState<ChiTietTacPhamResponse | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +66,9 @@ const ArtistArtworks: React.FC = () => {
     }
   };
 
-  const handleOpenModal = (artwork?: TacPhamHoaSiResponse) => {
+  const handleOpenModal = async (artwork?: TacPhamHoaSiResponse) => {
+    setFailedImageIndexes([]);
+    setLoadedDetail(null);
     if (artwork) {
       setEditingArtwork(artwork);
       const cat = categories.find(c => c.tenDanhMuc === artwork.tenDanhMuc);
@@ -66,12 +77,32 @@ const ArtistArtworks: React.FC = () => {
         gia: artwork.gia.toString(),
         maDanhMuc: cat ? cat.maDanhMuc.toString() : (categories.length > 0 ? categories[0].maDanhMuc.toString() : ''),
         soLuong: artwork.soLuong.toString(),
-        anhTranh: artwork.hinhAnh || '',
         moTa: artwork.moTa || '',
         kichThuoc: artwork.kichThuoc || '',
         chatLieu: artwork.chatLieu || '',
         chatLieuKhung: artwork.chatLieuKhung || '',
       });
+      setImageUrls([artwork.hinhAnh || '']);
+      setDetailLoading(true);
+      setIsModalOpen(true);
+      try {
+        const detail = await artistDashboardService.getChiTietTacPham(artwork.maTacPham);
+        setLoadedDetail(detail);
+        const detailImages = detail
+          ? [detail.hinhAnh1, detail.hinhAnh2, detail.hinhAnh3, detail.hinhAnh4]
+              .map((value) => value?.trim())
+              .filter((value): value is string => Boolean(value))
+          : [];
+        const combined = [artwork.hinhAnh?.trim(), ...detailImages]
+          .filter((value): value is string => Boolean(value))
+          .filter((value, index, values) => values.indexOf(value) === index)
+          .slice(0, 5);
+        setImageUrls(combined.length > 0 ? combined : ['']);
+      } catch (error: any) {
+        alert(error?.response?.data?.message || 'Không thể tải danh sách ảnh chi tiết của tác phẩm.');
+      } finally {
+        setDetailLoading(false);
+      }
     } else {
       setEditingArtwork(null);
       setFormData({
@@ -79,41 +110,124 @@ const ArtistArtworks: React.FC = () => {
         gia: '',
         maDanhMuc: categories.length > 0 ? categories[0].maDanhMuc.toString() : '',
         soLuong: '1',
-        anhTranh: '',
         moTa: '',
         kichThuoc: '',
         chatLieu: '',
         chatLieuKhung: '',
       });
+      setImageUrls(['']);
+      setDetailLoading(false);
+      setIsModalOpen(true);
     }
-    setIsModalOpen(true);
   };
+
+  const normalizedImageUrls = () => imageUrls
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .slice(0, 5);
+
+  const isValidImageUrl = (value: string) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const updateImageUrl = (index: number, value: string) => {
+    setImageUrls((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+    setFailedImageIndexes((current) => current.filter((itemIndex) => itemIndex !== index));
+  };
+
+  const addImageUrl = () => {
+    if (imageUrls.length >= 5) return;
+    if (imageUrls.some((value) => !value.trim())) {
+      alert('Vui lòng nhập URL ảnh hiện tại trước khi thêm URL mới.');
+      return;
+    }
+    setImageUrls((current) => [...current, '']);
+  };
+
+  const removeImageUrl = (index: number) => {
+    setImageUrls((current) => {
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      return next.length > 0 ? next : [''];
+    });
+    setFailedImageIndexes([]);
+  };
+
+  const buildDetailPayload = (urls: string[]): ChiTietTacPhamPayload => ({
+    cauChuyenSangTac: loadedDetail?.cauChuyenSangTac || null,
+    yNghiaNghiThuat: loadedDetail?.yNghiaNghiThuat || null,
+    kyThuatThucHien: loadedDetail?.kyThuatThucHien || null,
+    camHungSangTao: loadedDetail?.camHungSangTao || null,
+    thongTinBosung: loadedDetail?.thongTinBosung || formData.moTa.trim() || null,
+    kichThuoc: formData.kichThuoc.trim() || loadedDetail?.kichThuoc || null,
+    chatLieu: formData.chatLieu.trim() || loadedDetail?.chatLieu || null,
+    chatLieuKhung: formData.chatLieuKhung.trim() || loadedDetail?.chatLieuKhung || null,
+    namSangTac: loadedDetail?.namSangTac || null,
+    diaDiemSangTac: loadedDetail?.diaDiemSangTac || null,
+    hinhAnh1: urls[1] || null,
+    hinhAnh2: urls[2] || null,
+    hinhAnh3: urls[3] || null,
+    hinhAnh4: urls[4] || null,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const urls = normalizedImageUrls();
+      const invalidUrl = urls.find((url) => !isValidImageUrl(url));
+      if (invalidUrl) {
+        alert(`URL ảnh không hợp lệ: ${invalidUrl}\nVui lòng dùng đường dẫn bắt đầu bằng http:// hoặc https://`);
+        return;
+      }
+
       const payload = {
         tenTacPham: formData.tenTacPham,
         gia: parseFloat(formData.gia),
         maDanhMuc: formData.maDanhMuc ? parseInt(formData.maDanhMuc) : undefined,
         soLuong: parseInt(formData.soLuong),
-        hinhAnh: formData.anhTranh,
+        hinhAnh: urls[0] || '',
         moTa: formData.moTa,
         kichThuoc: formData.kichThuoc,
         chatLieu: formData.chatLieu,
         chatLieuKhung: formData.chatLieuKhung,
       };
 
+      let artworkId: number;
       if (editingArtwork) {
         await artistDashboardService.capNhatTacPham(editingArtwork.maTacPham, payload);
-        alert('Cập nhật tác phẩm thành công! Tác phẩm sẽ được admin duyệt lại.');
+        artworkId = editingArtwork.maTacPham;
       } else {
-        await artistDashboardService.taoTacPham(payload);
-        alert('Thêm tác phẩm thành công! Tác phẩm đang chờ admin duyệt.');
+        const created = await artistDashboardService.taoTacPham(payload);
+        artworkId = created.maTacPham;
       }
 
+      try {
+        const detailPayload = buildDetailPayload(urls);
+        if (loadedDetail) {
+          await artistDashboardService.capNhatChiTietTacPham(artworkId, detailPayload);
+        } else {
+          await artistDashboardService.taoChiTietTacPham(artworkId, detailPayload);
+        }
+      } catch (detailError: any) {
+        setIsModalOpen(false);
+        await loadData();
+        alert(
+          `${editingArtwork ? 'Tác phẩm đã được cập nhật' : 'Tác phẩm đã được tạo'}, ` +
+          `nhưng chưa lưu được thư viện ảnh chi tiết: ${detailError?.response?.data?.message || detailError.message || 'Lỗi không xác định'}`
+        );
+        return;
+      }
+
+      alert(editingArtwork
+        ? 'Cập nhật tác phẩm và thư viện ảnh thành công! Nội dung sẽ được admin duyệt lại.'
+        : 'Thêm tác phẩm và thư viện ảnh thành công! Tác phẩm đang chờ admin duyệt.');
       setIsModalOpen(false);
-      loadData();
+      await loadData();
     } catch (error: any) {
       alert(error?.response?.data?.message || error.message || 'Có lỗi xảy ra');
     }
@@ -429,16 +543,6 @@ const ArtistArtworks: React.FC = () => {
                   </div>
 
                   <div className="form-group">
-                    <label>Link ảnh:</label>
-                    <input 
-                      type="text" 
-                      value={formData.anhTranh}
-                      onChange={(e) => setFormData({ ...formData, anhTranh: e.target.value })}
-                      placeholder="URL hình ảnh" 
-                    />
-                  </div>
-
-                  <div className="form-group">
                     <label>Kích thước:</label>
                     <input 
                       type="text" 
@@ -470,6 +574,76 @@ const ArtistArtworks: React.FC = () => {
                 </div>
               </div>
 
+              <div className="artwork-image-url-section">
+                <div className="image-url-heading">
+                  <div>
+                    <label>URL hình ảnh tác phẩm</label>
+                    <p>Ảnh đầu tiên là ảnh đại diện. Bạn có thể thêm tối đa 5 URL (1 ảnh đại diện và 4 ảnh bổ sung).</p>
+                  </div>
+                  {imageUrls.length < 5 && (
+                    <button type="button" className="btn-add-image-url" onClick={addImageUrl}>
+                      <i className="ti-plus"></i> Thêm URL ảnh
+                    </button>
+                  )}
+                </div>
+
+                {detailLoading ? (
+                  <div className="image-url-loading">Đang tải thư viện ảnh...</div>
+                ) : (
+                  <>
+                    <div className="image-url-inputs">
+                      {imageUrls.map((url, index) => (
+                        <div className="image-url-row" key={index}>
+                          <span className="image-url-index">{index + 1}</span>
+                          <input
+                            type="url"
+                            value={url}
+                            onChange={(e) => updateImageUrl(index, e.target.value)}
+                            placeholder={`URL ảnh ${index + 1} (https://...)`}
+                          />
+                          {imageUrls.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn-remove-image-url"
+                              onClick={() => removeImageUrl(index)}
+                              title="Xóa URL ảnh này"
+                            >
+                              <i className="ti-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {imageUrls.some((url) => url.trim()) && (
+                      <div className="image-preview-gallery">
+                        {imageUrls.map((url, index) => url.trim() && (
+                          <div className="image-preview-card" key={`${index}-${url}`}>
+                            {failedImageIndexes.includes(index) ? (
+                              <div className="image-preview-error">
+                                <i className="ti-image"></i>
+                                <span>Không tải được ảnh</span>
+                              </div>
+                            ) : (
+                              <img
+                                src={url.trim()}
+                                alt={`Xem trước tác phẩm ${index + 1}`}
+                                onError={() => setFailedImageIndexes((current) =>
+                                  current.includes(index) ? current : [...current, index]
+                                )}
+                              />
+                            )}
+                            <span className="image-preview-label">
+                              {index === 0 ? 'Ảnh đại diện' : `Ảnh bổ sung ${index}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
               <div className="form-group full-width">
                 <label>Mô tả:</label>
                 <textarea 
@@ -481,7 +655,7 @@ const ArtistArtworks: React.FC = () => {
               </div>
 
               <div className="modal-buttons">
-                <button type="submit" className="btn-save">
+                <button type="submit" className="btn-save" disabled={detailLoading}>
                   {editingArtwork ? 'Cập nhật' : 'Thêm mới'}
                 </button>
                 <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>

@@ -108,11 +108,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
   const handleCustomArtPress = () => {
-    navigation.navigate('CustomArtList');
+    navigation.navigate('CustomArtIntro');
   };
 
   const handleConsultationPress = () => {
-    navigation.navigate('ConsultationList');
+    navigation.navigate('ConsultationIntro');
   };
 
   if (isLoading) {
@@ -179,6 +179,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.quickServiceSection}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>DỊCH VỤ KHÁCH HÀNG</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ArtServices')} style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>Khám phá</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.quickServiceGrid}>
             <TouchableOpacity style={styles.quickServiceCard} onPress={handleCustomArtPress}>

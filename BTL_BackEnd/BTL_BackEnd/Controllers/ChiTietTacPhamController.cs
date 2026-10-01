@@ -11,10 +11,12 @@ namespace DoAn2_BackEnd.Controllers;
 public class ChiTietTacPhamController : ControllerBase
 {
     private readonly IChiTietTacPhamBusiness _chiTietBusiness;
+    private readonly ContentImageFileHelper _imageFileHelper;
 
-    public ChiTietTacPhamController(IChiTietTacPhamBusiness chiTietBusiness)
+    public ChiTietTacPhamController(IChiTietTacPhamBusiness chiTietBusiness, ContentImageFileHelper imageFileHelper)
     {
         _chiTietBusiness = chiTietBusiness;
+        _imageFileHelper = imageFileHelper;
     }
 
     // ================================================================
@@ -150,6 +152,25 @@ public class ChiTietTacPhamController : ControllerBase
         }
     }
 
+    [HttpPost("hoa-si/tac-pham/{maTacPham}/chi-tiet/anh")]
+    [Authorize(Roles = "HoaSi")]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult> UploadAnh(int maTacPham, [FromForm] IFormFile file, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var maHoaSi = JwtHelper.GetMaHoaSi(User);
+            if (!maHoaSi.HasValue || !await _chiTietBusiness.CoQuyenQuanLy(maHoaSi.Value, maTacPham))
+                return StatusCode(403, new { message = "Không có quyền tải ảnh cho tác phẩm này" });
+            var storedName = await _imageFileHelper.SaveAsync(file, cancellationToken);
+            return Ok(new { url = $"/api/public/noi-dung-tep/{storedName}" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     // ================================================================
     // ADMIN - DUYỆT CHI TIẾT TÁC PHẨM
     // ================================================================
@@ -245,6 +266,10 @@ public class ChiTietTacPhamController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
@@ -274,6 +299,25 @@ public class ChiTietTacPhamController : ControllerBase
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+        }
+    }
+
+    [HttpGet("public/noi-dung-tep/{storedName}")]
+    [AllowAnonymous]
+    public ActionResult GetContentImage(string storedName)
+    {
+        try
+        {
+            var opened = _imageFileHelper.OpenRead(storedName);
+            return File(opened.Stream, opened.ContentType);
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException)
+        {
+            return BadRequest();
         }
     }
 }

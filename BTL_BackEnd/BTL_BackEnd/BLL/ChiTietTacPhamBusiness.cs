@@ -10,18 +10,18 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     private readonly IChiTietTacPhamRepository _chiTietRepo;
     private readonly ITacPhamRepository _tacPhamRepo;
     private readonly IHoaSiRepository _hoaSiRepo;
-    private readonly INguoiDungRepository _nguoiDungRepo;
+    private readonly ITaiKhoanRepository _taiKhoanRepo;
 
     public ChiTietTacPhamBusiness(
         IChiTietTacPhamRepository chiTietRepo,
         ITacPhamRepository tacPhamRepo,
         IHoaSiRepository hoaSiRepo,
-        INguoiDungRepository nguoiDungRepo)
+        ITaiKhoanRepository taiKhoanRepo)
     {
         _chiTietRepo = chiTietRepo;
         _tacPhamRepo = tacPhamRepo;
         _hoaSiRepo = hoaSiRepo;
-        _nguoiDungRepo = nguoiDungRepo;
+        _taiKhoanRepo = taiKhoanRepo;
     }
 
     // ================================================================
@@ -29,6 +29,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     // ================================================================
     public async Task<int> TaoChiTiet(int maHoaSi, int maTacPham, TaoChiTietTacPhamRequest request)
     {
+        ValidateRequest(request);
         // Kiểm tra tác phẩm có thuộc họa sĩ không
         var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null)
@@ -49,9 +50,11 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             KyThuatThucHien = request.KyThuatThucHien?.Trim(),
             CamHungSangTao = request.CamHungSangTao?.Trim(),
             ThongTinBosung = request.ThongTinBosung?.Trim(),
-            KichThuoc = request.KichThuoc?.Trim(),
-            ChatLieu = request.ChatLieu?.Trim(),
-            ChatLieuKhung = request.ChatLieuKhung?.Trim(),
+            // TacPham is the canonical source for technical sales data. These
+            // legacy columns are kept only for schema compatibility.
+            KichThuoc = tacPham.KichThuoc,
+            ChatLieu = tacPham.ChatLieu,
+            ChatLieuKhung = tacPham.ChatLieuKhung,
             NamSangTac = request.NamSangTac,
             DiaDiemSangTac = request.DiaDiemSangTac?.Trim(),
             HinhAnh1 = request.HinhAnh1?.Trim(),
@@ -62,7 +65,9 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             NgayTao = DateTime.UtcNow
         };
 
-        return await _chiTietRepo.Create(maHoaSi, maTacPham, chiTiet);
+        var id = await _chiTietRepo.Create(maHoaSi, maTacPham, chiTiet);
+        if (id <= 0) throw new InvalidOperationException("Không thể tạo nội dung hoặc tác phẩm đã có nội dung chi tiết");
+        return id;
     }
 
     // ================================================================
@@ -70,6 +75,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     // ================================================================
     public async Task<bool> CapNhatChiTiet(int maHoaSi, int maTacPham, TaoChiTietTacPhamRequest request)
     {
+        ValidateRequest(request);
         // Kiểm tra quyền
         var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null)
@@ -90,9 +96,9 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             KyThuatThucHien = request.KyThuatThucHien?.Trim(),
             CamHungSangTao = request.CamHungSangTao?.Trim(),
             ThongTinBosung = request.ThongTinBosung?.Trim(),
-            KichThuoc = request.KichThuoc?.Trim(),
-            ChatLieu = request.ChatLieu?.Trim(),
-            ChatLieuKhung = request.ChatLieuKhung?.Trim(),
+            KichThuoc = tacPham.KichThuoc,
+            ChatLieu = tacPham.ChatLieu,
+            ChatLieuKhung = tacPham.ChatLieuKhung,
             NamSangTac = request.NamSangTac,
             DiaDiemSangTac = request.DiaDiemSangTac?.Trim(),
             HinhAnh1 = request.HinhAnh1?.Trim(),
@@ -119,6 +125,12 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         return await _chiTietRepo.Delete(maHoaSi, maTacPham);
     }
 
+    public async Task<bool> CoQuyenQuanLy(int maHoaSi, int maTacPham)
+    {
+        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        return tacPham != null && tacPham.MaHoaSi == maHoaSi;
+    }
+
     // ================================================================
     // LẤY CHI TIẾT (Họa sĩ/Admin)
     // ================================================================
@@ -135,8 +147,8 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         string? tenNguoiDuyet = null;
         if (chiTiet.MaNguoiDuyet.HasValue)
         {
-            var nguoiDuyet = await _nguoiDungRepo.GetById(chiTiet.MaNguoiDuyet.Value);
-            tenNguoiDuyet = nguoiDuyet?.Ten;
+            var nguoiDuyet = await _taiKhoanRepo.GetById(chiTiet.MaNguoiDuyet.Value);
+            tenNguoiDuyet = nguoiDuyet?.TenDangNhap;
         }
 
         return new ChiTietTacPhamResponse
@@ -151,9 +163,9 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             KyThuatThucHien = chiTiet.KyThuatThucHien,
             CamHungSangTao = chiTiet.CamHungSangTao,
             ThongTinBosung = chiTiet.ThongTinBosung,
-            KichThuoc = chiTiet.KichThuoc,
-            ChatLieu = chiTiet.ChatLieu,
-            ChatLieuKhung = chiTiet.ChatLieuKhung,
+            KichThuoc = tacPham.KichThuoc,
+            ChatLieu = tacPham.ChatLieu,
+            ChatLieuKhung = tacPham.ChatLieuKhung,
             NamSangTac = chiTiet.NamSangTac,
             DiaDiemSangTac = chiTiet.DiaDiemSangTac,
             HinhAnh1 = chiTiet.HinhAnh1,
@@ -237,6 +249,9 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         if (!request.PheDuyet && string.IsNullOrWhiteSpace(request.LyDoTuChoi))
             throw new ArgumentException("Vui lòng nhập lý do từ chối");
 
+        if (chiTiet.TrangThai != 0)
+            throw new InvalidOperationException("Chỉ nội dung đang chờ duyệt mới có thể được xử lý");
+
         return await _chiTietRepo.Duyet(maTacPham, maNguoiDuyet, request.PheDuyet, request.LyDoTuChoi?.Trim());
     }
 
@@ -249,7 +264,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         if (chiTiet == null) return null;
 
         var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
-        if (tacPham == null) return null;
+        if (tacPham == null || tacPham.TrangThai != TacPhamStatus.OnSale) return null;
 
         var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
 
@@ -265,9 +280,9 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             KyThuatThucHien = chiTiet.KyThuatThucHien,
             CamHungSangTao = chiTiet.CamHungSangTao,
             ThongTinBosung = chiTiet.ThongTinBosung,
-            KichThuoc = chiTiet.KichThuoc,
-            ChatLieu = chiTiet.ChatLieu,
-            ChatLieuKhung = chiTiet.ChatLieuKhung,
+            KichThuoc = tacPham.KichThuoc,
+            ChatLieu = tacPham.ChatLieu,
+            ChatLieuKhung = tacPham.ChatLieuKhung,
             NamSangTac = chiTiet.NamSangTac,
             DiaDiemSangTac = chiTiet.DiaDiemSangTac,
             HinhAnh1 = chiTiet.HinhAnh1,
@@ -289,5 +304,26 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             2 => "Từ chối",
             _ => "Không xác định"
         };
+    }
+
+    private static void ValidateRequest(TaoChiTietTacPhamRequest request)
+    {
+        static void Check(string? value, int max, string name)
+        {
+            if (value?.Trim().Length > max) throw new ArgumentException($"{name} không được vượt quá {max} ký tự");
+            if (value?.StartsWith("data:", StringComparison.OrdinalIgnoreCase) == true)
+                throw new ArgumentException($"{name} không được lưu dưới dạng Base64");
+        }
+
+        Check(request.CauChuyenSangTac, 5000, "Câu chuyện sáng tác");
+        Check(request.YNghiaNghiThuat, 5000, "Ý nghĩa nghệ thuật");
+        Check(request.KyThuatThucHien, 5000, "Kỹ thuật thực hiện");
+        Check(request.CamHungSangTao, 5000, "Cảm hứng sáng tạo");
+        Check(request.ThongTinBosung, 5000, "Thông tin bổ sung");
+        Check(request.DiaDiemSangTac, 300, "Địa điểm sáng tác");
+        Check(request.HinhAnh1, 500, "Ảnh 1"); Check(request.HinhAnh2, 500, "Ảnh 2");
+        Check(request.HinhAnh3, 500, "Ảnh 3"); Check(request.HinhAnh4, 500, "Ảnh 4");
+        if (request.NamSangTac.HasValue && (request.NamSangTac < 1000 || request.NamSangTac > DateTime.UtcNow.Year))
+            throw new ArgumentException("Năm sáng tác không hợp lệ");
     }
 }

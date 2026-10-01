@@ -24,6 +24,8 @@ import AddReviewModal from '../../components/AddReviewModal';
 import StarRating from '../../components/StarRating';
 import Footer from '../../components/Footer';
 import Colors from '../../constants/colors';
+import { ArtworkContent, artworkContentService, resolveContentImageUrl } from '../../services/artworkContentService';
+import ArtworkImage from '../../components/ArtworkImage';
 
 interface ProductDetailScreenProps {
   route: any;
@@ -38,6 +40,7 @@ export default function ProductDetailScreen({
   const productId = route.params?.id;
   const [product, setProduct] = useState<Product | null>(null);
   const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [artworkContent, setArtworkContent] = useState<ArtworkContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -66,13 +69,15 @@ export default function ProductDetailScreen({
       setError(null);
       setIsLoading(true);
 
-      const [productData, suggestionsData] = await Promise.all([
+      const [productData, suggestionsData, contentData] = await Promise.all([
         productService.getProductById(productId),
         productService.getProductSuggestions(productId),
+        artworkContentService.getPublic(productId).catch(() => null),
       ]);
 
       setProduct(productData);
       setSuggestions(suggestionsData);
+      setArtworkContent(contentData);
     } catch (err: any) {
       console.error('Error loading product detail:', err);
       setError(err.message || 'Không thể tải thông tin sản phẩm');
@@ -348,6 +353,42 @@ export default function ProductDetailScreen({
                 {isOutOfStock ? 'Hết hàng' : `Còn ${product.soLuong} sản phẩm`}
               </Text>
             </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Câu chuyện & nội dung nghệ thuật</Text>
+            {!artworkContent ? (
+              <Text style={styles.emptyContentText}>Tác phẩm chưa có nội dung nghệ thuật đã được duyệt.</Text>
+            ) : (
+              <>
+                {[
+                  ['Câu chuyện sáng tác', artworkContent.cauChuyenSangTac],
+                  ['Ý nghĩa nghệ thuật', artworkContent.yNghiaNghiThuat],
+                  ['Cảm hứng sáng tác', artworkContent.camHungSangTao],
+                  ['Kỹ thuật thực hiện', artworkContent.kyThuatThucHien],
+                  ['Thông tin bổ sung', artworkContent.thongTinBosung],
+                ].filter(([, value]) => Boolean(value)).map(([label, value]) => (
+                  <View key={label} style={styles.storyBlock}>
+                    <Text style={styles.storyTitle}>{label}</Text>
+                    <Text style={styles.storyText}>{value}</Text>
+                  </View>
+                ))}
+                {(artworkContent.namSangTac || artworkContent.diaDiemSangTac) && (
+                  <View style={styles.storyBlock}>
+                    <Text style={styles.storyTitle}>Thông tin sáng tác</Text>
+                    {artworkContent.namSangTac ? <Text style={styles.storyText}>Năm sáng tác: {artworkContent.namSangTac}</Text> : null}
+                    {artworkContent.diaDiemSangTac ? <Text style={styles.storyText}>Địa điểm: {artworkContent.diaDiemSangTac}</Text> : null}
+                  </View>
+                )}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
+                  {[artworkContent.hinhAnh1, artworkContent.hinhAnh2, artworkContent.hinhAnh3, artworkContent.hinhAnh4]
+                    .filter((value): value is string => Boolean(value))
+                    .map((value, index) => (
+                      <ArtworkImage key={`${value}-${index}`} source={{ uri: resolveContentImageUrl(value) }} style={styles.galleryImage} resizeMode="cover" accessibilityLabel={`Ảnh bổ sung ${index + 1}`} />
+                    ))}
+                </ScrollView>
+              </>
+            )}
           </View>
 
           {/* Suggestions */}
@@ -728,6 +769,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  emptyContentText: { color: '#6b7280', fontStyle: 'italic', lineHeight: 20 },
+  storyBlock: { marginTop: 12, padding: 12, borderRadius: 10, backgroundColor: '#fff7ed' },
+  storyTitle: { fontSize: 15, fontWeight: '700', color: '#9a3412', marginBottom: 6 },
+  storyText: { fontSize: 14, color: '#374151', lineHeight: 21 },
+  galleryRow: { gap: 10, paddingTop: 14, paddingRight: 4 },
+  galleryImage: { width: 210, height: 150, borderRadius: 10, backgroundColor: '#e5e7eb' },
   quantityContainer: {
     flexDirection: 'row',
     alignItems: 'center',

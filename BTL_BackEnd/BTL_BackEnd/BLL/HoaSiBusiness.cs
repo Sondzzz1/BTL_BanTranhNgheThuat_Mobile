@@ -386,10 +386,20 @@ public class HoaSiBusiness : IHoaSiBusiness
                 NoiDung = baiViet.NoiDung,
                 MaHoaSi = baiViet.MaHoaSi,
                 TenHoaSi = hoaSi?.TenHoaSi ?? "",
+                TenTacGia = hoaSi?.TenHoaSi ?? "",
+                MaTaiKhoanTacGia = baiViet.MaTaiKhoanTacGia,
+                TomTat = baiViet.TomTat,
+                MaDanhMucBaiViet = baiViet.MaDanhMucBaiViet,
                 NgayDang = baiViet.NgayDang,
                 TrangThai = baiViet.TrangThai,
                 LyDo = baiViet.LyDo,
-                AnhTieuDe = baiViet.AnhTieuDe
+                AnhTieuDe = baiViet.AnhTieuDe,
+                NgayCapNhat = baiViet.NgayCapNhat,
+                NgayXuatBan = baiViet.NgayXuatBan,
+                NgayBatDauSuKien = baiViet.NgayBatDauSuKien,
+                NgayKetThucSuKien = baiViet.NgayKetThucSuKien,
+                DiaDiemSuKien = baiViet.DiaDiemSuKien,
+                NguonNoiDung = baiViet.NguonNoiDung
             });
         }
 
@@ -401,7 +411,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         var baiViet = await _baiVietRepo.GetById(maBaiViet);
         if (baiViet == null) return null;
 
-        var hoaSi = await _hoaSiRepo.GetById(baiViet.MaHoaSi);
+        var hoaSi = baiViet.MaHoaSi.HasValue ? await _hoaSiRepo.GetById(baiViet.MaHoaSi.Value) : null;
 
         return new BaiVietResponse
         {
@@ -410,10 +420,20 @@ public class HoaSiBusiness : IHoaSiBusiness
             NoiDung = baiViet.NoiDung,
             MaHoaSi = baiViet.MaHoaSi,
             TenHoaSi = hoaSi?.TenHoaSi ?? "",
+            TenTacGia = hoaSi?.TenHoaSi ?? "",
+            MaTaiKhoanTacGia = baiViet.MaTaiKhoanTacGia,
+            TomTat = baiViet.TomTat,
+            MaDanhMucBaiViet = baiViet.MaDanhMucBaiViet,
             NgayDang = baiViet.NgayDang,
             TrangThai = baiViet.TrangThai,
             LyDo = baiViet.LyDo,
-            AnhTieuDe = baiViet.AnhTieuDe
+            AnhTieuDe = baiViet.AnhTieuDe,
+            NgayCapNhat = baiViet.NgayCapNhat,
+            NgayXuatBan = baiViet.NgayXuatBan,
+            NgayBatDauSuKien = baiViet.NgayBatDauSuKien,
+            NgayKetThucSuKien = baiViet.NgayKetThucSuKien,
+            DiaDiemSuKien = baiViet.DiaDiemSuKien,
+            NguonNoiDung = baiViet.NguonNoiDung
         };
     }
 
@@ -421,24 +441,42 @@ public class HoaSiBusiness : IHoaSiBusiness
     {
         if (string.IsNullOrWhiteSpace(request.TieuDe))
             throw new ArgumentException("Tiêu đề không được để trống");
+        if (request.TieuDe.Trim().Length > 250)
+            throw new ArgumentException("Tiêu đề không vượt quá 250 ký tự");
+        await ValidateBlogCategorySelection(request.MaDanhMucBaiViet);
+        await ValidatePublicArtworkLinks(request.MaTacPhamLienQuan ?? new List<int>());
 
         var baiViet = new BaiViet
         {
             TieuDe = request.TieuDe.Trim(),
             NoiDung = request.NoiDung?.Trim(),
             AnhTieuDe = request.AnhTieuDe?.Trim(),
+            TomTat = request.TomTat?.Trim(),
+            MaDanhMucBaiViet = request.MaDanhMucBaiViet,
+            MaTaiKhoanTacGia = (await _hoaSiRepo.GetById(maHoaSi))?.MaTaiKhoan,
+            NgayBatDauSuKien = request.NgayBatDauSuKien,
+            NgayKetThucSuKien = request.NgayKetThucSuKien,
+            DiaDiemSuKien = request.DiaDiemSuKien?.Trim(),
+            NguonNoiDung = request.NguonNoiDung?.Trim(),
             MaHoaSi = maHoaSi,
             NgayDang = DateTime.UtcNow,
             TrangThai = 0 // Draft
         };
 
-        return await _baiVietRepo.Create(baiViet);
+        ValidateBaiViet(request.TomTat, request.NgayBatDauSuKien, request.NgayKetThucSuKien);
+        var id = await _baiVietRepo.Create(baiViet);
+        await _baiVietRepo.ReplaceArtworkLinks(id, request.MaTacPhamLienQuan ?? new List<int>());
+        return id;
     }
 
     public async Task<bool> CapNhatBaiViet(int maHoaSi, int maBaiViet, CapNhatBaiVietRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.TieuDe))
             throw new ArgumentException("Tiêu đề không được để trống");
+        if (request.TieuDe.Trim().Length > 250)
+            throw new ArgumentException("Tiêu đề không vượt quá 250 ký tự");
+        await ValidateBlogCategorySelection(request.MaDanhMucBaiViet);
+        await ValidatePublicArtworkLinks(request.MaTacPhamLienQuan ?? new List<int>());
 
         var baiViet = await _baiVietRepo.GetById(maBaiViet);
         if (baiViet == null) return false;
@@ -448,6 +486,14 @@ public class HoaSiBusiness : IHoaSiBusiness
         baiViet.TieuDe = request.TieuDe.Trim();
         baiViet.NoiDung = request.NoiDung?.Trim();
         baiViet.AnhTieuDe = request.AnhTieuDe?.Trim();
+        baiViet.TomTat = request.TomTat?.Trim();
+        baiViet.MaDanhMucBaiViet = request.MaDanhMucBaiViet;
+        baiViet.NgayBatDauSuKien = request.NgayBatDauSuKien;
+        baiViet.NgayKetThucSuKien = request.NgayKetThucSuKien;
+        baiViet.DiaDiemSuKien = request.DiaDiemSuKien?.Trim();
+        baiViet.NguonNoiDung = request.NguonNoiDung?.Trim();
+        baiViet.NgayCapNhat = DateTime.UtcNow;
+        ValidateBaiViet(request.TomTat, request.NgayBatDauSuKien, request.NgayKetThucSuKien);
 
         // Nếu bài đã Published mà sửa thì đưa về Pending để admin duyệt lại
         if (baiViet.TrangThai == 2 || baiViet.TrangThai == 3)
@@ -456,7 +502,9 @@ public class HoaSiBusiness : IHoaSiBusiness
             baiViet.LyDo = null;
         }
 
-        return await _baiVietRepo.Update(baiViet);
+        var updated = await _baiVietRepo.Update(baiViet);
+        if (updated) await _baiVietRepo.ReplaceArtworkLinks(maBaiViet, request.MaTacPhamLienQuan ?? new List<int>());
+        return updated;
     }
 
     public async Task<bool> XoaBaiViet(int maHoaSi, int maBaiViet)
@@ -481,6 +529,29 @@ public class HoaSiBusiness : IHoaSiBusiness
         bv.TrangThai = 1; // Pending
         bv.LyDo = null; // gửi duyệt lại thì xoá lý do từ chối cũ (nếu có)
         return await _baiVietRepo.Update(bv);
+    }
+
+    private static void ValidateBaiViet(string? tomTat, DateTime? batDau, DateTime? ketThuc)
+    {
+        if (tomTat?.Trim().Length > 500) throw new ArgumentException("Tóm tắt không được vượt quá 500 ký tự");
+        if (batDau.HasValue && ketThuc.HasValue && ketThuc < batDau) throw new ArgumentException("Ngày kết thúc sự kiện phải sau ngày bắt đầu");
+    }
+
+    private async Task ValidateBlogCategorySelection(int? categoryId)
+    {
+        if (!categoryId.HasValue) return;
+        if (!(await _baiVietRepo.GetCategories()).Any(x => x.MaDanhMucBaiViet == categoryId.Value))
+            throw new ArgumentException("Danh mục bài viết không tồn tại hoặc đã bị ẩn");
+    }
+
+    private async Task ValidatePublicArtworkLinks(IEnumerable<int> artworkIds)
+    {
+        foreach (var id in artworkIds.Distinct())
+        {
+            var artwork = await _tacPhamRepo.GetMarketplaceById(id);
+            if (artwork == null || artwork.TrangThai != TacPhamStatus.OnSale)
+                throw new ArgumentException($"Tác phẩm #{id} không công khai hoặc là commission riêng tư");
+        }
     }
 
     // Doanh thu

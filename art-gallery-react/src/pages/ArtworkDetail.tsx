@@ -5,7 +5,6 @@ import { useAppContext } from '../context/AppContext';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
 import { artworkService } from '../services/artworkService';
-import { contentService, NoiDungResponse } from '../services/contentService';
 import apiClient from '../services/api';
 import { Artwork } from '../types';
 import ArtworkDetailSection from '../components/ArtworkDetailSection';
@@ -14,6 +13,12 @@ import FavoriteButton from '../components/FavoriteButton';
 import { formatVnd } from '../utils/currency';
 import '../assets/css/ArtworkDetail.css';
 
+const resolveContentImage = (value: string) => {
+  if (/^(https?:|data:)/i.test(value)) return value;
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5273/api';
+  return `${apiBase.replace(/\/api\/?$/, '')}${value.startsWith('/') ? '' : '/'}${value}`;
+};
+
 const ArtworkDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -21,7 +26,6 @@ const ArtworkDetail: React.FC = () => {
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
-  const [artworkContents, setArtworkContents] = useState<NoiDungResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState<string>('');
@@ -44,7 +48,7 @@ const ArtworkDetail: React.FC = () => {
           detail.hinhAnh3,
           detail.hinhAnh4
         ].filter(Boolean) as string[];
-        setGalleryImages(images);
+        setGalleryImages(images.map(resolveContentImage));
       } catch (error) {
         console.log('Không tìm thấy ảnh bổ sung:', error);
       }
@@ -74,14 +78,6 @@ const ArtworkDetail: React.FC = () => {
         setArtwork(data);
       }
 
-      // Fetch approved contents for this artwork
-      try {
-        const contents = await contentService.layChiTietTheoTacPham(Number(id));
-        const approvedContents = contents.filter(c => c.trangThai === true);
-        setArtworkContents(approvedContents);
-      } catch (err) {
-        console.error('Error loading artwork contents:', err);
-      }
     } catch (error) {
       console.error('Error loading artwork:', error);
       alert('Không thể tải thông tin tác phẩm');
@@ -206,8 +202,8 @@ const ArtworkDetail: React.FC = () => {
             <div className="info-meta">
               <p><strong>Các chuyên mục:</strong> {artwork.danhMuc}</p>
               <p><strong>Họa sĩ:</strong> {artwork.tacGia}</p>
-              <p><strong>Chất liệu tranh:</strong> {artwork.chatLieu || 'Sơn dầu trên vải'}</p>
-              <p><strong>Chất liệu khung:</strong> {artwork.chatLieuKhung || 'Khung gỗ sồi cao cấp'}</p>
+              <p><strong>Chất liệu tranh:</strong> {artwork.chatLieu || 'Đang cập nhật'}</p>
+              <p><strong>Chất liệu khung:</strong> {artwork.chatLieuKhung || 'Đang cập nhật'}</p>
             </div>
 
             <div className="stock-info">
@@ -347,7 +343,6 @@ const ArtworkDetail: React.FC = () => {
             artworkId={id} 
             artworkDescription={artwork.moTa}
             artworkName={artwork.tenTranh}
-            artworkContents={artworkContents}
           />
         )}
 

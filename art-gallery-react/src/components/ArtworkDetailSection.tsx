@@ -6,13 +6,13 @@ interface ArtworkDetailSectionProps {
   artworkId: number | string;
   artworkDescription?: string;
   artworkName?: string;
-  artworkContents?: Array<{
-    maNoiDung: number;
-    tieuDe?: string;
-    moTa?: string;
-    trangThai: boolean;
-  }>;
 }
+
+const resolveContentImage = (value: string) => {
+  if (/^(https?:|data:)/i.test(value)) return value;
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5273/api';
+  return `${apiBase.replace(/\/api\/?$/, '')}${value.startsWith('/') ? '' : '/'}${value}`;
+};
 
 interface ChiTietPublicResponse {
   maChiTiet: number;
@@ -39,8 +39,7 @@ interface ChiTietPublicResponse {
 const ArtworkDetailSection: React.FC<ArtworkDetailSectionProps> = ({ 
   artworkId, 
   artworkDescription, 
-  artworkName,
-  artworkContents = []
+  artworkName
 }) => {
   const [detail, setDetail] = useState<ChiTietPublicResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -78,8 +77,7 @@ const ArtworkDetailSection: React.FC<ArtworkDetailSectionProps> = ({
     );
   }
 
-  // Show section if there's any content (description, artworkContents, or detail)
-  const hasAnyContent = artworkDescription || artworkContents.length > 0 || detail;
+  const hasAnyContent = artworkDescription || detail;
   
   if (!hasAnyContent) {
     return null;
@@ -122,7 +120,7 @@ const ArtworkDetailSection: React.FC<ArtworkDetailSectionProps> = ({
       <h2 className="detail-section-title">Câu Chuyện & Chi Tiết Tác Phẩm</h2>
       
       {/* Phần mô tả ngắn từ artwork.moTa */}
-      {(artworkDescription || artworkContents.length > 0) && (
+      {artworkDescription && (
         <div className="artwork-basic-description">
           {artworkDescription && (
             <div className="original-description">
@@ -130,17 +128,6 @@ const ArtworkDetailSection: React.FC<ArtworkDetailSectionProps> = ({
             </div>
           )}
           
-          {/* Render approved additional contents */}
-          {artworkContents.length > 0 && (
-            <div className="additional-contents">
-              {artworkContents.map(content => (
-                <div key={content.maNoiDung} className="content-item">
-                  {content.tieuDe && <h4>{content.tieuDe}</h4>}
-                  {content.moTa && <p>{content.moTa}</p>}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
       
@@ -240,7 +227,7 @@ const ArtworkDetailSection: React.FC<ArtworkDetailSectionProps> = ({
               <div className="painter-quick-card">
                 <div className="painter-avatar">
                   {detail.avatarHoaSi ? (
-                    <img src={detail.avatarHoaSi} alt={detail.tenHoaSi} />
+                    <img src={resolveContentImage(detail.avatarHoaSi)} alt={detail.tenHoaSi} />
                   ) : (
                     <div className="avatar-placeholder">
                       {detail.tenHoaSi.charAt(0)}

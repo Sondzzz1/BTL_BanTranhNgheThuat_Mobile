@@ -242,26 +242,6 @@ export interface HuyHoaDonRequest {
   lyDo: string;
 }
 
-// Nội dung
-export interface NoiDungResponse {
-  id: number;
-  tieuDe: string;
-  noiDung: string;
-  loai: string;
-  ngayTao: string;
-}
-
-export interface TaoNoiDungRequest {
-  tieuDe: string;
-  noiDung: string;
-  loai: string;
-}
-
-export interface CapNhatNoiDungRequest {
-  tieuDe: string;
-  noiDung: string;
-}
-
 // Báo cáo
 export interface DoanhThuTheoThangResponse {
   thang: number;
@@ -701,30 +681,6 @@ export const adminService = {
   }): Promise<HoaDonResponse[]> {
     const response = await apiClient.get('/admin/hoa-don/tim-kiem', { params });
     return response.data;
-  },
-
-  // ================================================================
-  // QUẢN LÝ NỘI DUNG
-  // ================================================================
-
-  async getAllNoiDung(loai?: string): Promise<NoiDungResponse[]> {
-    const response = await apiClient.get('/admin/noi-dung/get-all', {
-      params: { loai },
-    });
-    return response.data;
-  },
-
-  async taoNoiDung(request: TaoNoiDungRequest): Promise<number> {
-    const response = await apiClient.post('/admin/noi-dung/create', request);
-    return response.data.maNoiDung;
-  },
-
-  async capNhatNoiDung(id: number, request: CapNhatNoiDungRequest): Promise<void> {
-    await apiClient.put(`/admin/noi-dung/${id}/update`, request);
-  },
-
-  async xoaNoiDung(id: number): Promise<void> {
-    await apiClient.delete(`/admin/noi-dung/${id}/delete`);
   },
 
   // ================================================================

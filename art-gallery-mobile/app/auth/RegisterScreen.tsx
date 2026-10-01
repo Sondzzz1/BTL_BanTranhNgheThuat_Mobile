@@ -15,9 +15,10 @@ import { useAuth } from '../../context/AuthContext';
 
 interface RegisterScreenProps {
   navigation: any;
+  route: any;
 }
 
-export default function RegisterScreen({ navigation }: RegisterScreenProps) {
+export default function RegisterScreen({ navigation, route }: RegisterScreenProps) {
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     tenDangNhap: '',
@@ -104,8 +105,18 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
         formData.email.trim() || undefined,
         formData.diaChi.trim() || undefined
       );
-      // Navigation sẽ tự động chuyển sang MainTabs do AuthContext
-      Alert.alert('Thành công', 'Đăng ký tài khoản thành công!');
+      const returnTo = route.params?.returnTo;
+      Alert.alert('Thành công', 'Đăng ký tài khoản thành công!', [
+        {
+          text: 'Tiếp tục',
+          onPress: () => navigation.reset({
+            index: returnTo?.screen ? 1 : 0,
+            routes: returnTo?.screen
+              ? [{ name: 'MainTabs' }, { name: returnTo.screen, params: returnTo.params }]
+              : [{ name: 'MainTabs' }],
+          }),
+        },
+      ]);
     } catch (error: any) {
       console.error('Register error:', error);
       Alert.alert(

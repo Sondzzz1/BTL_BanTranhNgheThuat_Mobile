@@ -323,6 +323,9 @@ export default function ProfileScreen() {
       {/* Information & Services */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Thông tin & Dịch vụ</Text>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('ArtServices')}>
+          <Text style={styles.actionButtonText}>✦ Dịch vụ nghệ thuật</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('News')}>
           <Text style={styles.actionButtonText}>📰 Tin tức & Sự kiện</Text>
         </TouchableOpacity>

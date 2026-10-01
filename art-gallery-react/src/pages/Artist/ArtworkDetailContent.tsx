@@ -33,12 +33,22 @@ interface ChiTietTacPham {
   tenNguoiDuyet?: string;
 }
 
+type ImageField = 'hinhAnh1' | 'hinhAnh2' | 'hinhAnh3' | 'hinhAnh4';
+
+const resolveContentImage = (value: string) => {
+  if (!value || /^(https?:|data:|blob:)/i.test(value)) return value;
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5273/api';
+  return `${apiBase.replace(/\/api\/?$/, '')}${value.startsWith('/') ? '' : '/'}${value}`;
+};
+
 const ArtworkDetailContent: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [chiTiet, setChiTiet] = useState<ChiTietTacPham | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState<ImageField | null>(null);
+  const [imageErrors, setImageErrors] = useState<Partial<Record<ImageField, boolean>>>({});
   const [formData, setFormData] = useState({
     cauChuyenSangTac: '',
     yNghiaNghiThuat: '',
@@ -145,6 +155,77 @@ const ArtworkDetailContent: React.FC = () => {
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Không thể xóa chi tiết');
     }
+  };
+
+  const handleImageUpload = async (field: ImageField, file?: File) => {
+    if (!id || !file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      alert('Chỉ chấp nhận ảnh JPG, PNG hoặc WEBP.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ảnh không được vượt quá 5 MB.');
+      return;
+    }
+
+    const body = new FormData();
+    body.append('file', file);
+    setUploadingImage(field);
+    try {
+      const response = await apiClient.post(`/hoa-si/tac-pham/${id}/chi-tiet/anh`, body, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setFormData(current => ({ ...current, [field]: response.data.url }));
+      setImageErrors(current => ({ ...current, [field]: false }));
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Không thể tải ảnh lên');
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
+  const renderImageUpload = (field: ImageField, label: string) => {
+    const value = formData[field];
+    return (
+      <div className="form-group">
+        <label>{label}</label>
+        {isEditing || !chiTiet ? (
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            disabled={uploadingImage !== null}
+            onChange={(event) => {
+              void handleImageUpload(field, event.target.files?.[0]);
+              event.currentTarget.value = '';
+            }}
+          />
+        ) : null}
+        {uploadingImage === field && <p className="upload-status">Đang tải ảnh...</p>}
+        {value && !imageErrors[field] ? (
+          <div className="image-preview-wrap">
+            <img
+              src={resolveContentImage(value)}
+              alt={label}
+              className="image-preview"
+              onError={() => setImageErrors(current => ({ ...current, [field]: true }))}
+            />
+            {(isEditing || !chiTiet) && (
+              <button
+                type="button"
+                className="btn-remove-image"
+                onClick={() => setFormData(current => ({ ...current, [field]: '' }))}
+              >
+                Xóa ảnh
+              </button>
+            )}
+          </div>
+        ) : value ? (
+          <div className="image-placeholder">Không thể hiển thị ảnh đã lưu</div>
+        ) : (
+          <div className="image-placeholder">Chưa chọn ảnh</div>
+        )}
+      </div>
+    );
   };
 
   const getTrangThaiClass = (trangThai: number) => {
@@ -291,9 +372,8 @@ const ArtworkDetailContent: React.FC = () => {
               <input
                 type="text"
                 value={formData.kichThuoc}
-                onChange={(e) => setFormData({ ...formData, kichThuoc: e.target.value })}
-                placeholder="Ví dụ: 80cm x 120cm"
-                disabled={!isEditing && chiTiet !== null}
+                readOnly
+                title="Kích thước được quản lý tại thông tin tác phẩm"
               />
             </div>
 
@@ -317,9 +397,8 @@ const ArtworkDetailContent: React.FC = () => {
               <input
                 type="text"
                 value={formData.chatLieu}
-                onChange={(e) => setFormData({ ...formData, chatLieu: e.target.value })}
-                placeholder="Ví dụ: Sơn dầu trên canvas"
-                disabled={!isEditing && chiTiet !== null}
+                readOnly
+                title="Chất liệu được quản lý tại thông tin tác phẩm"
               />
             </div>
 
@@ -328,9 +407,8 @@ const ArtworkDetailContent: React.FC = () => {
               <input
                 type="text"
                 value={formData.chatLieuKhung}
-                onChange={(e) => setFormData({ ...formData, chatLieuKhung: e.target.value })}
-                placeholder="Ví dụ: Khung gỗ sồi tự nhiên"
-                disabled={!isEditing && chiTiet !== null}
+                readOnly
+                title="Chất liệu khung được quản lý tại thông tin tác phẩm"
               />
             </div>
           </div>
@@ -349,65 +427,16 @@ const ArtworkDetailContent: React.FC = () => {
 
         <div className="form-section">
           <h3><i className="ti-gallery"></i> Hình Ảnh Bổ Sung (Tối đa 4 ảnh)</h3>
+          <p className="section-hint">Tải ảnh JPG, PNG hoặc WEBP, tối đa 5 MB mỗi ảnh. Ảnh được lưu thành tệp thật, không lưu Base64 trong cơ sở dữ liệu.</p>
           
           <div className="form-row">
-            <div className="form-group">
-              <label>Hình Ảnh 1</label>
-              <input
-                type="text"
-                value={formData.hinhAnh1}
-                onChange={(e) => setFormData({ ...formData, hinhAnh1: e.target.value })}
-                placeholder="URL hình ảnh 1"
-                disabled={!isEditing && chiTiet !== null}
-              />
-              {formData.hinhAnh1 && (
-                <img src={formData.hinhAnh1} alt="Preview 1" className="image-preview" />
-              )}
-            </div>
-
-            <div className="form-group">
-              <label>Hình Ảnh 2</label>
-              <input
-                type="text"
-                value={formData.hinhAnh2}
-                onChange={(e) => setFormData({ ...formData, hinhAnh2: e.target.value })}
-                placeholder="URL hình ảnh 2"
-                disabled={!isEditing && chiTiet !== null}
-              />
-              {formData.hinhAnh2 && (
-                <img src={formData.hinhAnh2} alt="Preview 2" className="image-preview" />
-              )}
-            </div>
+            {renderImageUpload('hinhAnh1', 'Hình Ảnh 1')}
+            {renderImageUpload('hinhAnh2', 'Hình Ảnh 2')}
           </div>
 
           <div className="form-row">
-            <div className="form-group">
-              <label>Hình Ảnh 3</label>
-              <input
-                type="text"
-                value={formData.hinhAnh3}
-                onChange={(e) => setFormData({ ...formData, hinhAnh3: e.target.value })}
-                placeholder="URL hình ảnh 3"
-                disabled={!isEditing && chiTiet !== null}
-              />
-              {formData.hinhAnh3 && (
-                <img src={formData.hinhAnh3} alt="Preview 3" className="image-preview" />
-              )}
-            </div>
-
-            <div className="form-group">
-              <label>Hình Ảnh 4</label>
-              <input
-                type="text"
-                value={formData.hinhAnh4}
-                onChange={(e) => setFormData({ ...formData, hinhAnh4: e.target.value })}
-                placeholder="URL hình ảnh 4"
-                disabled={!isEditing && chiTiet !== null}
-              />
-              {formData.hinhAnh4 && (
-                <img src={formData.hinhAnh4} alt="Preview 4" className="image-preview" />
-              )}
-            </div>
+            {renderImageUpload('hinhAnh3', 'Hình Ảnh 3')}
+            {renderImageUpload('hinhAnh4', 'Hình Ảnh 4')}
           </div>
         </div>
 

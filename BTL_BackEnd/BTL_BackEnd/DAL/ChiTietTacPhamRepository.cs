@@ -22,8 +22,17 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        using var command = new SqlCommand("sp_HoaSi_TaoChiTietTacPham", connection);
-        command.CommandType = System.Data.CommandType.StoredProcedure;
+        const string sql = @"INSERT INTO ChiTietTacPham
+            (MaTacPham,CauChuyenSangTac,YNghiaNghiThuat,KyThuatThucHien,CamHungSangTao,ThongTinBosung,
+             KichThuoc,ChatLieu,ChatLieuKhung,NamSangTac,DiaDiemSangTac,HinhAnh1,HinhAnh2,HinhAnh3,HinhAnh4,
+             TrangThai,LyDoTuChoi,NgayTao,NgayCapNhat,NgayDuyet,MaNguoiDuyet)
+            SELECT @MaTacPham,@CauChuyenSangTac,@YNghiaNghiThuat,@KyThuatThucHien,@CamHungSangTao,@ThongTinBosung,
+                   @KichThuoc,@ChatLieu,@ChatLieuKhung,@NamSangTac,@DiaDiemSangTac,@HinhAnh1,@HinhAnh2,@HinhAnh3,@HinhAnh4,
+                   0,NULL,SYSUTCDATETIME(),NULL,NULL,NULL
+            WHERE EXISTS (SELECT 1 FROM TacPham WHERE MaTacPham=@MaTacPham AND MaHoaSi=@MaHoaSi AND MaYeuCauVeTranh IS NULL)
+              AND NOT EXISTS (SELECT 1 FROM ChiTietTacPham WHERE MaTacPham=@MaTacPham);
+            SELECT CASE WHEN @@ROWCOUNT=1 THEN CAST(SCOPE_IDENTITY() AS INT) ELSE 0 END;";
+        using var command = new SqlCommand(sql, connection);
 
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
@@ -54,8 +63,16 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        using var command = new SqlCommand("sp_HoaSi_CapNhatChiTietTacPham", connection);
-        command.CommandType = System.Data.CommandType.StoredProcedure;
+        const string sql = @"UPDATE c SET
+            CauChuyenSangTac=@CauChuyenSangTac, YNghiaNghiThuat=@YNghiaNghiThuat,
+            KyThuatThucHien=@KyThuatThucHien, CamHungSangTao=@CamHungSangTao,
+            ThongTinBosung=@ThongTinBosung, KichThuoc=@KichThuoc, ChatLieu=@ChatLieu,
+            ChatLieuKhung=@ChatLieuKhung, NamSangTac=@NamSangTac, DiaDiemSangTac=@DiaDiemSangTac,
+            HinhAnh1=@HinhAnh1,HinhAnh2=@HinhAnh2,HinhAnh3=@HinhAnh3,HinhAnh4=@HinhAnh4,
+            TrangThai=0,LyDoTuChoi=NULL,NgayCapNhat=SYSUTCDATETIME(),NgayDuyet=NULL,MaNguoiDuyet=NULL
+            FROM ChiTietTacPham c INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
+            WHERE c.MaTacPham=@MaTacPham AND t.MaHoaSi=@MaHoaSi AND t.MaYeuCauVeTranh IS NULL;";
+        using var command = new SqlCommand(sql, connection);
 
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
@@ -74,8 +91,7 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
         command.Parameters.AddWithValue("@HinhAnh3", (object?)chiTiet.HinhAnh3 ?? DBNull.Value);
         command.Parameters.AddWithValue("@HinhAnh4", (object?)chiTiet.HinhAnh4 ?? DBNull.Value);
 
-        await command.ExecuteNonQueryAsync();
-        return true;
+        return await command.ExecuteNonQueryAsync() == 1;
     }
 
     // ================================================================
@@ -86,14 +102,13 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        using var command = new SqlCommand("sp_HoaSi_XoaChiTietTacPham", connection);
-        command.CommandType = System.Data.CommandType.StoredProcedure;
-
+        const string sql = @"DELETE c FROM ChiTietTacPham c
+            INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
+            WHERE c.MaTacPham=@MaTacPham AND t.MaHoaSi=@MaHoaSi AND t.MaYeuCauVeTranh IS NULL;";
+        using var command = new SqlCommand(sql, connection);
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
-
-        await command.ExecuteNonQueryAsync();
-        return true;
+        return await command.ExecuteNonQueryAsync() == 1;
     }
 
     // ================================================================
@@ -168,16 +183,18 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        using var command = new SqlCommand("sp_Admin_DuyetChiTietTacPham", connection);
-        command.CommandType = System.Data.CommandType.StoredProcedure;
+        const string sql = @"UPDATE c SET TrangThai=@TrangThai,
+            LyDoTuChoi=@LyDoTuChoi,NgayDuyet=SYSUTCDATETIME(),MaNguoiDuyet=@MaNguoiDuyet
+            FROM ChiTietTacPham c INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
+            WHERE c.MaTacPham=@MaTacPham AND c.TrangThai=0 AND t.MaYeuCauVeTranh IS NULL;";
+        using var command = new SqlCommand(sql, connection);
 
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
         command.Parameters.AddWithValue("@MaNguoiDuyet", maNguoiDuyet);
-        command.Parameters.AddWithValue("@PheDuyet", pheDuyet);
+        command.Parameters.AddWithValue("@TrangThai", pheDuyet ? 1 : 2);
         command.Parameters.AddWithValue("@LyDoTuChoi", (object?)lyDoTuChoi ?? DBNull.Value);
 
-        await command.ExecuteNonQueryAsync();
-        return true;
+        return await command.ExecuteNonQueryAsync() == 1;
     }
 
     // ================================================================

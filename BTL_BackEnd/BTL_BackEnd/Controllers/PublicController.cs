@@ -14,17 +14,20 @@ public class PublicController : ControllerBase
     private readonly IHoaSiRepository _hoaSiRepo;
     private readonly IDanhMucRepository _danhMucRepo;
     private readonly IBaiVietRepository _baiVietRepo;
+    private readonly ITaiKhoanRepository _taiKhoanRepo;
 
     public PublicController(
         ITacPhamRepository tacPhamRepo,
         IHoaSiRepository hoaSiRepo,
         IDanhMucRepository danhMucRepo,
-        IBaiVietRepository baiVietRepo)
+        IBaiVietRepository baiVietRepo,
+        ITaiKhoanRepository taiKhoanRepo)
     {
         _tacPhamRepo = tacPhamRepo;
         _hoaSiRepo = hoaSiRepo;
         _danhMucRepo = danhMucRepo;
         _baiVietRepo = baiVietRepo;
+        _taiKhoanRepo = taiKhoanRepo;
     }
 
     // Xem tranh
@@ -305,31 +308,15 @@ public class PublicController : ControllerBase
 
     // Xem bài viết
     [HttpGet("bai-viet")]
-    public async Task<ActionResult<List<BaiVietResponse>>> GetAllBaiViet()
+    public async Task<ActionResult<PagedBaiVietResponse>> GetAllBaiViet([FromQuery] string? keyword=null,[FromQuery] int? maDanhMuc=null,[FromQuery] int page=1,[FromQuery] int pageSize=10)
     {
         try
         {
-            var baiVietList = await _baiVietRepo.GetAll();
-            var hoaSis = await _hoaSiRepo.GetAll();
-            var dictHoaSi = hoaSis.ToDictionary(h => h.MaHoaSi, h => h.TenHoaSi);
-
-            var result = baiVietList
-                .Where(bv => bv.TrangThai == 2) // Published
-                .Select(bv => new BaiVietResponse
-                {
-                    MaBaiViet = bv.MaBaiViet,
-                    TieuDe = bv.TieuDe,
-                    NoiDung = bv.NoiDung,
-                    MaHoaSi = bv.MaHoaSi,
-                    TenHoaSi = dictHoaSi.TryGetValue(bv.MaHoaSi, out var ten) ? ten : "",
-                    NgayDang = bv.NgayDang,
-                    TrangThai = bv.TrangThai,
-                    LyDo = bv.LyDo,
-                    AnhTieuDe = bv.AnhTieuDe
-                })
-                .ToList();
-
-            return Ok(result);
+            page=Math.Max(1,page);pageSize=Math.Clamp(pageSize,1,50);
+            var data=await _baiVietRepo.GetPublished(keyword,maDanhMuc,page,pageSize);
+            var result=new List<BaiVietResponse>();
+            foreach(var item in data.Items)result.Add(await MapPublicArticle(item,false));
+            return Ok(new PagedBaiVietResponse{Items=result,Total=data.Total,Page=page,PageSize=pageSize});
         }
         catch (Exception ex)
         {
@@ -337,38 +324,46 @@ public class PublicController : ControllerBase
         }
     }
 
-    [HttpGet("bai-viet/{id}")]
+    [HttpGet("bai-viet/{id:int}")]
     public async Task<ActionResult<BaiVietResponse>> GetBaiVietById(int id)
     {
         try
         {
-            var baiViet = await _baiVietRepo.GetById(id);
+            var baiViet = await _baiVietRepo.GetPublishedById(id);
             if (baiViet == null)
                 return NotFound(new { message = "Không tìm thấy bài viết" });
-            if (baiViet.TrangThai != 2)
-                return NotFound(new { message = "Bài viết không khả dụng" });
-
-            var hoaSi = await _hoaSiRepo.GetById(baiViet.MaHoaSi);
-
-            var result = new BaiVietResponse
-            {
-                MaBaiViet = baiViet.MaBaiViet,
-                TieuDe = baiViet.TieuDe,
-                NoiDung = baiViet.NoiDung,
-                MaHoaSi = baiViet.MaHoaSi,
-                TenHoaSi = hoaSi?.TenHoaSi ?? "",
-                NgayDang = baiViet.NgayDang,
-                TrangThai = baiViet.TrangThai,
-                LyDo = baiViet.LyDo,
-                AnhTieuDe = baiViet.AnhTieuDe
-            };
-
-            return Ok(result);
+            return Ok(await MapPublicArticle(baiViet,true));
         }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
         }
+    }
+
+    [HttpGet("bai-viet/danh-muc")]
+    public async Task<ActionResult<List<DanhMucBaiVietResponse>>> GetDanhMucBaiViet() => Ok((await _baiVietRepo.GetCategories()).Select(x=>new DanhMucBaiVietResponse{MaDanhMucBaiViet=x.MaDanhMucBaiViet,TenDanhMuc=x.TenDanhMuc,Slug=x.Slug}));
+
+    [HttpGet("bai-viet/{id:int}/lien-quan")]
+    public async Task<ActionResult<List<BaiVietResponse>>> GetBaiVietLienQuan(int id)
+    {
+        var current=await _baiVietRepo.GetPublishedById(id);if(current==null)return NotFound();
+        var data=await _baiVietRepo.GetPublished(null,current.MaDanhMucBaiViet,1,6);
+        var result=new List<BaiVietResponse>();foreach(var item in data.Items.Where(x=>x.MaBaiViet!=id).Take(5))result.Add(await MapPublicArticle(item,false));return Ok(result);
+    }
+
+    private async Task<BaiVietResponse> MapPublicArticle(BaiViet item,bool includeRelations)
+    {
+        string author="";
+        if(item.MaHoaSi.HasValue)author=(await _hoaSiRepo.GetById(item.MaHoaSi.Value))?.TenHoaSi??"";
+        if(string.IsNullOrWhiteSpace(author)&&item.MaTaiKhoanTacGia.HasValue)author=(await _taiKhoanRepo.GetById(item.MaTaiKhoanTacGia.Value))?.TenDangNhap??"";
+        var category=(await _baiVietRepo.GetCategories()).FirstOrDefault(x=>x.MaDanhMucBaiViet==item.MaDanhMucBaiViet)?.TenDanhMuc;
+        var response=new BaiVietResponse{MaBaiViet=item.MaBaiViet,TieuDe=item.TieuDe,NoiDung=item.NoiDung,TomTat=item.TomTat,AnhTieuDe=item.AnhTieuDe,MaHoaSi=item.MaHoaSi,MaTaiKhoanTacGia=item.MaTaiKhoanTacGia,TenHoaSi=author,TenTacGia=author,NgayDang=item.NgayDang,NgayXuatBan=item.NgayXuatBan,NgayCapNhat=item.NgayCapNhat,TrangThai=2,MaDanhMucBaiViet=item.MaDanhMucBaiViet,TenDanhMuc=category,NgayBatDauSuKien=item.NgayBatDauSuKien,NgayKetThucSuKien=item.NgayKetThucSuKien,DiaDiemSuKien=item.DiaDiemSuKien,NguonNoiDung=item.NguonNoiDung};
+        if(includeRelations)
+        {
+            response.HinhAnhNoiDung=(await _baiVietRepo.GetImages(item.MaBaiViet)).Select(x=>new HinhAnhBaiVietResponse{MaHinhAnh=x.MaHinhAnh,DuongDan=x.DuongDan,ChuThich=x.ChuThich,ThuTu=x.ThuTu}).ToList();
+            foreach(var art in await _baiVietRepo.GetPublicLinkedArtworks(item.MaBaiViet))response.TacPhamLienQuan.Add(new TacPhamLienKetResponse{MaTacPham=art.MaTacPham,TenTacPham=art.TenTacPham,HinhAnh=art.HinhAnh,Gia=art.Gia,TenHoaSi=(await _hoaSiRepo.GetById(art.MaHoaSi))?.TenHoaSi??""});
+        }
+        return response;
     }
 
     // Danh mục

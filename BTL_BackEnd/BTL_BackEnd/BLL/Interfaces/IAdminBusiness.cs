@@ -43,9 +43,16 @@ public interface IAdminBusiness
     Task<bool> DuyetTacPhamChinhSua(int maChinhSua, DuyetTacPhamChinhSuaRequest request);
     
     Task<List<BaiVietResponse>> GetAllBaiViet(byte? trangThai = null);
+    Task<BaiVietResponse?> GetBaiVietById(int id);
+    Task<int> TaoBaiViet(int maTaiKhoan, TaoBaiVietRequest request);
+    Task<bool> CapNhatBaiViet(int maTaiKhoan, int id, CapNhatBaiVietRequest request);
     Task<bool> DuyetBaiViet(int id, DuyetBaiVietRequest request);
+    Task<bool> XuatBanBaiViet(int maTaiKhoan, int id);
     Task<bool> ArchiveBaiViet(int id);
     Task<bool> XoaBaiViet(int id);
+    Task<List<DanhMucBaiVietResponse>> GetDanhMucBaiViet();
+    Task<int> TaoDanhMucBaiViet(CapNhatDanhMucBaiVietRequest request);
+    Task<bool> CapNhatDanhMucBaiViet(int id, CapNhatDanhMucBaiVietRequest request);
     Task<List<BaiVietResponse>> TimKiemBaiViet(string? keyword, int? maHoaSi, bool? trangThai, DateTime? tuNgay, DateTime? denNgay, int pageNumber, int pageSize);
     
     Task<List<DanhMucResponse>> GetAllDanhMuc();

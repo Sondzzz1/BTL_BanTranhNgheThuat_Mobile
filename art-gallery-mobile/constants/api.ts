@@ -73,4 +73,8 @@ export const API_ENDPOINTS = {
   CUSTOM_ART_MY: '/tranh-theo-yeu-cau/yeu-cau-cua-toi',
   CUSTOM_ART_DETAIL: (id: number) => `/tranh-theo-yeu-cau/yeu-cau/${id}`,
   CUSTOM_ART_CANCEL: (id: number) => `/tranh-theo-yeu-cau/yeu-cau/${id}/huy`,
+
+  // Tư vấn nghệ thuật
+  CONSULTATION_BOOK: '/consultation/book',
+  CONSULTATION_MY: '/consultation/my-bookings',
 };

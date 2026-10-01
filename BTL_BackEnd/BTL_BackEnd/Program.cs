@@ -86,6 +86,7 @@ builder.Services.AddScoped<IChiTietTacPhamBusiness, ChiTietTacPhamBusiness>();
 builder.Services.AddScoped<IHoanTraBusiness, HoanTraBusiness>();
 builder.Services.AddScoped<IDanhGiaBusiness, DanhGiaBusiness>();
 builder.Services.AddSingleton<ReturnFileHelper>();
+builder.Services.AddSingleton<ContentImageFileHelper>();
 builder.Services.AddScoped<ICustomArtBusiness, CustomArtBusiness>();
 builder.Services.AddScoped<IConsultationBusiness, ConsultationBusiness>();
 builder.Services.AddScoped<DoAn2_BackEnd.Helpers.CommissionFileHelper>();

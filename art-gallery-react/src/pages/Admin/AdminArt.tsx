@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/api';
 import { adminService, TacPhamHoaSiResponse } from '../../services/adminService';
 import { formatVnd } from '../../utils/currency';
+import './AdminArt.css';
 
 const STATUS_TEXT: Record<number, string> = {
     0: 'Chờ duyệt',
@@ -33,12 +34,41 @@ interface TacPhamChinhSuaResponse {
     lyDo?: string;
 }
 
+interface ArtworkDetailResponse {
+    maChiTiet: number;
+    maTacPham: number;
+    tenTacPham: string;
+    maHoaSi: number;
+    tenHoaSi: string;
+    cauChuyenSangTac?: string;
+    yNghiaNghiThuat?: string;
+    kyThuatThucHien?: string;
+    camHungSangTao?: string;
+    thongTinBosung?: string;
+    kichThuoc?: string;
+    chatLieu?: string;
+    chatLieuKhung?: string;
+    namSangTac?: number;
+    diaDiemSangTac?: string;
+    hinhAnh1?: string;
+    hinhAnh2?: string;
+    hinhAnh3?: string;
+    hinhAnh4?: string;
+    trangThai: number;
+    trangThaiText: string;
+    lyDoTuChoi?: string;
+}
+
 const AdminArt: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'artworks' | 'edits'>('artworks');
     const [artworks, setArtworks] = useState<TacPhamHoaSiResponse[]>([]);
     const [edits, setEdits] = useState<TacPhamChinhSuaResponse[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<number>(-1);
+    const [selectedArtwork, setSelectedArtwork] = useState<TacPhamHoaSiResponse | null>(null);
+    const [selectedArtworkDetail, setSelectedArtworkDetail] = useState<ArtworkDetailResponse | null>(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [detailMessage, setDetailMessage] = useState('');
 
     useEffect(() => {
         if (activeTab === 'artworks') {
@@ -80,6 +110,8 @@ const AdminArt: React.FC = () => {
         if (!window.confirm('Phê duyệt tác phẩm này?')) return;
         try {
             await adminService.approveArtwork(id, true);
+            setSelectedArtwork(null);
+            setSelectedArtworkDetail(null);
             await loadArtworks();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Có lỗi xảy ra khi duyệt tác phẩm.');
@@ -87,13 +119,79 @@ const AdminArt: React.FC = () => {
     };
 
     const handleReject = async (id: number) => {
-        const lyDo = window.prompt('Nhập lý do từ chối (tuỳ chọn):') || undefined;
-        if (lyDo === null) return; // user bấm Cancel
+        const input = window.prompt('Nhập lý do từ chối (tuỳ chọn):');
+        if (input === null) return;
+        const lyDo = input.trim() || undefined;
         try {
             await adminService.duyetTacPham(id, { pheDuyet: false, lyDo });
+            setSelectedArtwork(null);
+            setSelectedArtworkDetail(null);
             await loadArtworks();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Có lỗi xảy ra khi từ chối tác phẩm.');
+        }
+    };
+
+    const openArtworkDetail = async (artwork: TacPhamHoaSiResponse) => {
+        setSelectedArtwork(artwork);
+        setSelectedArtworkDetail(null);
+        setDetailMessage('');
+        setDetailLoading(true);
+        try {
+            const response = await apiClient.get<ArtworkDetailResponse>(`/admin/chi-tiet-tac-pham/${artwork.maTacPham}`);
+            setSelectedArtworkDetail(response.data);
+        } catch (error: any) {
+            if (error?.response?.status === 404) {
+                setDetailMessage('Họa sĩ chưa cung cấp nội dung chi tiết riêng cho tác phẩm này.');
+            } else {
+                setDetailMessage(error?.response?.data?.message || 'Không thể tải nội dung chi tiết tác phẩm.');
+            }
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    const closeArtworkDetail = () => {
+        setSelectedArtwork(null);
+        setSelectedArtworkDetail(null);
+        setDetailMessage('');
+    };
+
+    const refreshSelectedDetail = async () => {
+        if (!selectedArtwork) return;
+        const response = await apiClient.get<ArtworkDetailResponse>(`/admin/chi-tiet-tac-pham/${selectedArtwork.maTacPham}`);
+        setSelectedArtworkDetail(response.data);
+    };
+
+    const handleApproveDetailContent = async () => {
+        if (!selectedArtworkDetail || !window.confirm('Phê duyệt nội dung chi tiết và thư viện ảnh này?')) return;
+        try {
+            await apiClient.put(`/admin/chi-tiet-tac-pham/${selectedArtworkDetail.maTacPham}/duyet`, {
+                pheDuyet: true,
+                lyDoTuChoi: null,
+            });
+            await refreshSelectedDetail();
+        } catch (error: any) {
+            alert(error?.response?.data?.message || 'Không thể duyệt nội dung chi tiết.');
+        }
+    };
+
+    const handleRejectDetailContent = async () => {
+        if (!selectedArtworkDetail) return;
+        const reason = window.prompt('Nhập lý do từ chối nội dung chi tiết:');
+        if (reason === null) return;
+        if (!reason.trim()) {
+            alert('Vui lòng nhập lý do từ chối nội dung chi tiết.');
+            return;
+        }
+        try {
+            await apiClient.put(`/admin/chi-tiet-tac-pham/${selectedArtworkDetail.maTacPham}/duyet`, {
+                pheDuyet: false,
+                lyDoTuChoi: reason.trim(),
+            });
+            await refreshSelectedDetail();
+        } catch (error: any) {
+            alert(error?.response?.data?.message || 'Không thể từ chối nội dung chi tiết.');
         }
     };
 
@@ -175,6 +273,18 @@ const AdminArt: React.FC = () => {
     const pendingEdits = edits.filter(e => e.trangThai === 0);
     const approvedEdits = edits.filter(e => e.trangThai === 1);
     const rejectedEdits = edits.filter(e => e.trangThai === 2);
+    const selectedImages = selectedArtwork
+        ? [
+            selectedArtwork.hinhAnh,
+            selectedArtworkDetail?.hinhAnh1,
+            selectedArtworkDetail?.hinhAnh2,
+            selectedArtworkDetail?.hinhAnh3,
+            selectedArtworkDetail?.hinhAnh4,
+        ]
+            .map((value) => value?.trim())
+            .filter((value): value is string => Boolean(value))
+            .filter((value, index, values) => values.indexOf(value) === index)
+        : [];
 
     return (
         <div id="art" className="page">
@@ -292,23 +402,15 @@ const AdminArt: React.FC = () => {
                                             </span>
                                         </td>
                                         <td>
+                                            <button
+                                                className="artwork-detail-btn"
+                                                onClick={() => openArtworkDetail(artwork)}
+                                                title={artwork.trangThai === 0 ? 'Xem đầy đủ trước khi duyệt' : 'Xem chi tiết tác phẩm'}
+                                            >
+                                                <i className="ti-eye"></i> {artwork.trangThai === 0 ? 'Xem & duyệt' : 'Chi tiết'}
+                                            </button>
                                             {artwork.trangThai === 0 && (
-                                                <>
-                                                    <button
-                                                        className="approve-btn"
-                                                        onClick={() => handleApprove(artwork.maTacPham)}
-                                                        title="Duyệt"
-                                                    >
-                                                        <i className="ti-check"></i> Duyệt
-                                                    </button>
-                                                    <button
-                                                        className="reject-btn"
-                                                        onClick={() => handleReject(artwork.maTacPham)}
-                                                        title="Từ chối"
-                                                    >
-                                                        <i className="ti-close"></i> Từ chối
-                                                    </button>
-                                                </>
+                                                <span className="review-first-hint">Xem chi tiết trước khi xử lý</span>
                                             )}
                                             {artwork.trangThai === 1 && (
                                                 <button
@@ -516,8 +618,127 @@ const AdminArt: React.FC = () => {
                     )}
                 </>
             )}
+
+            {selectedArtwork && (
+                <div className="artwork-review-overlay" onClick={closeArtworkDetail}>
+                    <div className="artwork-review-dialog" onClick={(event) => event.stopPropagation()}>
+                        <button className="artwork-review-close" type="button" onClick={closeArtworkDetail} aria-label="Đóng">
+                            &times;
+                        </button>
+
+                        <div className="artwork-review-header">
+                            <div>
+                                <span className="artwork-review-eyebrow">HỒ SƠ TÁC PHẨM #{selectedArtwork.maTacPham}</span>
+                                <h3>{selectedArtwork.tenTacPham}</h3>
+                                <p>Họa sĩ: <strong>{selectedArtwork.tenHoaSi || '-'}</strong></p>
+                            </div>
+                            <span className={`status ${STATUS_CLASS[selectedArtwork.trangThai] || ''}`}>
+                                {STATUS_TEXT[selectedArtwork.trangThai] || selectedArtwork.trangThaiText}
+                            </span>
+                        </div>
+
+                        <div className="artwork-review-body">
+                            <section className="artwork-review-section">
+                                <h4><i className="ti-info-alt"></i> Thông tin tác phẩm</h4>
+                                <div className="artwork-review-info-grid">
+                                    <div><span>Danh mục</span><strong>{selectedArtwork.tenDanhMuc || 'Chưa cập nhật'}</strong></div>
+                                    <div><span>Giá bán</span><strong>{formatPrice(selectedArtwork.gia)}</strong></div>
+                                    <div><span>Số lượng</span><strong>{selectedArtwork.soLuong}</strong></div>
+                                    <div><span>Kích thước</span><strong>{selectedArtwork.kichThuoc || selectedArtworkDetail?.kichThuoc || 'Chưa cập nhật'}</strong></div>
+                                    <div><span>Chất liệu</span><strong>{selectedArtwork.chatLieu || selectedArtworkDetail?.chatLieu || 'Chưa cập nhật'}</strong></div>
+                                    <div><span>Chất liệu khung</span><strong>{selectedArtwork.chatLieuKhung || selectedArtworkDetail?.chatLieuKhung || 'Chưa cập nhật'}</strong></div>
+                                </div>
+                                <div className="artwork-review-description">
+                                    <span>Mô tả của họa sĩ</span>
+                                    <p>{selectedArtwork.moTa || 'Họa sĩ chưa nhập mô tả.'}</p>
+                                </div>
+                            </section>
+
+                            <section className="artwork-review-section">
+                                <h4><i className="ti-gallery"></i> Thư viện hình ảnh ({selectedImages.length})</h4>
+                                {selectedImages.length > 0 ? (
+                                    <div className="artwork-review-images">
+                                        {selectedImages.map((url, index) => (
+                                            <a href={url} target="_blank" rel="noreferrer" key={url}>
+                                                <img
+                                                    src={url}
+                                                    alt={`${selectedArtwork.tenTacPham} ${index + 1}`}
+                                                    onError={(event) => {
+                                                        event.currentTarget.src = '/assets/images/no-image.svg';
+                                                    }}
+                                                />
+                                                <span>{index === 0 ? 'Ảnh đại diện' : `Ảnh bổ sung ${index}`}</span>
+                                            </a>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="artwork-review-empty">Họa sĩ chưa cung cấp hình ảnh.</div>
+                                )}
+                            </section>
+
+                            <section className="artwork-review-section">
+                                <div className="artwork-review-section-title-row">
+                                    <h4><i className="ti-write"></i> Nội dung chi tiết của họa sĩ</h4>
+                                    {selectedArtworkDetail && (
+                                        <span className={`detail-review-status detail-status-${selectedArtworkDetail.trangThai}`}>
+                                            {selectedArtworkDetail.trangThaiText}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {detailLoading ? (
+                                    <div className="artwork-review-empty">Đang tải nội dung chi tiết...</div>
+                                ) : selectedArtworkDetail ? (
+                                    <div className="artwork-review-content-list">
+                                        <DetailContent label="Câu chuyện sáng tác" value={selectedArtworkDetail.cauChuyenSangTac} />
+                                        <DetailContent label="Ý nghĩa nghệ thuật" value={selectedArtworkDetail.yNghiaNghiThuat} />
+                                        <DetailContent label="Kỹ thuật thực hiện" value={selectedArtworkDetail.kyThuatThucHien} />
+                                        <DetailContent label="Cảm hứng sáng tạo" value={selectedArtworkDetail.camHungSangTao} />
+                                        <DetailContent label="Thông tin bổ sung" value={selectedArtworkDetail.thongTinBosung} />
+                                        {selectedArtworkDetail.lyDoTuChoi && (
+                                            <div className="artwork-detail-reject-reason">
+                                                <strong>Lý do từ chối nội dung:</strong> {selectedArtworkDetail.lyDoTuChoi}
+                                            </div>
+                                        )}
+                                        {selectedArtworkDetail.trangThai === 0 && (
+                                            <div className="artwork-detail-actions">
+                                                <button type="button" className="approve-btn" onClick={handleApproveDetailContent}>
+                                                    <i className="ti-check"></i> Duyệt nội dung chi tiết
+                                                </button>
+                                                <button type="button" className="reject-btn" onClick={handleRejectDetailContent}>
+                                                    <i className="ti-close"></i> Từ chối nội dung
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="artwork-review-empty">{detailMessage || 'Chưa có nội dung chi tiết.'}</div>
+                                )}
+                            </section>
+                        </div>
+
+                        {selectedArtwork.trangThai === 0 && (
+                            <div className="artwork-review-footer">
+                                <button type="button" className="reject-btn" onClick={() => handleReject(selectedArtwork.maTacPham)}>
+                                    <i className="ti-close"></i> Từ chối tác phẩm
+                                </button>
+                                <button type="button" className="approve-btn" onClick={() => handleApprove(selectedArtwork.maTacPham)}>
+                                    <i className="ti-check"></i> Duyệt tác phẩm
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
+
+const DetailContent: React.FC<{ label: string; value?: string }> = ({ label, value }) => (
+    <div className="artwork-review-content-item">
+        <span>{label}</span>
+        <p>{value || 'Chưa cập nhật'}</p>
+    </div>
+);
 
 export default AdminArt;

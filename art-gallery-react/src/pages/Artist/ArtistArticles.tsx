@@ -3,7 +3,8 @@ import {
   artistDashboardService,
   BaiVietResponse,
   TaoBaiVietRequest,
-  CapNhatBaiVietRequest
+  CapNhatBaiVietRequest,
+  DanhMucBaiVietResponse
 } from '../../services/artistDashboardService';
 import './Artist.css';
 
@@ -21,15 +22,22 @@ const trangThaiLabel = (status: number) => {
 // ======================== FORM MODAL ========================
 interface BaiVietFormProps {
   initial?: BaiVietResponse | null;
-  onSubmit: (data: { tieuDe: string; noiDung: string; anhTieuDe: string }) => void;
+  categories: DanhMucBaiVietResponse[];
+  onSubmit: (data: TaoBaiVietRequest) => void;
   onCancel: () => void;
   submitting: boolean;
 }
 
-const BaiVietForm: React.FC<BaiVietFormProps> = ({ initial, onSubmit, onCancel, submitting }) => {
+const BaiVietForm: React.FC<BaiVietFormProps> = ({ initial, categories, onSubmit, onCancel, submitting }) => {
   const [tieuDe, setTieuDe] = useState(initial?.tieuDe || '');
   const [anhTieuDe, setAnhTieuDe] = useState(initial?.anhTieuDe || '');
   const [noiDung, setNoiDung] = useState(initial?.noiDung || '');
+  const [tomTat, setTomTat] = useState(initial?.tomTat || '');
+  const [maDanhMuc, setMaDanhMuc] = useState(initial?.maDanhMucBaiViet?.toString() || '');
+  const [ngayBatDau, setNgayBatDau] = useState(initial?.ngayBatDauSuKien?.slice(0,16) || '');
+  const [ngayKetThuc, setNgayKetThuc] = useState(initial?.ngayKetThucSuKien?.slice(0,16) || '');
+  const [diaDiem, setDiaDiem] = useState(initial?.diaDiemSuKien || '');
+  const [nguon, setNguon] = useState(initial?.nguonNoiDung || '');
 
   return (
     <div style={{
@@ -46,6 +54,19 @@ const BaiVietForm: React.FC<BaiVietFormProps> = ({ initial, onSubmit, onCancel, 
         <h3 style={{ marginTop: 0, color: '#1a1a2e', borderBottom: '2px solid #f0f0f0', paddingBottom: 12 }}>
           {initial ? 'Chỉnh sửa bài viết' : 'Tạo bài viết mới'}
         </h3>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Tóm tắt</label>
+          <textarea maxLength={500} rows={3} value={tomTat} onChange={e=>setTomTat(e.target.value)} style={{width:'100%',boxSizing:'border-box'}} />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Danh mục</label>
+          <select value={maDanhMuc} onChange={e=>setMaDanhMuc(e.target.value)} style={{width:'100%',padding:10}}>
+            <option value="">Chưa phân loại</option>
+            {categories.map(x=><option key={x.maDanhMucBaiViet} value={x.maDanhMucBaiViet}>{x.tenDanhMuc}</option>)}
+          </select>
+        </div>
 
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>
@@ -100,6 +121,13 @@ const BaiVietForm: React.FC<BaiVietFormProps> = ({ initial, onSubmit, onCancel, 
           />
         </div>
 
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+          <div><label>Bắt đầu sự kiện</label><input type="datetime-local" value={ngayBatDau} onChange={e=>setNgayBatDau(e.target.value)} style={{width:'100%'}} /></div>
+          <div><label>Kết thúc sự kiện</label><input type="datetime-local" value={ngayKetThuc} onChange={e=>setNgayKetThuc(e.target.value)} style={{width:'100%'}} /></div>
+        </div>
+        <div style={{ marginBottom: 16 }}><label>Địa điểm sự kiện</label><input value={diaDiem} onChange={e=>setDiaDiem(e.target.value)} style={{width:'100%'}} /></div>
+        <div style={{ marginBottom: 20 }}><label>Nguồn nội dung/quyền sử dụng</label><input value={nguon} onChange={e=>setNguon(e.target.value)} style={{width:'100%'}} /></div>
+
         <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button
             onClick={onCancel}
@@ -115,7 +143,7 @@ const BaiVietForm: React.FC<BaiVietFormProps> = ({ initial, onSubmit, onCancel, 
           <button
             onClick={() => {
               if (!tieuDe.trim()) { alert('Vui lòng nhập tiêu đề'); return; }
-              onSubmit({ tieuDe: tieuDe.trim(), noiDung: noiDung.trim(), anhTieuDe: anhTieuDe.trim() });
+              onSubmit({ tieuDe: tieuDe.trim(), noiDung: noiDung.trim(), anhTieuDe: anhTieuDe.trim(), tomTat:tomTat.trim(), maDanhMucBaiViet:maDanhMuc?Number(maDanhMuc):undefined, ngayBatDauSuKien:ngayBatDau||null, ngayKetThucSuKien:ngayKetThuc||null, diaDiemSuKien:diaDiem.trim(), nguonNoiDung:nguon.trim(), maTacPhamLienQuan:[] });
             }}
             disabled={submitting}
             style={{
@@ -137,6 +165,7 @@ const BaiVietForm: React.FC<BaiVietFormProps> = ({ initial, onSubmit, onCancel, 
 // ======================== MAIN COMPONENT ========================
 const ArtistArticles: React.FC = () => {
   const [articles, setArticles] = useState<BaiVietResponse[]>([]);
+  const [categories, setCategories] = useState<DanhMucBaiVietResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -149,6 +178,7 @@ const ArtistArticles: React.FC = () => {
 
   useEffect(() => {
     loadArticles();
+    artistDashboardService.getDanhMucBaiViet().then(setCategories).catch(console.error);
   }, []);
 
   // ===================== LOAD =====================
@@ -166,7 +196,7 @@ const ArtistArticles: React.FC = () => {
   };
 
   // ===================== CREATE =====================
-  const handleCreate = async (data: { tieuDe: string; noiDung: string; anhTieuDe: string }) => {
+  const handleCreate = async (data: TaoBaiVietRequest) => {
     setSubmitting(true);
     try {
       await artistDashboardService.taoBaiViet(data);
@@ -182,7 +212,7 @@ const ArtistArticles: React.FC = () => {
   };
 
   // ===================== UPDATE =====================
-  const handleUpdate = async (data: { tieuDe: string; noiDung: string; anhTieuDe: string }) => {
+  const handleUpdate = async (data: CapNhatBaiVietRequest) => {
     if (!editingArticle) return;
     setSubmitting(true);
     try {
@@ -236,6 +266,7 @@ const ArtistArticles: React.FC = () => {
       {(showForm || editingArticle) && (
         <BaiVietForm
           initial={editingArticle}
+          categories={categories}
           onSubmit={editingArticle ? handleUpdate : handleCreate}
           onCancel={() => { setShowForm(false); setEditingArticle(null); }}
           submitting={submitting}

@@ -39,6 +39,36 @@ export interface CapNhatTacPhamRequest {
     chatLieuKhung?: string;
 }
 
+export interface ChiTietTacPhamPayload {
+    cauChuyenSangTac?: string | null;
+    yNghiaNghiThuat?: string | null;
+    kyThuatThucHien?: string | null;
+    camHungSangTao?: string | null;
+    thongTinBosung?: string | null;
+    kichThuoc?: string | null;
+    chatLieu?: string | null;
+    chatLieuKhung?: string | null;
+    namSangTac?: number | null;
+    diaDiemSangTac?: string | null;
+    hinhAnh1?: string | null;
+    hinhAnh2?: string | null;
+    hinhAnh3?: string | null;
+    hinhAnh4?: string | null;
+}
+
+export interface ChiTietTacPhamResponse extends ChiTietTacPhamPayload {
+    maChiTiet: number;
+    maTacPham: number;
+    tenTacPham: string;
+    maHoaSi: number;
+    tenHoaSi: string;
+    trangThai: number;
+    trangThaiText: string;
+    lyDoTuChoi?: string;
+    ngayTao: string;
+    ngayCapNhat?: string;
+}
+
 export interface TacPhamHoaSiResponse {
     maTacPham: number;
     tenTacPham: string;
@@ -61,9 +91,20 @@ export interface BaiVietResponse {
     tieuDe: string;
     noiDung?: string;
     anhTieuDe?: string;
-    maHoaSi: number;
+    maHoaSi?: number;
+    maTaiKhoanTacGia?: number;
     tenHoaSi: string;
+    tenTacGia?: string;
+    tomTat?: string;
+    maDanhMucBaiViet?: number;
+    tenDanhMuc?: string;
     ngayDang: string;
+    ngayXuatBan?: string;
+    ngayCapNhat?: string;
+    ngayBatDauSuKien?: string;
+    ngayKetThucSuKien?: string;
+    diaDiemSuKien?: string;
+    nguonNoiDung?: string;
     trangThai: number; // 0=Draft, 2=Published, 3=Rejected
     lyDo?: string;
 }
@@ -72,13 +113,29 @@ export interface TaoBaiVietRequest {
     tieuDe: string;
     noiDung?: string;
     anhTieuDe?: string;
+    tomTat?: string;
+    maDanhMucBaiViet?: number;
+    ngayBatDauSuKien?: string | null;
+    ngayKetThucSuKien?: string | null;
+    diaDiemSuKien?: string;
+    nguonNoiDung?: string;
+    maTacPhamLienQuan: number[];
 }
 
 export interface CapNhatBaiVietRequest {
     tieuDe: string;
     noiDung?: string;
     anhTieuDe?: string;
+    tomTat?: string;
+    maDanhMucBaiViet?: number;
+    ngayBatDauSuKien?: string | null;
+    ngayKetThucSuKien?: string | null;
+    diaDiemSuKien?: string;
+    nguonNoiDung?: string;
+    maTacPhamLienQuan: number[];
 }
+
+export interface DanhMucBaiVietResponse { maDanhMucBaiViet:number;tenDanhMuc:string;slug:string; }
 
 export interface DoanhThuTongQuanResponse {
     tongDoanhThu: number;
@@ -123,7 +180,7 @@ export const artistDashboardService = {
     const response = await apiClient.get('/hoa-si/tac-pham/get-all');
     return response.data;
   },
-  taoTacPham: async (data: TaoTacPhamRequest): Promise<any> => {
+  taoTacPham: async (data: TaoTacPhamRequest): Promise<{ message: string; maTacPham: number }> => {
     const response = await apiClient.post('/hoa-si/tac-pham/create', data);
     return response.data;
   },
@@ -139,10 +196,31 @@ export const artistDashboardService = {
     const response = await apiClient.put(`/hoa-si/tac-pham/${id}/gui-duyet-lai`);
     return response.data;
   },
+  getChiTietTacPham: async (id: number): Promise<ChiTietTacPhamResponse | null> => {
+    try {
+      const response = await apiClient.get<ChiTietTacPhamResponse>(`/hoa-si/tac-pham/${id}/chi-tiet`);
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) return null;
+      throw error;
+    }
+  },
+  taoChiTietTacPham: async (id: number, data: ChiTietTacPhamPayload): Promise<any> => {
+    const response = await apiClient.post(`/hoa-si/tac-pham/${id}/chi-tiet`, data);
+    return response.data;
+  },
+  capNhatChiTietTacPham: async (id: number, data: ChiTietTacPhamPayload): Promise<any> => {
+    const response = await apiClient.put(`/hoa-si/tac-pham/${id}/chi-tiet`, data);
+    return response.data;
+  },
 
   // --- BÀI VIẾT ---
   getBaiVietCuaToi: async (): Promise<BaiVietResponse[]> => {
     const response = await apiClient.get('/hoa-si/bai-viet/get-all');
+    return response.data;
+  },
+  getDanhMucBaiViet: async (): Promise<DanhMucBaiVietResponse[]> => {
+    const response = await apiClient.get('/bai-viet/danh-muc');
     return response.data;
   },
   taoBaiViet: async (data: TaoBaiVietRequest): Promise<any> => {

@@ -335,9 +335,13 @@ public class HoaSiController : ControllerBase
     {
         try
         {
+            var maHoaSi = JwtHelper.GetMaHoaSi(User);
+            if (!maHoaSi.HasValue) return StatusCode(403, new { message = "Không tìm thấy thông tin họa sĩ" });
             var result = await _hoaSiBusiness.GetBaiVietById(id);
             if (result == null)
                 return NotFound(new { message = "Không tìm thấy bài viết" });
+            if (result.MaHoaSi != maHoaSi.Value)
+                return StatusCode(403, new { message = "Không có quyền xem bài viết này" });
             
             return Ok(result);
         }

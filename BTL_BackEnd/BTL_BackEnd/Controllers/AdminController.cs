@@ -678,6 +678,76 @@ public class AdminController : ControllerBase
         }
     }
 
+    [HttpGet("bai-viet/danh-muc")]
+    public async Task<ActionResult<List<DanhMucBaiVietResponse>>> GetDanhMucBaiViet() =>
+        Ok(await _adminBusiness.GetDanhMucBaiViet());
+
+    [HttpPost("bai-viet/danh-muc")]
+    public async Task<ActionResult> TaoDanhMucBaiViet([FromBody] CapNhatDanhMucBaiVietRequest request)
+    {
+        try
+        {
+            var id = await _adminBusiness.TaoDanhMucBaiViet(request);
+            return Ok(new { message = "Đã tạo danh mục bài viết", maDanhMucBaiViet = id });
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpPut("bai-viet/danh-muc/{id}")]
+    public async Task<ActionResult> CapNhatDanhMucBaiViet(int id, [FromBody] CapNhatDanhMucBaiVietRequest request)
+    {
+        try
+        {
+            return await _adminBusiness.CapNhatDanhMucBaiViet(id, request)
+                ? Ok(new { message = "Đã cập nhật danh mục bài viết" })
+                : NotFound(new { message = "Không tìm thấy danh mục bài viết" });
+        }
+        catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
+    }
+
+    [HttpGet("bai-viet/{id}")]
+    public async Task<ActionResult<BaiVietResponse>> GetBaiVietById(int id)
+    {
+        var result=await _adminBusiness.GetBaiVietById(id);
+        return result==null?NotFound(new{message="Không tìm thấy bài viết"}):Ok(result);
+    }
+
+    [HttpPost("bai-viet/create")]
+    public async Task<ActionResult> TaoBaiViet([FromBody] TaoBaiVietRequest request)
+    {
+        try
+        {
+            var account=Helpers.JwtHelper.GetMaTaiKhoan(User);if(!account.HasValue)return Unauthorized();
+            var id=await _adminBusiness.TaoBaiViet(account.Value,request);return Ok(new{message="Đã tạo bản nháp",maBaiViet=id});
+        }
+        catch(ArgumentException ex){return BadRequest(new{message=ex.Message});}
+        catch(InvalidOperationException ex){return BadRequest(new{message=ex.Message});}
+    }
+
+    [HttpPut("bai-viet/{id}/update")]
+    public async Task<ActionResult> CapNhatBaiViet(int id,[FromBody] CapNhatBaiVietRequest request)
+    {
+        try
+        {
+            var account=Helpers.JwtHelper.GetMaTaiKhoan(User);if(!account.HasValue)return Unauthorized();
+            return await _adminBusiness.CapNhatBaiViet(account.Value,id,request)?Ok(new{message="Đã cập nhật bài viết"}):NotFound();
+        }
+        catch(UnauthorizedAccessException ex){return StatusCode(403,new{message=ex.Message});}
+        catch(ArgumentException ex){return BadRequest(new{message=ex.Message});}
+    }
+
+    [HttpPut("bai-viet/{id}/xuat-ban")]
+    public async Task<ActionResult> XuatBanBaiViet(int id)
+    {
+        try
+        {
+            var account=Helpers.JwtHelper.GetMaTaiKhoan(User);if(!account.HasValue)return Unauthorized();
+            return await _adminBusiness.XuatBanBaiViet(account.Value,id)?Ok(new{message="Đã xuất bản bài viết"}):NotFound();
+        }
+        catch(UnauthorizedAccessException ex){return StatusCode(403,new{message=ex.Message});}
+        catch(InvalidOperationException ex){return Conflict(new{message=ex.Message});}
+    }
+
     [HttpPut("bai-viet/{id}/update/duyet")]
     public async Task<ActionResult> DuyetBaiViet(int id, [FromBody] DuyetBaiVietRequest request)
     {

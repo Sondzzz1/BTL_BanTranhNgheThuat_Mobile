@@ -15,9 +15,10 @@ import { useAuth } from '../../context/AuthContext';
 
 interface LoginScreenProps {
   navigation: any;
+  route: any;
 }
 
-export default function LoginScreen({ navigation }: LoginScreenProps) {
+export default function LoginScreen({ navigation, route }: LoginScreenProps) {
   const { login } = useAuth();
   const [tenDangNhap, setTenDangNhap] = useState('');
   const [matKhau, setMatKhau] = useState('');
@@ -38,7 +39,10 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     try {
       setIsLoading(true);
       await login(tenDangNhap.trim(), matKhau);
-      if (navigation.canGoBack()) {
+      const returnTo = route.params?.returnTo;
+      if (returnTo?.screen) {
+        navigation.replace(returnTo.screen, returnTo.params);
+      } else if (navigation.canGoBack()) {
         navigation.goBack();
       } else {
         navigation.navigate('MainTabs');
@@ -55,7 +59,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
   };
 
   const handleGoToRegister = () => {
-    navigation.navigate('Register');
+    navigation.navigate('Register', { returnTo: route.params?.returnTo });
   };
 
   return (

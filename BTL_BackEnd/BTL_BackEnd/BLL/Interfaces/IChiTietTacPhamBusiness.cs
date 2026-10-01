@@ -9,6 +9,7 @@ public interface IChiTietTacPhamBusiness
     Task<bool> CapNhatChiTiet(int maHoaSi, int maTacPham, TaoChiTietTacPhamRequest request);
     Task<bool> XoaChiTiet(int maHoaSi, int maTacPham);
     Task<ChiTietTacPhamResponse?> GetChiTiet(int maTacPham);
+    Task<bool> CoQuyenQuanLy(int maHoaSi, int maTacPham);
     
     // Admin
     Task<List<ChiTietChoDuyetResponse>> GetDanhSachChoDuyet();

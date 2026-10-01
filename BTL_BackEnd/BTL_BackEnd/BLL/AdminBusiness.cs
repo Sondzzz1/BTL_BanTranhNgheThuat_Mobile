@@ -299,28 +299,68 @@ public class AdminBusiness : IAdminBusiness
 
         var hoaSis = await _hoaSiRepo.GetAll();
         
-        return list.Select(x => new BaiVietResponse
+        var categories = (await _baiVietRepo.GetCategories(false)).ToDictionary(x => x.MaDanhMucBaiViet, x => x.TenDanhMuc);
+        var result = new List<BaiVietResponse>();
+        foreach (var x in list)
         {
-            MaBaiViet = x.MaBaiViet,
-            TieuDe = x.TieuDe,
-            NoiDung = x.NoiDung,
-            MaHoaSi = x.MaHoaSi,
-            TenHoaSi = hoaSis.FirstOrDefault(h => h.MaHoaSi == x.MaHoaSi)?.TenHoaSi ?? "N/A",
-            NgayDang = x.NgayDang,
-            TrangThai = x.TrangThai,
-            LyDo = x.LyDo,
-            AnhTieuDe = x.AnhTieuDe
-        }).ToList();
+            var artistName = x.MaHoaSi.HasValue ? hoaSis.FirstOrDefault(h => h.MaHoaSi == x.MaHoaSi.Value)?.TenHoaSi : null;
+            var accountName = x.MaTaiKhoanTacGia.HasValue ? (await _taiKhoanRepo.GetById(x.MaTaiKhoanTacGia.Value))?.TenDangNhap : null;
+            result.Add(MapBaiViet(x, artistName ?? accountName ?? "N/A", categories.GetValueOrDefault(x.MaDanhMucBaiViet ?? 0)));
+        }
+        return result;
+    }
+
+    public async Task<BaiVietResponse?> GetBaiVietById(int id)
+    {
+        var item = await _baiVietRepo.GetById(id); if (item == null) return null;
+        var name = item.MaHoaSi.HasValue ? (await _hoaSiRepo.GetById(item.MaHoaSi.Value))?.TenHoaSi : null;
+        name ??= item.MaTaiKhoanTacGia.HasValue ? (await _taiKhoanRepo.GetById(item.MaTaiKhoanTacGia.Value))?.TenDangNhap : null;
+        var categories = (await _baiVietRepo.GetCategories(false)).ToDictionary(x => x.MaDanhMucBaiViet, x => x.TenDanhMuc);
+        var response = MapBaiViet(item, name ?? "N/A", categories.GetValueOrDefault(item.MaDanhMucBaiViet ?? 0));
+        response.HinhAnhNoiDung = (await _baiVietRepo.GetImages(id)).Select(x => new HinhAnhBaiVietResponse { MaHinhAnh=x.MaHinhAnh,DuongDan=x.DuongDan,ChuThich=x.ChuThich,ThuTu=x.ThuTu }).ToList();
+        response.TacPhamLienQuan = await MapLinkedArtworks(id);
+        return response;
+    }
+
+    public async Task<int> TaoBaiViet(int maTaiKhoan, TaoBaiVietRequest request)
+    {
+        ValidateBlog(request.TieuDe, request.TomTat, request.NgayBatDauSuKien, request.NgayKetThucSuKien);
+        await ValidateBlogCategorySelection(request.MaDanhMucBaiViet);
+        await ValidatePublicArtworkLinks(request.MaTacPhamLienQuan ?? new List<int>());
+        var item = new BaiViet { TieuDe=request.TieuDe.Trim(),NoiDung=request.NoiDung?.Trim(),AnhTieuDe=request.AnhTieuDe?.Trim(),TomTat=request.TomTat?.Trim(),MaDanhMucBaiViet=request.MaDanhMucBaiViet,MaTaiKhoanTacGia=maTaiKhoan,NgayDang=DateTime.UtcNow,TrangThai=0,NgayBatDauSuKien=request.NgayBatDauSuKien,NgayKetThucSuKien=request.NgayKetThucSuKien,DiaDiemSuKien=request.DiaDiemSuKien?.Trim(),NguonNoiDung=request.NguonNoiDung?.Trim() };
+        var id=await _baiVietRepo.Create(item); await _baiVietRepo.ReplaceArtworkLinks(id,request.MaTacPhamLienQuan ?? new List<int>()); return id;
+    }
+
+    public async Task<bool> CapNhatBaiViet(int maTaiKhoan, int id, CapNhatBaiVietRequest request)
+    {
+        ValidateBlog(request.TieuDe, request.TomTat, request.NgayBatDauSuKien, request.NgayKetThucSuKien);
+        await ValidateBlogCategorySelection(request.MaDanhMucBaiViet);
+        await ValidatePublicArtworkLinks(request.MaTacPhamLienQuan ?? new List<int>());
+        var item=await _baiVietRepo.GetById(id); if(item==null)return false;
+        if(item.MaHoaSi.HasValue || item.MaTaiKhoanTacGia!=maTaiKhoan) throw new UnauthorizedAccessException("Admin chỉ được sửa bài do chính tài khoản mình tạo");
+        item.TieuDe=request.TieuDe.Trim();item.NoiDung=request.NoiDung?.Trim();item.AnhTieuDe=request.AnhTieuDe?.Trim();item.TomTat=request.TomTat?.Trim();item.MaDanhMucBaiViet=request.MaDanhMucBaiViet;item.NgayBatDauSuKien=request.NgayBatDauSuKien;item.NgayKetThucSuKien=request.NgayKetThucSuKien;item.DiaDiemSuKien=request.DiaDiemSuKien?.Trim();item.NguonNoiDung=request.NguonNoiDung?.Trim();item.NgayCapNhat=DateTime.UtcNow;
+        var ok=await _baiVietRepo.Update(item);if(ok)await _baiVietRepo.ReplaceArtworkLinks(id,request.MaTacPhamLienQuan ?? new List<int>());return ok;
     }
 
     public async Task<bool> DuyetBaiViet(int id, DuyetBaiVietRequest request)
     {
         var bv = await _baiVietRepo.GetById(id);
         if (bv == null) return false;
-        // Published (2) / Rejected (3)
+        if (bv.TrangThai != 1) throw new InvalidOperationException("Chỉ bài đang chờ duyệt mới được xử lý");
+        if (!request.PheDuyet && string.IsNullOrWhiteSpace(request.LyDo)) throw new ArgumentException("Vui lòng nhập lý do từ chối");
         bv.TrangThai = request.PheDuyet ? (byte)2 : (byte)3;
-        bv.LyDo = request.PheDuyet ? null : request.LyDo;
+        bv.LyDo = request.PheDuyet ? null : request.LyDo?.Trim();
+        bv.NgayXuatBan = request.PheDuyet ? DateTime.UtcNow : null;
+        bv.NgayCapNhat = DateTime.UtcNow;
         return await _baiVietRepo.Update(bv);
+    }
+
+    public async Task<bool> XuatBanBaiViet(int maTaiKhoan, int id)
+    {
+        var bv=await _baiVietRepo.GetById(id);if(bv==null)return false;
+        if(bv.MaHoaSi.HasValue || bv.MaTaiKhoanTacGia!=maTaiKhoan) throw new UnauthorizedAccessException("Chỉ được xuất bản bài do tài khoản Admin hiện tại tạo");
+        if(bv.TrangThai is not (0 or 1 or 3)) throw new InvalidOperationException("Bài viết không ở trạng thái có thể xuất bản");
+        bv.TrangThai=2;bv.LyDo=null;bv.NgayXuatBan=DateTime.UtcNow;bv.NgayCapNhat=DateTime.UtcNow;return await _baiVietRepo.Update(bv);
     }
 
     public async Task<bool> ArchiveBaiViet(int id)
@@ -333,7 +373,57 @@ public class AdminBusiness : IAdminBusiness
     }
 
     public async Task<bool> XoaBaiViet(int id) => await _baiVietRepo.Delete(id);
+    public async Task<List<DanhMucBaiVietResponse>> GetDanhMucBaiViet() =>
+        (await _baiVietRepo.GetCategories(false)).Select(x => new DanhMucBaiVietResponse
+        {
+            MaDanhMucBaiViet = x.MaDanhMucBaiViet,
+            TenDanhMuc = x.TenDanhMuc,
+            Slug = x.Slug,
+            TrangThai = x.TrangThai
+        }).ToList();
+
+    public async Task<int> TaoDanhMucBaiViet(CapNhatDanhMucBaiVietRequest request)
+    {
+        ValidateBlogCategory(request);
+        return await _baiVietRepo.CreateCategory(request.TenDanhMuc.Trim(), request.Slug.Trim().ToLowerInvariant());
+    }
+
+    public async Task<bool> CapNhatDanhMucBaiViet(int id, CapNhatDanhMucBaiVietRequest request)
+    {
+        ValidateBlogCategory(request);
+        return await _baiVietRepo.UpdateCategory(id, request.TenDanhMuc.Trim(), request.Slug.Trim().ToLowerInvariant(), request.TrangThai);
+    }
+
     public Task<List<BaiVietResponse>> TimKiemBaiViet(string? keyword, int? maHoaSi, bool? trangThai, DateTime? tuNgay, DateTime? denNgay, int pageNumber, int pageSize) => throw new NotImplementedException();
+
+    private static void ValidateBlog(string title,string? summary,DateTime? start,DateTime? end)
+    { if(string.IsNullOrWhiteSpace(title))throw new ArgumentException("Tiêu đề không được để trống");if(title.Trim().Length>250)throw new ArgumentException("Tiêu đề không vượt quá 250 ký tự");if(summary?.Trim().Length>500)throw new ArgumentException("Tóm tắt không vượt quá 500 ký tự");if(start.HasValue&&end.HasValue&&end<start)throw new ArgumentException("Ngày kết thúc sự kiện phải sau ngày bắt đầu"); }
+    private static void ValidateBlogCategory(CapNhatDanhMucBaiVietRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.TenDanhMuc) || request.TenDanhMuc.Trim().Length > 150)
+            throw new ArgumentException("Tên danh mục không hợp lệ");
+        var slug = request.Slug?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(slug) || slug.Length > 120 || !System.Text.RegularExpressions.Regex.IsMatch(slug, "^[a-z0-9]+(?:-[a-z0-9]+)*$"))
+            throw new ArgumentException("Slug chỉ gồm chữ thường không dấu, số và dấu gạch ngang");
+    }
+    private async Task ValidateBlogCategorySelection(int? categoryId)
+    {
+        if (!categoryId.HasValue) return;
+        if (!(await _baiVietRepo.GetCategories()).Any(x => x.MaDanhMucBaiViet == categoryId.Value))
+            throw new ArgumentException("Danh mục bài viết không tồn tại hoặc đã bị ẩn");
+    }
+    private async Task ValidatePublicArtworkLinks(IEnumerable<int> artworkIds)
+    {
+        foreach (var id in artworkIds.Distinct())
+        {
+            var artwork = await _tacPhamRepo.GetMarketplaceById(id);
+            if (artwork == null || artwork.TrangThai != TacPhamStatus.OnSale)
+                throw new ArgumentException($"Tác phẩm #{id} không công khai hoặc là commission riêng tư");
+        }
+    }
+    private static BaiVietResponse MapBaiViet(BaiViet x,string author,string? category)=>new(){MaBaiViet=x.MaBaiViet,TieuDe=x.TieuDe,NoiDung=x.NoiDung,MaHoaSi=x.MaHoaSi,MaTaiKhoanTacGia=x.MaTaiKhoanTacGia,TenHoaSi=author,TenTacGia=author,NgayDang=x.NgayDang,TrangThai=x.TrangThai,LyDo=x.LyDo,AnhTieuDe=x.AnhTieuDe,TomTat=x.TomTat,MaDanhMucBaiViet=x.MaDanhMucBaiViet,TenDanhMuc=category,NgayCapNhat=x.NgayCapNhat,NgayXuatBan=x.NgayXuatBan,NgayBatDauSuKien=x.NgayBatDauSuKien,NgayKetThucSuKien=x.NgayKetThucSuKien,DiaDiemSuKien=x.DiaDiemSuKien,NguonNoiDung=x.NguonNoiDung};
+    private async Task<List<TacPhamLienKetResponse>> MapLinkedArtworks(int id)
+    {var items=await _baiVietRepo.GetPublicLinkedArtworks(id);var result=new List<TacPhamLienKetResponse>();foreach(var x in items){result.Add(new TacPhamLienKetResponse{MaTacPham=x.MaTacPham,TenTacPham=x.TenTacPham,HinhAnh=x.HinhAnh,Gia=x.Gia,TenHoaSi=(await _hoaSiRepo.GetById(x.MaHoaSi))?.TenHoaSi??""});}return result;}
 
     // ==========================================
     // NỘI DUNG (Content Management)
