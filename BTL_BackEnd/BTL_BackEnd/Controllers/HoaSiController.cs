@@ -363,6 +363,10 @@ public class HoaSiController : ControllerBase
             var maBaiViet = await _hoaSiBusiness.TaoBaiViet(maHoaSi.Value, request);
             return Ok(new { message = "Tạo bài viết thành công", maBaiViet });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
@@ -437,6 +441,10 @@ public class HoaSiController : ControllerBase
                 return BadRequest(new { message = "Gửi duyệt thất bại" });
 
             return Ok(new { message = "Đã gửi duyệt bài viết" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {

@@ -413,7 +413,8 @@ public class HoaSiBusiness : IHoaSiBusiness
 
         var hoaSi = baiViet.MaHoaSi.HasValue ? await _hoaSiRepo.GetById(baiViet.MaHoaSi.Value) : null;
 
-        return new BaiVietResponse
+        var categories = (await _baiVietRepo.GetCategories(false)).ToDictionary(x => x.MaDanhMucBaiViet, x => x.TenDanhMuc);
+        var response = new BaiVietResponse
         {
             MaBaiViet = baiViet.MaBaiViet,
             TieuDe = baiViet.TieuDe,
@@ -433,8 +434,13 @@ public class HoaSiBusiness : IHoaSiBusiness
             NgayBatDauSuKien = baiViet.NgayBatDauSuKien,
             NgayKetThucSuKien = baiViet.NgayKetThucSuKien,
             DiaDiemSuKien = baiViet.DiaDiemSuKien,
-            NguonNoiDung = baiViet.NguonNoiDung
+            NguonNoiDung = baiViet.NguonNoiDung,
+            TenDanhMuc = categories.GetValueOrDefault(baiViet.MaDanhMucBaiViet ?? 0),
+            HinhAnhNoiDung = (await _baiVietRepo.GetImages(maBaiViet)).Select(x => new HinhAnhBaiVietResponse
+                { MaHinhAnh=x.MaHinhAnh,DuongDan=x.DuongDan,ChuThich=x.ChuThich,ThuTu=x.ThuTu }).ToList()
         };
+        response.TacPhamLienQuan = await MapLinkedArtworks(maBaiViet);
+        return response;
     }
 
     public async Task<int> TaoBaiViet(int maHoaSi, TaoBaiVietRequest request)
@@ -443,13 +449,16 @@ public class HoaSiBusiness : IHoaSiBusiness
             throw new ArgumentException("Tiêu đề không được để trống");
         if (request.TieuDe.Trim().Length > 250)
             throw new ArgumentException("Tiêu đề không vượt quá 250 ký tự");
+        var content = BlogContentValidator.Validate(request.NoiDung);
+        if (content.ImageIds.Count > 0)
+            throw new ArgumentException("Hãy lưu bản nháp trước khi tải và chèn ảnh vào nội dung");
         await ValidateBlogCategorySelection(request.MaDanhMucBaiViet);
         await ValidatePublicArtworkLinks(request.MaTacPhamLienQuan ?? new List<int>());
 
         var baiViet = new BaiViet
         {
             TieuDe = request.TieuDe.Trim(),
-            NoiDung = request.NoiDung?.Trim(),
+            NoiDung = content.Content,
             AnhTieuDe = request.AnhTieuDe?.Trim(),
             TomTat = request.TomTat?.Trim(),
             MaDanhMucBaiViet = request.MaDanhMucBaiViet,
@@ -482,9 +491,11 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (baiViet == null) return false;
         if (baiViet.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền sửa bài viết này");
+        var content = BlogContentValidator.Validate(request.NoiDung);
+        await ValidateBlogContentImages(maBaiViet, content);
 
         baiViet.TieuDe = request.TieuDe.Trim();
-        baiViet.NoiDung = request.NoiDung?.Trim();
+        baiViet.NoiDung = content.Content;
         baiViet.AnhTieuDe = request.AnhTieuDe?.Trim();
         baiViet.TomTat = request.TomTat?.Trim();
         baiViet.MaDanhMucBaiViet = request.MaDanhMucBaiViet;
@@ -526,6 +537,8 @@ public class HoaSiBusiness : IHoaSiBusiness
         // Cho phép gửi duyệt lại nếu đang Draft hoặc Rejected
         if (bv.TrangThai != 0 && bv.TrangThai != 3) return false;
 
+        await ValidateBlogContentImages(maBaiViet, BlogContentValidator.Validate(bv.NoiDung));
+
         bv.TrangThai = 1; // Pending
         bv.LyDo = null; // gửi duyệt lại thì xoá lý do từ chối cũ (nếu có)
         return await _baiVietRepo.Update(bv);
@@ -552,6 +565,28 @@ public class HoaSiBusiness : IHoaSiBusiness
             if (artwork == null || artwork.TrangThai != TacPhamStatus.OnSale)
                 throw new ArgumentException($"Tác phẩm #{id} không công khai hoặc là commission riêng tư");
         }
+    }
+
+    private async Task ValidateBlogContentImages(int articleId, BlogContentValidationResult content)
+    {
+        if (content.ImageIds.Count == 0) return;
+        var ownedIds = (await _baiVietRepo.GetImages(articleId)).Select(x => x.MaHinhAnh).ToHashSet();
+        var invalidIds = content.ImageIds.Where(x => !ownedIds.Contains(x)).ToArray();
+        if (invalidIds.Length > 0)
+            throw new ArgumentException($"Ảnh #{string.Join(", #", invalidIds)} không thuộc bài viết này");
+    }
+
+    private async Task<List<TacPhamLienKetResponse>> MapLinkedArtworks(int articleId)
+    {
+        var items = await _baiVietRepo.GetPublicLinkedArtworks(articleId);
+        var result = new List<TacPhamLienKetResponse>();
+        foreach (var item in items)
+            result.Add(new TacPhamLienKetResponse
+            {
+                MaTacPham=item.MaTacPham,TenTacPham=item.TenTacPham,HinhAnh=item.HinhAnh,Gia=item.Gia,
+                TenHoaSi=(await _hoaSiRepo.GetById(item.MaHoaSi))?.TenHoaSi ?? ""
+            });
+        return result;
     }
 
     // Doanh thu

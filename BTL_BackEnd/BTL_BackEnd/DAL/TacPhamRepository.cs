@@ -87,6 +87,20 @@ public class TacPhamRepository : ITacPhamRepository
     public Task<List<TacPham>> GetMarketplaceAll() =>
         QueryList("SELECT * FROM TacPham WHERE MaYeuCauVeTranh IS NULL ORDER BY NgayTao DESC");
 
+    public Task<List<TacPham>> GetMarketplaceBestSelling(int top) => QueryList(
+        @"SELECT TOP (@Top) tp.*
+          FROM TacPham tp
+          OUTER APPLY (
+              SELECT SUM(CASE WHEN ct.SoLuong > ISNULL(ct.SoLuongDaHoan, 0)
+                              THEN ct.SoLuong - ISNULL(ct.SoLuongDaHoan, 0) ELSE 0 END) AS SoLuongBan
+              FROM ChiTietDonHang ct
+              INNER JOIN DonHang dh ON dh.MaDonHang = ct.MaDonHang AND dh.TrangThai = 3
+              WHERE ct.MaTacPham = tp.MaTacPham
+          ) sales
+          WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai = 1
+          ORDER BY ISNULL(sales.SoLuongBan, 0) DESC, tp.NgayTao DESC",
+        command => command.Parameters.AddWithValue("@Top", Math.Clamp(top, 1, 20)));
+
     public async Task<TacPham?> GetMarketplaceById(int maTacPham)
     {
         using var connection = new SqlConnection(_connectionString);

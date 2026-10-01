@@ -4,6 +4,7 @@ import {Ionicons} from '@expo/vector-icons';
 import {Article,BlogCategory,newsService} from '../services/newsService';
 import {resolveContentImageUrl} from '../services/artworkContentService';
 import ArtworkImage from '../components/ArtworkImage';
+import {blogExcerpt} from '../components/BlogContentRenderer';
 
 export default function NewsScreen({navigation}:any){
   const [articles,setArticles]=useState<Article[]>([]);const[categories,setCategories]=useState<BlogCategory[]>([]);
@@ -21,7 +22,7 @@ export default function NewsScreen({navigation}:any){
     </ScrollView>
     <View style={s.list}>{articles.map(article=><TouchableOpacity key={article.maBaiViet} style={s.card} onPress={()=>navigation.navigate('NewsDetail',{id:article.maBaiViet})}>
       <ArtworkImage source={article.anhTieuDe?{uri:resolveContentImageUrl(article.anhTieuDe)}:undefined} style={s.image}/>
-      <View style={s.body}><Text style={s.category}>{article.tenDanhMuc||'Góc nghệ thuật'}</Text><Text style={s.title}>{article.tieuDe}</Text><Text style={s.summary} numberOfLines={3}>{article.tomTat||article.noiDung||'Chưa có tóm tắt'}</Text><Text style={s.meta}>{format(article.ngayXuatBan||article.ngayDang)} · {article.tenTacGia||article.tenHoaSi}</Text></View>
+      <View style={s.body}><Text style={s.category}>{article.tenDanhMuc||'Góc nghệ thuật'}</Text><Text style={s.title}>{article.tieuDe}</Text><Text style={s.summary} numberOfLines={3}>{article.tomTat||blogExcerpt(article.noiDung)||'Chưa có tóm tắt'}</Text><Text style={s.meta}>{format(article.ngayXuatBan||article.ngayDang)} · {article.tenTacGia||article.tenHoaSi}</Text></View>
     </TouchableOpacity>)}
     {!loading&&articles.length===0?<Text style={s.empty}>Không tìm thấy bài viết đã xuất bản.</Text>:null}
     <View style={s.pagination}><TouchableOpacity disabled={page<=1} onPress={()=>load(false,page-1)}><Text style={page<=1?s.disabled:s.pageLink}>‹ Trang trước</Text></TouchableOpacity><Text>Trang {page}</Text><TouchableOpacity disabled={page*8>=total} onPress={()=>load(false,page+1)}><Text style={page*8>=total?s.disabled:s.pageLink}>Trang sau ›</Text></TouchableOpacity></View>

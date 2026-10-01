@@ -16,6 +16,25 @@ export const productService = {
     }
   },
 
+  async getLatestProducts(limit: number = 6): Promise<Product[]> {
+    const products = await this.getAllProducts();
+    return [...products]
+      .sort((a, b) => b.maTacPham - a.maTacPham)
+      .slice(0, Math.max(1, limit));
+  },
+
+  async getBestSellingProducts(limit: number = 6): Promise<Product[]> {
+    try {
+      const response = await apiClient.get<Product[]>(API_ENDPOINTS.PRODUCTS_BEST_SELLING, {
+        params: { top: Math.max(1, limit) },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching best-selling products:', error);
+      throw error;
+    }
+  },
+
   // Lấy chi tiết sản phẩm
   async getProductById(id: number): Promise<Product> {
     try {

@@ -84,6 +84,43 @@ public class PublicController : ControllerBase
         }
     }
 
+    [HttpGet("tranh/ban-chay")]
+    public async Task<ActionResult<List<TacPhamResponse>>> GetTranhBanChay([FromQuery] int top = 6)
+    {
+        try
+        {
+            var tacPhamList = await _tacPhamRepo.GetMarketplaceBestSelling(Math.Clamp(top, 1, 20));
+            var hoaSiMap = (await _hoaSiRepo.GetAll()).ToDictionary(h => h.MaHoaSi, h => h.TenHoaSi);
+            var danhMucMap = (await _danhMucRepo.GetAll()).ToDictionary(d => d.MaDanhMuc, d => d.TenDanhMuc);
+
+            var result = tacPhamList.Select(tp => new TacPhamResponse
+            {
+                MaTacPham = tp.MaTacPham,
+                TenTacPham = tp.TenTacPham,
+                TenHoaSi = hoaSiMap.GetValueOrDefault(tp.MaHoaSi, ""),
+                TenDanhMuc = tp.MaDanhMuc.HasValue ? danhMucMap.GetValueOrDefault(tp.MaDanhMuc.Value) : null,
+                Gia = tp.Gia,
+                SoLuong = tp.SoLuong,
+                MoTa = tp.MoTa,
+                HinhAnh = tp.HinhAnh,
+                KichThuoc = tp.KichThuoc,
+                ChatLieu = tp.ChatLieu,
+                ChatLieuKhung = tp.ChatLieuKhung,
+                LoaiTacPham = tp.LoaiTacPham,
+                TacGiaGoc = tp.TacGiaGoc,
+                MaTacPhamGoc = tp.MaTacPhamGoc,
+                MaYeuCauVeTranh = tp.MaYeuCauVeTranh,
+                MoTaNguonGoc = tp.MoTaNguonGoc
+            }).ToList();
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Không thể tải danh sách tranh bán chạy", error = ex.Message });
+        }
+    }
+
     [HttpGet("tranh/{id}")]
     public async Task<ActionResult<TacPhamResponse>> GetTranhById(int id)
     {

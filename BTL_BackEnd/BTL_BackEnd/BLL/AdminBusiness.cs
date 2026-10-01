@@ -325,9 +325,12 @@ public class AdminBusiness : IAdminBusiness
     public async Task<int> TaoBaiViet(int maTaiKhoan, TaoBaiVietRequest request)
     {
         ValidateBlog(request.TieuDe, request.TomTat, request.NgayBatDauSuKien, request.NgayKetThucSuKien);
+        var content = BlogContentValidator.Validate(request.NoiDung);
+        if (content.ImageIds.Count > 0)
+            throw new ArgumentException("Hãy lưu bản nháp trước khi tải và chèn ảnh vào nội dung");
         await ValidateBlogCategorySelection(request.MaDanhMucBaiViet);
         await ValidatePublicArtworkLinks(request.MaTacPhamLienQuan ?? new List<int>());
-        var item = new BaiViet { TieuDe=request.TieuDe.Trim(),NoiDung=request.NoiDung?.Trim(),AnhTieuDe=request.AnhTieuDe?.Trim(),TomTat=request.TomTat?.Trim(),MaDanhMucBaiViet=request.MaDanhMucBaiViet,MaTaiKhoanTacGia=maTaiKhoan,NgayDang=DateTime.UtcNow,TrangThai=0,NgayBatDauSuKien=request.NgayBatDauSuKien,NgayKetThucSuKien=request.NgayKetThucSuKien,DiaDiemSuKien=request.DiaDiemSuKien?.Trim(),NguonNoiDung=request.NguonNoiDung?.Trim() };
+        var item = new BaiViet { TieuDe=request.TieuDe.Trim(),NoiDung=content.Content,AnhTieuDe=request.AnhTieuDe?.Trim(),TomTat=request.TomTat?.Trim(),MaDanhMucBaiViet=request.MaDanhMucBaiViet,MaTaiKhoanTacGia=maTaiKhoan,NgayDang=DateTime.UtcNow,TrangThai=0,NgayBatDauSuKien=request.NgayBatDauSuKien,NgayKetThucSuKien=request.NgayKetThucSuKien,DiaDiemSuKien=request.DiaDiemSuKien?.Trim(),NguonNoiDung=request.NguonNoiDung?.Trim() };
         var id=await _baiVietRepo.Create(item); await _baiVietRepo.ReplaceArtworkLinks(id,request.MaTacPhamLienQuan ?? new List<int>()); return id;
     }
 
@@ -338,7 +341,9 @@ public class AdminBusiness : IAdminBusiness
         await ValidatePublicArtworkLinks(request.MaTacPhamLienQuan ?? new List<int>());
         var item=await _baiVietRepo.GetById(id); if(item==null)return false;
         if(item.MaHoaSi.HasValue || item.MaTaiKhoanTacGia!=maTaiKhoan) throw new UnauthorizedAccessException("Admin chỉ được sửa bài do chính tài khoản mình tạo");
-        item.TieuDe=request.TieuDe.Trim();item.NoiDung=request.NoiDung?.Trim();item.AnhTieuDe=request.AnhTieuDe?.Trim();item.TomTat=request.TomTat?.Trim();item.MaDanhMucBaiViet=request.MaDanhMucBaiViet;item.NgayBatDauSuKien=request.NgayBatDauSuKien;item.NgayKetThucSuKien=request.NgayKetThucSuKien;item.DiaDiemSuKien=request.DiaDiemSuKien?.Trim();item.NguonNoiDung=request.NguonNoiDung?.Trim();item.NgayCapNhat=DateTime.UtcNow;
+        var content=BlogContentValidator.Validate(request.NoiDung);
+        await ValidateBlogContentImages(id,content);
+        item.TieuDe=request.TieuDe.Trim();item.NoiDung=content.Content;item.AnhTieuDe=request.AnhTieuDe?.Trim();item.TomTat=request.TomTat?.Trim();item.MaDanhMucBaiViet=request.MaDanhMucBaiViet;item.NgayBatDauSuKien=request.NgayBatDauSuKien;item.NgayKetThucSuKien=request.NgayKetThucSuKien;item.DiaDiemSuKien=request.DiaDiemSuKien?.Trim();item.NguonNoiDung=request.NguonNoiDung?.Trim();item.NgayCapNhat=DateTime.UtcNow;
         var ok=await _baiVietRepo.Update(item);if(ok)await _baiVietRepo.ReplaceArtworkLinks(id,request.MaTacPhamLienQuan ?? new List<int>());return ok;
     }
 
@@ -348,6 +353,8 @@ public class AdminBusiness : IAdminBusiness
         if (bv == null) return false;
         if (bv.TrangThai != 1) throw new InvalidOperationException("Chỉ bài đang chờ duyệt mới được xử lý");
         if (!request.PheDuyet && string.IsNullOrWhiteSpace(request.LyDo)) throw new ArgumentException("Vui lòng nhập lý do từ chối");
+        if (request.PheDuyet)
+            await ValidateBlogContentImages(id, BlogContentValidator.Validate(bv.NoiDung));
         bv.TrangThai = request.PheDuyet ? (byte)2 : (byte)3;
         bv.LyDo = request.PheDuyet ? null : request.LyDo?.Trim();
         bv.NgayXuatBan = request.PheDuyet ? DateTime.UtcNow : null;
@@ -360,6 +367,7 @@ public class AdminBusiness : IAdminBusiness
         var bv=await _baiVietRepo.GetById(id);if(bv==null)return false;
         if(bv.MaHoaSi.HasValue || bv.MaTaiKhoanTacGia!=maTaiKhoan) throw new UnauthorizedAccessException("Chỉ được xuất bản bài do tài khoản Admin hiện tại tạo");
         if(bv.TrangThai is not (0 or 1 or 3)) throw new InvalidOperationException("Bài viết không ở trạng thái có thể xuất bản");
+        await ValidateBlogContentImages(id, BlogContentValidator.Validate(bv.NoiDung));
         bv.TrangThai=2;bv.LyDo=null;bv.NgayXuatBan=DateTime.UtcNow;bv.NgayCapNhat=DateTime.UtcNow;return await _baiVietRepo.Update(bv);
     }
 
@@ -420,6 +428,14 @@ public class AdminBusiness : IAdminBusiness
             if (artwork == null || artwork.TrangThai != TacPhamStatus.OnSale)
                 throw new ArgumentException($"Tác phẩm #{id} không công khai hoặc là commission riêng tư");
         }
+    }
+    private async Task ValidateBlogContentImages(int articleId, BlogContentValidationResult content)
+    {
+        if (content.ImageIds.Count == 0) return;
+        var ownedIds = (await _baiVietRepo.GetImages(articleId)).Select(x => x.MaHinhAnh).ToHashSet();
+        var invalidIds = content.ImageIds.Where(x => !ownedIds.Contains(x)).ToArray();
+        if (invalidIds.Length > 0)
+            throw new ArgumentException($"Ảnh #{string.Join(", #", invalidIds)} không thuộc bài viết này");
     }
     private static BaiVietResponse MapBaiViet(BaiViet x,string author,string? category)=>new(){MaBaiViet=x.MaBaiViet,TieuDe=x.TieuDe,NoiDung=x.NoiDung,MaHoaSi=x.MaHoaSi,MaTaiKhoanTacGia=x.MaTaiKhoanTacGia,TenHoaSi=author,TenTacGia=author,NgayDang=x.NgayDang,TrangThai=x.TrangThai,LyDo=x.LyDo,AnhTieuDe=x.AnhTieuDe,TomTat=x.TomTat,MaDanhMucBaiViet=x.MaDanhMucBaiViet,TenDanhMuc=category,NgayCapNhat=x.NgayCapNhat,NgayXuatBan=x.NgayXuatBan,NgayBatDauSuKien=x.NgayBatDauSuKien,NgayKetThucSuKien=x.NgayKetThucSuKien,DiaDiemSuKien=x.DiaDiemSuKien,NguonNoiDung=x.NguonNoiDung};
     private async Task<List<TacPhamLienKetResponse>> MapLinkedArtworks(int id)

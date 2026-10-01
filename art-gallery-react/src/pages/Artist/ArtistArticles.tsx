@@ -1,473 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import {
-  artistDashboardService,
-  BaiVietResponse,
-  TaoBaiVietRequest,
-  CapNhatBaiVietRequest,
-  DanhMucBaiVietResponse
-} from '../../services/artistDashboardService';
+import React, { useEffect, useState } from 'react';
+import BlogBlockEditor, { BlogContentPreview } from '../../components/BlogBlockEditor';
+import { BlogImage } from '../../types/blogContent';
+import { artistDashboardService, BaiVietResponse, TaoBaiVietRequest, DanhMucBaiVietResponse } from '../../services/artistDashboardService';
 import './Artist.css';
 
-// ======================== TRẠNG THÁI ========================
-const trangThaiLabel = (status: number) => {
-  switch (status) {
-    case 0: return { text: 'Nháp',      cls: 'status-draft' };
-    case 1: return { text: 'Chờ duyệt', cls: 'status-pending' };
-    case 2: return { text: 'Đã duyệt',  cls: 'status-approved' };
-    case 3: return { text: 'Từ chối',   cls: 'status-rejected' };
-    default: return { text: 'Không rõ', cls: '' };
-  }
-};
+const status = (value:number) => [
+  {text:'Nháp',cls:'status-draft'},{text:'Chờ duyệt',cls:'status-pending'},
+  {text:'Đã xuất bản',cls:'status-approved'},{text:'Từ chối',cls:'status-rejected'},
+][value] || {text:'Không rõ',cls:''};
 
-// ======================== FORM MODAL ========================
-interface BaiVietFormProps {
-  initial?: BaiVietResponse | null;
-  categories: DanhMucBaiVietResponse[];
-  onSubmit: (data: TaoBaiVietRequest) => void;
-  onCancel: () => void;
-  submitting: boolean;
+interface FormProps {
+  initial: BaiVietResponse | null; categories: DanhMucBaiVietResponse[]; submitting:boolean;
+  onSubmit:(value:TaoBaiVietRequest)=>void; onCancel:()=>void;
 }
 
-const BaiVietForm: React.FC<BaiVietFormProps> = ({ initial, categories, onSubmit, onCancel, submitting }) => {
-  const [tieuDe, setTieuDe] = useState(initial?.tieuDe || '');
-  const [anhTieuDe, setAnhTieuDe] = useState(initial?.anhTieuDe || '');
-  const [noiDung, setNoiDung] = useState(initial?.noiDung || '');
-  const [tomTat, setTomTat] = useState(initial?.tomTat || '');
-  const [maDanhMuc, setMaDanhMuc] = useState(initial?.maDanhMucBaiViet?.toString() || '');
-  const [ngayBatDau, setNgayBatDau] = useState(initial?.ngayBatDauSuKien?.slice(0,16) || '');
-  const [ngayKetThuc, setNgayKetThuc] = useState(initial?.ngayKetThucSuKien?.slice(0,16) || '');
-  const [diaDiem, setDiaDiem] = useState(initial?.diaDiemSuKien || '');
-  const [nguon, setNguon] = useState(initial?.nguonNoiDung || '');
+function ArticleForm({initial,categories,submitting,onSubmit,onCancel}:FormProps) {
+  const [form,setForm]=useState<TaoBaiVietRequest>({
+    tieuDe:initial?.tieuDe||'',noiDung:initial?.noiDung||'',anhTieuDe:initial?.anhTieuDe||'',tomTat:initial?.tomTat||'',
+    maDanhMucBaiViet:initial?.maDanhMucBaiViet,ngayBatDauSuKien:initial?.ngayBatDauSuKien||null,
+    ngayKetThucSuKien:initial?.ngayKetThucSuKien||null,diaDiemSuKien:initial?.diaDiemSuKien||'',
+    nguonNoiDung:initial?.nguonNoiDung||'',maTacPhamLienQuan:initial?.tacPhamLienQuan?.map(x=>x.maTacPham)||[],
+  });
+  const [images,setImages]=useState<BlogImage[]>(initial?.hinhAnhNoiDung||[]);
+  return <div style={overlay}><div style={modal}><h2>{initial?'Chỉnh sửa bài viết':'Viết bài mới'}</h2>
+    <Field label="Tiêu đề *"><input value={form.tieuDe} maxLength={250} onChange={e=>setForm({...form,tieuDe:e.target.value})}/></Field>
+    <Field label="Tóm tắt"><textarea value={form.tomTat} maxLength={500} rows={3} onChange={e=>setForm({...form,tomTat:e.target.value})}/></Field>
+    <Field label="Danh mục"><select value={form.maDanhMucBaiViet||''} onChange={e=>setForm({...form,maDanhMucBaiViet:e.target.value?Number(e.target.value):undefined})}><option value="">Chưa phân loại</option>{categories.map(x=><option key={x.maDanhMucBaiViet} value={x.maDanhMucBaiViet}>{x.tenDanhMuc}</option>)}</select></Field>
+    <Field label="URL ảnh tiêu đề"><input value={form.anhTieuDe} onChange={e=>setForm({...form,anhTieuDe:e.target.value})}/>{form.anhTieuDe&&<img src={form.anhTieuDe} alt="Xem trước" style={{width:220,maxHeight:140,objectFit:'cover',marginTop:8}}/>}</Field>
+    <Field label="Nội dung theo khối"><BlogBlockEditor value={form.noiDung} articleId={initial?.maBaiViet} images={images} onChange={noiDung=>setForm(current=>({...current,noiDung}))} onImagesChange={setImages} onUpload={initial?(file,caption,order)=>artistDashboardService.taiAnhNoiDungBaiViet(initial.maBaiViet,file,caption,order):undefined} onDeleteImage={initial?imageId=>artistDashboardService.xoaAnhNoiDungBaiViet(initial.maBaiViet,imageId):undefined}/></Field>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}><Field label="Bắt đầu sự kiện"><input type="datetime-local" value={form.ngayBatDauSuKien?.slice(0,16)||''} onChange={e=>setForm({...form,ngayBatDauSuKien:e.target.value||null})}/></Field><Field label="Kết thúc sự kiện"><input type="datetime-local" value={form.ngayKetThucSuKien?.slice(0,16)||''} onChange={e=>setForm({...form,ngayKetThucSuKien:e.target.value||null})}/></Field></div>
+    <Field label="Địa điểm sự kiện"><input value={form.diaDiemSuKien} onChange={e=>setForm({...form,diaDiemSuKien:e.target.value})}/></Field>
+    <Field label="Nguồn nội dung/quyền sử dụng"><input value={form.nguonNoiDung} onChange={e=>setForm({...form,nguonNoiDung:e.target.value})}/></Field>
+    <div style={{display:'flex',justifyContent:'flex-end',gap:10}}><button onClick={onCancel} disabled={submitting}>Hủy</button><button className="add-btn" disabled={submitting} onClick={()=>{if(!form.tieuDe.trim())return alert('Vui lòng nhập tiêu đề');onSubmit({...form,tieuDe:form.tieuDe.trim()});}}>{submitting?'Đang lưu...':initial?'Lưu thay đổi':'Lưu bản nháp'}</button></div>
+  </div></div>;
+}
 
-  return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: 'rgba(0,0,0,0.55)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 9999
-    }}>
-      <div style={{
-        background: '#fff', borderRadius: 14,
-        padding: '32px', maxWidth: 560, width: '90%',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-      }}>
-        <h3 style={{ marginTop: 0, color: '#1a1a2e', borderBottom: '2px solid #f0f0f0', paddingBottom: 12 }}>
-          {initial ? 'Chỉnh sửa bài viết' : 'Tạo bài viết mới'}
-        </h3>
+function Field({label,children}:{label:string;children:React.ReactNode}) { return <div style={{marginBottom:14}}><label style={{display:'block',fontWeight:600,marginBottom:6}}>{label}</label><div className="article-field">{children}</div></div>; }
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Tóm tắt</label>
-          <textarea maxLength={500} rows={3} value={tomTat} onChange={e=>setTomTat(e.target.value)} style={{width:'100%',boxSizing:'border-box'}} />
-        </div>
+export default function ArtistArticles(){
+  const[articles,setArticles]=useState<BaiVietResponse[]>([]);const[categories,setCategories]=useState<DanhMucBaiVietResponse[]>([]);
+  const[loading,setLoading]=useState(false);const[submitting,setSubmitting]=useState(false);const[showCreate,setShowCreate]=useState(false);
+  const[editing,setEditing]=useState<BaiVietResponse|null>(null);const[preview,setPreview]=useState<BaiVietResponse|null>(null);
+  const load=async()=>{setLoading(true);try{setArticles(await artistDashboardService.getBaiVietCuaToi());}catch(error:any){alert(error?.response?.data?.message||'Không thể tải bài viết');}finally{setLoading(false);}};
+  useEffect(()=>{void load();artistDashboardService.getDanhMucBaiViet().then(setCategories).catch(console.error);},[]);
+  const openDetail=async(item:BaiVietResponse,mode:'edit'|'preview')=>{try{const detail=await artistDashboardService.getBaiVietById(item.maBaiViet);mode==='edit'?setEditing(detail):setPreview(detail);}catch(error:any){alert(error?.response?.data?.message||'Không thể tải chi tiết bài viết');}};
+  const save=async(data:TaoBaiVietRequest)=>{setSubmitting(true);try{if(editing){await artistDashboardService.capNhatBaiViet(editing.maBaiViet,data);alert(editing.trangThai===2?'Đã lưu; bài được chuyển về chờ Admin duyệt lại.':'Đã cập nhật bài viết.');}else{await artistDashboardService.taoBaiViet(data);alert('Đã lưu bản nháp. Mở Sửa để tải và chèn ảnh.');}setEditing(null);setShowCreate(false);await load();}catch(error:any){alert(error?.response?.data?.message||'Không thể lưu bài viết');}finally{setSubmitting(false);}};
+  const remove=async(item:BaiVietResponse)=>{if(!window.confirm(`Xóa bài viết "${item.tieuDe}"?`))return;try{await artistDashboardService.xoaBaiViet(item.maBaiViet);await load();}catch(error:any){alert(error?.response?.data?.message||'Không thể xóa');}};
+  const submitReview=async(item:BaiVietResponse)=>{if(!window.confirm(`Gửi bài "${item.tieuDe}" để Admin duyệt?`))return;try{await artistDashboardService.guiDuyetBaiViet(item.maBaiViet);await load();}catch(error:any){alert(error?.response?.data?.message||'Không thể gửi duyệt');}};
+  return <div id="artist-articles" className="page">
+    {(showCreate||editing)&&<ArticleForm initial={editing} categories={categories} submitting={submitting} onSubmit={save} onCancel={()=>{setShowCreate(false);setEditing(null);}}/>}
+    {preview&&<div style={overlay}><div style={{...modal,width:'min(760px,94vw)'}}><div style={{display:'flex',justifyContent:'space-between'}}><h2>{preview.tieuDe}</h2><button onClick={()=>setPreview(null)}>✕</button></div><p style={{color:'#888'}}>{preview.tenDanhMuc} · {new Date(preview.ngayXuatBan||preview.ngayDang).toLocaleDateString('vi-VN')}</p>{preview.anhTieuDe&&<img src={preview.anhTieuDe} alt={preview.tieuDe} style={{width:'100%',maxHeight:300,objectFit:'cover'}}/>}<h4>{preview.tomTat}</h4><BlogContentPreview value={preview.noiDung} images={preview.hinhAnhNoiDung}/>{preview.lyDo&&<div style={{background:'#fce4ec',padding:12,marginTop:16}}>Lý do từ chối: {preview.lyDo}</div>}</div></div>}
+    <div className="page-header"><h4><i className="ti-write"/> Bài viết của tôi</h4><div style={{display:'flex',gap:10}}><button className="btn-refresh" onClick={()=>void load()}>Làm mới</button><button className="add-btn" onClick={()=>setShowCreate(true)}>+ Viết bài mới</button></div></div>
+    <div style={{display:'flex',gap:12,marginBottom:20,flexWrap:'wrap'}}>{[0,1,2,3].map(value=><div key={value} style={{background:'#f8fafc',border:'1px solid #ddd',borderRadius:10,padding:'8px 16px'}}>{status(value).text}: <strong>{articles.filter(x=>x.trangThai===value).length}</strong></div>)}</div>
+    {loading?<div>Đang tải...</div>:articles.length===0?<div style={{padding:50,textAlign:'center',color:'#999'}}>Bạn chưa có bài viết nào.</div>:<div className="table-container"><table className="styled-table"><thead><tr><th>Tiêu đề</th><th>Ngày</th><th>Trạng thái</th><th>Ghi chú</th><th>Hành động</th></tr></thead><tbody>{articles.map(item=>{const st=status(item.trangThai);const canEdit=[0,2,3].includes(item.trangThai);return <tr key={item.maBaiViet}><td><button className="link-button" onClick={()=>void openDetail(item,'preview')}>{item.tieuDe}</button></td><td>{new Date(item.ngayDang).toLocaleDateString('vi-VN')}</td><td><span className={`status ${st.cls}`}>{st.text}</span></td><td>{item.lyDo||'—'}</td><td><button onClick={()=>void openDetail(item,'preview')}>Xem</button>{canEdit&&<button className="btn-edit" onClick={()=>void openDetail(item,'edit')}>Sửa</button>}{[0,3].includes(item.trangThai)&&<button onClick={()=>void submitReview(item)}>Gửi duyệt</button>}<button className="btn-delete" onClick={()=>void remove(item)}>Xóa</button></td></tr>;})}</tbody></table></div>}
+  </div>;
+}
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Danh mục</label>
-          <select value={maDanhMuc} onChange={e=>setMaDanhMuc(e.target.value)} style={{width:'100%',padding:10}}>
-            <option value="">Chưa phân loại</option>
-            {categories.map(x=><option key={x.maDanhMucBaiViet} value={x.maDanhMucBaiViet}>{x.tenDanhMuc}</option>)}
-          </select>
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>
-            Tiêu đề <span style={{ color: 'red' }}>*</span>
-          </label>
-          <input
-            value={tieuDe}
-            onChange={e => setTieuDe(e.target.value)}
-            placeholder="Nhập tiêu đề bài viết..."
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: 8,
-              border: '1px solid #ddd', fontSize: 14, boxSizing: 'border-box'
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>
-            URL Ảnh Tiêu Đề
-          </label>
-          <input
-            value={anhTieuDe}
-            onChange={e => setAnhTieuDe(e.target.value)}
-            placeholder="Nhập đường dẫn URL hình ảnh..."
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: 8,
-              border: '1px solid #ddd', fontSize: 14, boxSizing: 'border-box'
-            }}
-          />
-          {anhTieuDe && (
-            <img 
-              src={anhTieuDe} 
-              alt="Preview" 
-              style={{ marginTop: 10, maxWidth: '100%', maxHeight: 150, borderRadius: 8, objectFit: 'cover' }}
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          )}
-        </div>
-
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: 'block', fontWeight: 600, marginBottom: 6 }}>Nội dung</label>
-          <textarea
-            value={noiDung}
-            onChange={e => setNoiDung(e.target.value)}
-            rows={8}
-            placeholder="Nhập nội dung bài viết..."
-            style={{
-              width: '100%', padding: '10px 14px', borderRadius: 8,
-              border: '1px solid #ddd', fontSize: 14,
-              resize: 'vertical', boxSizing: 'border-box'
-            }}
-          />
-        </div>
-
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
-          <div><label>Bắt đầu sự kiện</label><input type="datetime-local" value={ngayBatDau} onChange={e=>setNgayBatDau(e.target.value)} style={{width:'100%'}} /></div>
-          <div><label>Kết thúc sự kiện</label><input type="datetime-local" value={ngayKetThuc} onChange={e=>setNgayKetThuc(e.target.value)} style={{width:'100%'}} /></div>
-        </div>
-        <div style={{ marginBottom: 16 }}><label>Địa điểm sự kiện</label><input value={diaDiem} onChange={e=>setDiaDiem(e.target.value)} style={{width:'100%'}} /></div>
-        <div style={{ marginBottom: 20 }}><label>Nguồn nội dung/quyền sử dụng</label><input value={nguon} onChange={e=>setNguon(e.target.value)} style={{width:'100%'}} /></div>
-
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-          <button
-            onClick={onCancel}
-            disabled={submitting}
-            style={{
-              padding: '9px 22px', borderRadius: 8,
-              border: '1px solid #ddd', background: '#f5f5f5',
-              cursor: 'pointer', fontSize: 14
-            }}
-          >
-            Hủy
-          </button>
-          <button
-            onClick={() => {
-              if (!tieuDe.trim()) { alert('Vui lòng nhập tiêu đề'); return; }
-              onSubmit({ tieuDe: tieuDe.trim(), noiDung: noiDung.trim(), anhTieuDe: anhTieuDe.trim(), tomTat:tomTat.trim(), maDanhMucBaiViet:maDanhMuc?Number(maDanhMuc):undefined, ngayBatDauSuKien:ngayBatDau||null, ngayKetThucSuKien:ngayKetThuc||null, diaDiemSuKien:diaDiem.trim(), nguonNoiDung:nguon.trim(), maTacPhamLienQuan:[] });
-            }}
-            disabled={submitting}
-            style={{
-              padding: '9px 22px', borderRadius: 8,
-              border: 'none',
-              background: submitting ? '#aaa' : '#2c7be5',
-              color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer',
-              fontSize: 14, fontWeight: 600
-            }}
-          >
-            {submitting ? 'Đang lưu...' : (initial ? 'Lưu thay đổi' : 'Tạo bài viết')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ======================== MAIN COMPONENT ========================
-const ArtistArticles: React.FC = () => {
-  const [articles, setArticles] = useState<BaiVietResponse[]>([]);
-  const [categories, setCategories] = useState<DanhMucBaiVietResponse[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Modal state
-  const [showForm, setShowForm] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<BaiVietResponse | null>(null);
-
-  // Preview
-  const [previewArticle, setPreviewArticle] = useState<BaiVietResponse | null>(null);
-
-  useEffect(() => {
-    loadArticles();
-    artistDashboardService.getDanhMucBaiViet().then(setCategories).catch(console.error);
-  }, []);
-
-  // ===================== LOAD =====================
-  const loadArticles = async () => {
-    setLoading(true);
-    try {
-      const data = await artistDashboardService.getBaiVietCuaToi();
-      setArticles(data);
-    } catch (error) {
-      console.error('Lỗi khi tải bài viết:', error);
-      alert('Không thể tải danh sách bài viết. Vui lòng thử lại.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ===================== CREATE =====================
-  const handleCreate = async (data: TaoBaiVietRequest) => {
-    setSubmitting(true);
-    try {
-      await artistDashboardService.taoBaiViet(data);
-      alert('Tạo bài viết thành công! Bài đang ở trạng thái Nháp.');
-      setShowForm(false);
-      loadArticles();
-    } catch (error) {
-      console.error('Lỗi khi tạo bài viết:', error);
-      alert('Có lỗi xảy ra khi tạo bài viết');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // ===================== UPDATE =====================
-  const handleUpdate = async (data: CapNhatBaiVietRequest) => {
-    if (!editingArticle) return;
-    setSubmitting(true);
-    try {
-      await artistDashboardService.capNhatBaiViet(editingArticle.maBaiViet, data);
-      alert('Cập nhật bài viết thành công!');
-      setEditingArticle(null);
-      loadArticles();
-    } catch (error) {
-      console.error('Lỗi khi cập nhật bài viết:', error);
-      alert('Có lỗi xảy ra khi cập nhật');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  // ===================== DELETE =====================
-  const handleDelete = async (item: BaiVietResponse) => {
-    if (!window.confirm(`Xóa bài viết "${item.tieuDe}"? Hành động này không thể hoàn tác!`)) return;
-    try {
-      await artistDashboardService.xoaBaiViet(item.maBaiViet);
-      alert('Đã xóa bài viết!');
-      loadArticles();
-    } catch (error) {
-      console.error('Lỗi khi xóa bài viết:', error);
-      alert('Có lỗi xảy ra khi xóa bài viết');
-    }
-  };
-
-  // ===================== GỬI DUYỆT =====================
-  const handleGuiDuyet = async (item: BaiVietResponse) => {
-    if (!window.confirm(`Gửi bài viết "${item.tieuDe}" để Admin duyệt?`)) return;
-    try {
-      await artistDashboardService.guiDuyetBaiViet(item.maBaiViet);
-      alert('Đã gửi bài viết để duyệt! Admin sẽ xem xét sớm nhất.');
-      loadArticles();
-    } catch (error) {
-      console.error('Lỗi khi gửi duyệt:', error);
-      alert('Có lỗi xảy ra khi gửi duyệt');
-    }
-  };
-
-  // ===================== STATS =====================
-  const draftCount     = articles.filter(a => a.trangThai === 0).length;
-  const pendingCount   = articles.filter(a => a.trangThai === 1).length;
-  const approvedCount  = articles.filter(a => a.trangThai === 2).length;
-  const rejectedCount  = articles.filter(a => a.trangThai === 3).length;
-
-  return (
-    <div id="artist-articles" className="page">
-      {/* Form tạo/sửa bài viết */}
-      {(showForm || editingArticle) && (
-        <BaiVietForm
-          initial={editingArticle}
-          categories={categories}
-          onSubmit={editingArticle ? handleUpdate : handleCreate}
-          onCancel={() => { setShowForm(false); setEditingArticle(null); }}
-          submitting={submitting}
-        />
-      )}
-
-      {/* Preview bài viết */}
-      {previewArticle && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
-        }}>
-          <div style={{
-            background: '#fff', borderRadius: 14, padding: 32,
-            maxWidth: 700, width: '90%', maxHeight: '80vh',
-            overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <h2 style={{ marginTop: 0, color: '#1a1a2e' }}>{previewArticle.tieuDe}</h2>
-              <button onClick={() => setPreviewArticle(null)} style={{
-                background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#999'
-              }}>✕</button>
-            </div>
-            <p style={{ color: '#888', fontSize: 13 }}>
-              Ngày đăng: {new Date(previewArticle.ngayDang).toLocaleDateString('vi-VN')}
-            </p>
-            {previewArticle.anhTieuDe && (
-              <img 
-                src={previewArticle.anhTieuDe} 
-                alt={previewArticle.tieuDe} 
-                style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '8px', margin: '15px 0' }}
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-            )}
-            <hr />
-            <div style={{ lineHeight: 1.8, color: '#333', whiteSpace: 'pre-wrap' }}>
-              {previewArticle.noiDung || <em style={{ color: '#aaa' }}>Chưa có nội dung</em>}
-            </div>
-            {previewArticle.lyDo && (
-              <div style={{
-                marginTop: 20, padding: '12px 16px', background: '#fce4ec',
-                borderRadius: 8, borderLeft: '4px solid #e74c3c'
-              }}>
-                <strong style={{ color: '#e74c3c' }}>Lý do từ chối:</strong>
-                <p style={{ margin: '4px 0 0', color: '#555' }}>{previewArticle.lyDo}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="page-header" style={{ marginBottom: 20 }}>
-        <h4><i className="ti-write"></i> Bài viết của tôi</h4>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            className="btn-refresh"
-            onClick={loadArticles}
-            disabled={loading}
-          >
-            <i className="ti-reload"></i> Làm mới
-          </button>
-          <button
-            className="add-btn"
-            onClick={() => { setEditingArticle(null); setShowForm(true); }}
-            style={{ margin: 0 }}
-          >
-            <i className="ti-plus"></i> Viết bài mới
-          </button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div style={{ background: '#f5f5f5', border: '1px solid #ddd', borderRadius: 10, padding: '8px 16px', fontSize: 13 }}>
-          📝 Nháp: <strong>{draftCount}</strong>
-        </div>
-        <div style={{ background: '#fff3e0', border: '1px solid #ff9800', borderRadius: 10, padding: '8px 16px', fontSize: 13 }}>
-          ⏳ Chờ duyệt: <strong>{pendingCount}</strong>
-        </div>
-        <div style={{ background: '#e8f5e9', border: '1px solid #4caf50', borderRadius: 10, padding: '8px 16px', fontSize: 13 }}>
-          ✅ Đã duyệt: <strong>{approvedCount}</strong>
-        </div>
-        <div style={{ background: '#fce4ec', border: '1px solid #e91e63', borderRadius: 10, padding: '8px 16px', fontSize: 13 }}>
-          ❌ Từ chối: <strong>{rejectedCount}</strong>
-        </div>
-      </div>
-
-      {/* Table */}
-      {loading ? (
-        <div className="loading" style={{ textAlign: 'center', padding: 40 }}>Đang tải...</div>
-      ) : articles.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#aaa' }}>
-          <i className="ti-write" style={{ fontSize: 48, display: 'block', marginBottom: 12 }}></i>
-          <p style={{ fontSize: 16 }}>Bạn chưa có bài viết nào.</p>
-          <button className="add-btn" onClick={() => setShowForm(true)} style={{ marginTop: 12 }}>
-            Viết bài đầu tiên
-          </button>
-        </div>
-      ) : (
-        <div className="table-container">
-          <table className="styled-table">
-            <thead>
-              <tr>
-                <th style={{ width: '35%', textAlign: 'left', paddingLeft: 16 }}>Tiêu đề</th>
-                <th>Ngày đăng</th>
-                <th>Trạng thái</th>
-                <th>Ghi chú</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {articles.map((item) => {
-                const { text, cls } = trangThaiLabel(item.trangThai);
-                const isDraft    = item.trangThai === 0;
-                const isRejected = item.trangThai === 3;
-                const canEdit    = item.trangThai === 0 || item.trangThai === 3; // chỉ sửa khi nháp hoặc bị từ chối
-
-                return (
-                  <tr key={item.maBaiViet}>
-                    <td style={{ textAlign: 'left', paddingLeft: 16 }}>
-                      <button
-                        onClick={() => setPreviewArticle(item)}
-                        style={{
-                          background: 'none', border: 'none', cursor: 'pointer',
-                          color: '#1565c0', fontWeight: 600, textAlign: 'left',
-                          padding: 0, fontSize: 14
-                        }}
-                        title="Xem trước bài viết"
-                      >
-                        {item.tieuDe}
-                      </button>
-                    </td>
-                    <td>{new Date(item.ngayDang).toLocaleDateString('vi-VN')}</td>
-                    <td>
-                      <span className={`status ${cls}`}>{text}</span>
-                    </td>
-                    <td style={{ fontSize: 12, color: '#e74c3c', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {isRejected && item.lyDo ? item.lyDo : '—'}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                        {/* Xem trước */}
-                        <button
-                          onClick={() => setPreviewArticle(item)}
-                          title="Xem trước"
-                          style={{
-                            background: 'none', border: '1px solid #aaa',
-                            borderRadius: 6, padding: '4px 10px',
-                            cursor: 'pointer', fontSize: 13, color: '#555'
-                          }}
-                        >
-                          <i className="ti-eye"></i>
-                        </button>
-
-                        {/* Sửa — chỉ khi nháp hoặc bị từ chối */}
-                        {canEdit && (
-                          <button
-                            onClick={() => { setEditingArticle(item); setShowForm(false); }}
-                            className="btn-edit"
-                            title="Chỉnh sửa"
-                          >
-                            <i className="ti-pencil"></i>
-                          </button>
-                        )}
-
-                        {/* Gửi duyệt — chỉ khi nháp hoặc bị từ chối */}
-                        {(isDraft || isRejected) && (
-                          <button
-                            onClick={() => handleGuiDuyet(item)}
-                            title="Gửi duyệt"
-                            style={{
-                              background: '#e3f2fd', border: '1px solid #1565c0',
-                              borderRadius: 6, padding: '4px 10px',
-                              cursor: 'pointer', fontSize: 13, color: '#1565c0',
-                              fontWeight: 600
-                            }}
-                          >
-                            <i className="ti-upload"></i> Gửi duyệt
-                          </button>
-                        )}
-
-                        {/* Xóa */}
-                        <button
-                          onClick={() => handleDelete(item)}
-                          className="btn-delete"
-                          title="Xóa bài viết"
-                        >
-                          <i className="ti-trash"></i>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-};
-
-export default ArtistArticles;
+const overlay:React.CSSProperties={position:'fixed',inset:0,background:'rgba(0,0,0,.65)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:9999};
+const modal:React.CSSProperties={background:'#fff',borderRadius:14,padding:26,width:'min(920px,96vw)',maxHeight:'92vh',overflow:'auto'};

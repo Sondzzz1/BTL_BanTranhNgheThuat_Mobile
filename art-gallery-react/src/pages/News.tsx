@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { contentService, BaiVietResponse } from '../services/contentService';
 import './News.css';
+import { blogExcerpt } from '../types/blogContent';
 
 const News: React.FC = () => {
     const [articles, setArticles] = useState<BaiVietResponse[]>([]);
@@ -43,7 +44,7 @@ const News: React.FC = () => {
                         <div className="featured-info">
                             <span className="news-date"><i className="ti-calendar"></i> {new Date(articles[0].ngayXuatBan || articles[0].ngayDang).toLocaleDateString('vi-VN')}</span>
                             <h2>{articles[0].tieuDe}</h2>
-                            <p>{articles[0].tomTat || articles[0].noiDung || 'Bài viết chưa có phần tóm tắt.'}</p>
+                            <p>{articles[0].tomTat || blogExcerpt(articles[0].noiDung) || 'Bài viết chưa có phần tóm tắt.'}</p>
                         </div>
                     </div>}
 
@@ -80,7 +81,7 @@ const News: React.FC = () => {
                                             WebkitBoxOrient: 'vertical', 
                                             overflow: 'hidden' 
                                         }}>
-                                            {article.tomTat || (article.noiDung ? article.noiDung.replace(/<[^>]+>/g, '') : 'Chưa có nội dung...')}
+                                            {article.tomTat || blogExcerpt(article.noiDung) || 'Chưa có nội dung...'}
                                         </p>
                                         <p className="author-name" style={{ fontSize: '0.9em', color: '#666', marginTop: '10px' }}>
                                             Đăng bởi: <strong>{article.tenTacGia || article.tenHoaSi}</strong>

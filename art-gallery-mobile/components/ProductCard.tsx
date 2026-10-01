@@ -66,7 +66,9 @@ export default function ProductCard({
             {product.tenHoaSi}
           </Text>
         )}
-        <Text style={styles.price}>{formatPrice(product.gia)}</Text>
+        <Text style={styles.price} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>
+          {formatPrice(product.gia)}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -154,5 +156,6 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '800',
     color: '#ea580c',
+    minWidth: 0,
   },
 });

@@ -108,9 +108,10 @@ export const contentService = {
   },
   async taoDanhMucBaiViet(data:{tenDanhMuc:string;slug:string;trangThai:boolean}):Promise<void>{await apiClient.post('/admin/bai-viet/danh-muc',data);},
   async capNhatDanhMucBaiViet(id:number,data:{tenDanhMuc:string;slug:string;trangThai:boolean}):Promise<void>{await apiClient.put(`/admin/bai-viet/danh-muc/${id}`,data);},
-  async taoBaiVietAdmin(data:BaiVietPayload):Promise<void>{await apiClient.post('/admin/bai-viet/create',data);},
+  async taoBaiVietAdmin(data:BaiVietPayload):Promise<{maBaiViet:number;message?:string}>{return (await apiClient.post('/admin/bai-viet/create',data)).data;},
   async capNhatBaiVietAdmin(id:number,data:BaiVietPayload):Promise<void>{await apiClient.put(`/admin/bai-viet/${id}/update`,data);},
-  async taiAnhNoiDungBaiViet(id:number,file:File,chuThich=''):Promise<{maHinhAnh:number;duongDan:string;chuThich?:string;thuTu:number}>{const body=new FormData();body.append('file',file);body.append('chuThich',chuThich);return (await apiClient.post(`/bai-viet/${id}/hinh-anh`,body,{headers:{'Content-Type':'multipart/form-data'}})).data;},
+  async taiAnhNoiDungBaiViet(id:number,file:File,chuThich='',thuTu=0):Promise<{maHinhAnh:number;duongDan:string;chuThich?:string;thuTu:number}>{const body=new FormData();body.append('file',file);body.append('chuThich',chuThich);body.append('thuTu',String(thuTu));return (await apiClient.post(`/bai-viet/${id}/hinh-anh`,body,{headers:{'Content-Type':'multipart/form-data'}})).data;},
+  async xoaAnhNoiDungBaiViet(id:number,imageId:number):Promise<void>{await apiClient.delete(`/bai-viet/${id}/hinh-anh/${imageId}`);},
   async xuatBanBaiViet(id:number):Promise<void>{await apiClient.put(`/admin/bai-viet/${id}/xuat-ban`);},
 
   // ======================================================

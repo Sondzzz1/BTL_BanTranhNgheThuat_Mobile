@@ -4,6 +4,7 @@ import {Article,newsService} from '../services/newsService';
 import {resolveContentImageUrl} from '../services/artworkContentService';
 import {formatVnd} from '../utils/currency';
 import ArtworkImage from '../components/ArtworkImage';
+import BlogContentRenderer,{parseBlockContent} from '../components/BlogContentRenderer';
 
 export default function NewsDetailScreen({route,navigation}:any){
   const id=Number(route.params?.id);const[article,setArticle]=useState<Article|null>(null);const[related,setRelated]=useState<Article[]>([]);const[error,setError]=useState('');
@@ -15,9 +16,9 @@ export default function NewsDetailScreen({route,navigation}:any){
     <Text style={s.category}>{article.tenDanhMuc||'Góc nghệ thuật'}</Text><Text style={s.title}>{article.tieuDe}</Text>
     <Text style={s.meta}>Xuất bản {date(article.ngayXuatBan||article.ngayDang)} · {article.tenTacGia||article.tenHoaSi}</Text>
     {article.anhTieuDe?<ArtworkImage source={{uri:resolveContentImageUrl(article.anhTieuDe)}} style={s.hero}/>:null}
-    {article.tomTat?<Text style={s.summary}>{article.tomTat}</Text>:null}<Text style={s.body}>{article.noiDung||''}</Text>
+    {article.tomTat?<Text style={s.summary}>{article.tomTat}</Text>:null}<BlogContentRenderer content={article.noiDung} images={article.hinhAnhNoiDung}/>
     {article.ngayBatDauSuKien?<View style={s.event}><Text style={s.sectionTitle}>Thông tin sự kiện</Text><Text>Bắt đầu: {date(article.ngayBatDauSuKien)}</Text>{article.ngayKetThucSuKien?<Text>Kết thúc: {date(article.ngayKetThucSuKien)}</Text>:null}{article.diaDiemSuKien?<Text>Địa điểm: {article.diaDiemSuKien}</Text>:null}</View>:null}
-    {article.hinhAnhNoiDung?.length?<View><Text style={s.sectionTitle}>Hình ảnh trong bài</Text>{article.hinhAnhNoiDung.map(x=><View key={x.maHinhAnh} style={s.imageBlock}><ArtworkImage source={{uri:resolveContentImageUrl(x.duongDan)}} style={s.contentImage}/>{x.chuThich?<Text style={s.caption}>{x.chuThich}</Text>:null}</View>)}</View>:null}
+    {!parseBlockContent(article.noiDung).isBlockContent&&article.hinhAnhNoiDung?.length?<View><Text style={s.sectionTitle}>Hình ảnh trong bài</Text>{article.hinhAnhNoiDung.map(x=><View key={x.maHinhAnh} style={s.imageBlock}><ArtworkImage source={{uri:resolveContentImageUrl(x.duongDan)}} style={s.contentImage}/>{x.chuThich?<Text style={s.caption}>{x.chuThich}</Text>:null}</View>)}</View>:null}
     {article.nguonNoiDung?<Text style={s.source}>Nguồn tham khảo: {article.nguonNoiDung}</Text>:null}
     {article.tacPhamLienQuan?.length?<View><Text style={s.sectionTitle}>Tác phẩm được nhắc đến</Text><ScrollView horizontal showsHorizontalScrollIndicator={false}>{article.tacPhamLienQuan.map(x=><TouchableOpacity key={x.maTacPham} style={s.artCard} onPress={()=>navigation.navigate('ProductDetail',{id:x.maTacPham})}><ArtworkImage source={x.hinhAnh?{uri:resolveContentImageUrl(x.hinhAnh)}:undefined} style={s.artImage}/><Text style={s.artTitle}>{x.tenTacPham}</Text><Text style={s.artPrice}>{formatVnd(x.gia)}</Text></TouchableOpacity>)}</ScrollView></View>:null}
     {related.length?<View><Text style={s.sectionTitle}>Bài viết liên quan</Text>{related.map(x=><TouchableOpacity key={x.maBaiViet} style={s.related} onPress={()=>navigation.push('NewsDetail',{id:x.maBaiViet})}><Text style={s.relatedTitle}>{x.tieuDe}</Text><Text style={s.meta}>{x.tenDanhMuc} · {date(x.ngayXuatBan||x.ngayDang)}</Text></TouchableOpacity>)}</View>:null}

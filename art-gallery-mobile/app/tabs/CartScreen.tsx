@@ -233,7 +233,9 @@ export default function CartScreen({ navigation }: CartScreenProps) {
               👨‍🎨 {item.tenHoaSi}
             </Text>
           ) : null}
-          <Text style={styles.itemPrice}>{formatPrice(item.gia)}</Text>
+          <Text style={styles.itemPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>
+            {formatPrice(item.gia)}
+          </Text>
           
           {/* Subtotal & Quantity row */}
           <View style={styles.bottomRow}>
@@ -258,8 +260,8 @@ export default function CartScreen({ navigation }: CartScreenProps) {
             </View>
 
             <View style={styles.itemSubtotal}>
-              <Text style={styles.subtotalLabel}>Tạm tính: </Text>
-              <Text style={styles.itemSubtotalText}>
+              <Text style={styles.subtotalLabel}>Tạm tính</Text>
+              <Text style={styles.itemSubtotalText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.68}>
                 {formatPrice(item.thanhTien || item.gia * item.soLuong)}
               </Text>
             </View>
@@ -372,8 +374,10 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       {/* Checkout Footer */}
       <View style={styles.footer}>
         <View style={styles.totalContainer}>
-          <Text style={styles.totalLabel}>Tổng thanh toán:</Text>
-          <Text style={styles.totalAmount}>{formatPrice(calculateTotal())}</Text>
+          <Text style={styles.totalLabel}>Tổng thanh toán</Text>
+          <Text style={styles.totalAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.65}>
+            {formatPrice(calculateTotal())}
+          </Text>
         </View>
         <TouchableOpacity
           style={styles.checkoutButton}
@@ -451,12 +455,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   itemImageContainer: {
-    width: 90,
-    height: 90,
+    width: 82,
+    height: 96,
     borderRadius: 8,
     overflow: 'hidden',
     backgroundColor: '#f3f4f6',
-    marginRight: 12,
+    marginRight: 10,
   },
   itemImage: {
     width: '100%',
@@ -472,8 +476,9 @@ const styles = StyleSheet.create({
   },
   itemInfo: {
     flex: 1,
+    minWidth: 0,
     justifyContent: 'space-between',
-    paddingRight: 24,
+    paddingRight: 20,
   },
   itemName: {
     fontSize: 15,
@@ -491,12 +496,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#2563eb',
     marginBottom: 6,
+    flexShrink: 1,
   },
   bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 4,
+    alignItems: 'stretch',
+    marginTop: 7,
+    gap: 8,
   },
   quantityContainer: {
     flexDirection: 'row',
@@ -524,17 +529,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtotalLabel: {
-    fontSize: 11,
+    flexShrink: 0,
+    fontSize: 11.5,
     color: '#6b7280',
   },
   itemSubtotal: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: 8,
   },
   itemSubtotalText: {
-    fontSize: 13,
-    fontWeight: '700',
+    flex: 1,
+    minWidth: 0,
+    fontSize: 14,
+    fontWeight: '800',
     color: '#059669',
+    textAlign: 'right',
   },
   removeButton: {
     position: 'absolute',
@@ -580,14 +592,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   totalLabel: {
+    flexShrink: 0,
     fontSize: 15,
     fontWeight: '600',
     color: '#6b7280',
   },
   totalAmount: {
+    flex: 1,
+    minWidth: 0,
+    marginLeft: 14,
     fontSize: 22,
     fontWeight: 'bold',
     color: '#2563eb',
+    textAlign: 'right',
   },
   checkoutButton: {
     backgroundColor: '#2563eb',

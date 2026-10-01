@@ -16,6 +16,7 @@ export const API_ENDPOINTS = {
 
   // Products
   PRODUCTS: '/tranh',
+  PRODUCTS_BEST_SELLING: '/tranh/ban-chay',
   PRODUCT_DETAIL: (id: number) => `/tranh/${id}`,
   PRODUCT_SUGGESTIONS: (id: number) => `/tranh/${id}/goi-y`,
 

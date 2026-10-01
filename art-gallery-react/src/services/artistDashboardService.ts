@@ -107,6 +107,8 @@ export interface BaiVietResponse {
     nguonNoiDung?: string;
     trangThai: number; // 0=Draft, 2=Published, 3=Rejected
     lyDo?: string;
+    hinhAnhNoiDung?: Array<{ maHinhAnh:number;duongDan:string;chuThich?:string;thuTu:number }>;
+    tacPhamLienQuan?: Array<{ maTacPham:number;tenTacPham:string;hinhAnh?:string;gia:number;tenHoaSi:string }>;
 }
 
 export interface TaoBaiVietRequest {
@@ -219,6 +221,9 @@ export const artistDashboardService = {
     const response = await apiClient.get('/hoa-si/bai-viet/get-all');
     return response.data;
   },
+  getBaiVietById: async (id:number): Promise<BaiVietResponse> => {
+    return (await apiClient.get(`/hoa-si/bai-viet/${id}`)).data;
+  },
   getDanhMucBaiViet: async (): Promise<DanhMucBaiVietResponse[]> => {
     const response = await apiClient.get('/bai-viet/danh-muc');
     return response.data;
@@ -238,6 +243,13 @@ export const artistDashboardService = {
   guiDuyetBaiViet: async (id: number): Promise<any> => {
     const response = await apiClient.put(`/hoa-si/bai-viet/${id}/gui-duyet`);
     return response.data;
+  },
+  taiAnhNoiDungBaiViet: async (id:number,file:File,chuThich='',thuTu=0):Promise<{maHinhAnh:number;duongDan:string;chuThich?:string;thuTu:number}> => {
+    const body=new FormData();body.append('file',file);body.append('chuThich',chuThich);body.append('thuTu',String(thuTu));
+    return (await apiClient.post(`/bai-viet/${id}/hinh-anh`,body,{headers:{'Content-Type':'multipart/form-data'}})).data;
+  },
+  xoaAnhNoiDungBaiViet: async (id:number,imageId:number):Promise<void> => {
+    await apiClient.delete(`/bai-viet/${id}/hinh-anh/${imageId}`);
   },
 
   // --- DOANH THU ---

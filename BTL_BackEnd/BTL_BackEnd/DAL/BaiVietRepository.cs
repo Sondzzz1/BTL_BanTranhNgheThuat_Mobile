@@ -126,8 +126,42 @@ public class BaiVietRepository : IBaiVietRepository
     public async Task<int> AddImage(int maBaiViet,string path,string? caption,int order)
     {
         using var connection=new SqlConnection(_connectionString);await connection.OpenAsync();
-        using var command=new SqlCommand(@"INSERT INTO HinhAnhBaiViet(MaBaiViet,DuongDan,ChuThich,ThuTu) VALUES(@Id,@Path,@Caption,@Order);SELECT CAST(SCOPE_IDENTITY() AS INT);",connection);
-        command.Parameters.AddWithValue("@Id",maBaiViet);command.Parameters.AddWithValue("@Path",path);command.Parameters.AddWithValue("@Caption",Db(caption?.Trim()));command.Parameters.AddWithValue("@Order",Math.Max(0,order));return Convert.ToInt32(await command.ExecuteScalarAsync());
+        using var transaction=(SqlTransaction)await connection.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
+        {
+            using var command=new SqlCommand(@"IF (SELECT COUNT(*) FROM HinhAnhBaiViet WITH (UPDLOCK,HOLDLOCK) WHERE MaBaiViet=@Id) >= 20
+                    THROW 51000, N'Mỗi bài viết chỉ được tải tối đa 20 ảnh', 1;
+                INSERT INTO HinhAnhBaiViet(MaBaiViet,DuongDan,ChuThich,ThuTu) VALUES(@Id,@Path,@Caption,@Order);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);",connection,transaction);
+            command.Parameters.AddWithValue("@Id",maBaiViet);command.Parameters.AddWithValue("@Path",path);command.Parameters.AddWithValue("@Caption",Db(caption?.Trim()));command.Parameters.AddWithValue("@Order",Math.Max(0,order));
+            var id=Convert.ToInt32(await command.ExecuteScalarAsync());await transaction.CommitAsync();return id;
+        }
+        catch(SqlException ex) when(ex.Number==51000){await transaction.RollbackAsync();throw new ArgumentException("Mỗi bài viết chỉ được tải tối đa 20 ảnh",ex);}
+        catch{await transaction.RollbackAsync();throw;}
+    }
+
+    public async Task<HinhAnhBaiViet?> GetImage(int maBaiViet, int maHinhAnh)
+    {
+        using var connection = new SqlConnection(_connectionString); await connection.OpenAsync();
+        using var command = new SqlCommand(@"SELECT MaHinhAnh,MaBaiViet,DuongDan,ChuThich,ThuTu
+            FROM HinhAnhBaiViet WHERE MaBaiViet=@BaiViet AND MaHinhAnh=@HinhAnh", connection);
+        command.Parameters.AddWithValue("@BaiViet", maBaiViet);
+        command.Parameters.AddWithValue("@HinhAnh", maHinhAnh);
+        using var reader = await command.ExecuteReaderAsync();
+        return await reader.ReadAsync() ? new HinhAnhBaiViet
+        {
+            MaHinhAnh = reader.GetInt32(0), MaBaiViet = reader.GetInt32(1), DuongDan = reader.GetString(2),
+            ChuThich = reader.IsDBNull(3) ? null : reader.GetString(3), ThuTu = reader.GetInt32(4)
+        } : null;
+    }
+
+    public async Task<bool> DeleteImage(int maBaiViet, int maHinhAnh)
+    {
+        using var connection = new SqlConnection(_connectionString); await connection.OpenAsync();
+        using var command = new SqlCommand("DELETE FROM HinhAnhBaiViet WHERE MaBaiViet=@BaiViet AND MaHinhAnh=@HinhAnh", connection);
+        command.Parameters.AddWithValue("@BaiViet", maBaiViet);
+        command.Parameters.AddWithValue("@HinhAnh", maHinhAnh);
+        return await command.ExecuteNonQueryAsync() == 1;
     }
 
     public async Task<List<TacPham>> GetPublicLinkedArtworks(int maBaiViet)

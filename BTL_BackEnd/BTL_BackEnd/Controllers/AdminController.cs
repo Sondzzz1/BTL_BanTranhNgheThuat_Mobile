@@ -759,6 +759,14 @@ public class AdminController : ControllerBase
             
             return Ok(new { message = request.PheDuyet ? "Đã phê duyệt" : "Đã từ chối" });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });

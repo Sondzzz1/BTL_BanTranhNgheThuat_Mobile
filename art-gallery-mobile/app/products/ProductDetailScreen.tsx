@@ -32,6 +32,43 @@ interface ProductDetailScreenProps {
   navigation: any;
 }
 
+function DetailProductRail({
+  title,
+  subtitle,
+  products,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  products: Product[];
+  onPress: (id: number) => void;
+}) {
+  if (!products.length) return null;
+  return (
+    <View style={styles.collectionSection}>
+      <Text style={styles.collectionEyebrow}>{subtitle}</Text>
+      <Text style={styles.collectionTitle}>{title}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.collectionRail}>
+        {products.map(item => (
+          <TouchableOpacity key={item.maTacPham} style={styles.collectionCard} onPress={() => onPress(item.maTacPham)} activeOpacity={0.82}>
+            {item.hinhAnh ? (
+              <Image source={{ uri: item.hinhAnh }} style={styles.collectionImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.collectionImagePlaceholder}><Text style={styles.suggestionPlaceholderText}>🖼️</Text></View>
+            )}
+            <View style={styles.collectionInfo}>
+              <Text style={styles.collectionCategory} numberOfLines={1}>{item.tenDanhMuc || 'Tác phẩm nghệ thuật'}</Text>
+              <Text style={styles.collectionName} numberOfLines={2}>{item.tenTacPham}</Text>
+              <Text style={styles.collectionArtist} numberOfLines={1}>{item.tenHoaSi}</Text>
+              <Text style={styles.collectionPrice} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatVnd(item.gia)}</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function ProductDetailScreen({
   route,
   navigation,
@@ -40,6 +77,8 @@ export default function ProductDetailScreen({
   const productId = route.params?.id;
   const [product, setProduct] = useState<Product | null>(null);
   const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [latestProducts, setLatestProducts] = useState<Product[]>([]);
+  const [bestSellingProducts, setBestSellingProducts] = useState<Product[]>([]);
   const [artworkContent, setArtworkContent] = useState<ArtworkContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,15 +108,19 @@ export default function ProductDetailScreen({
       setError(null);
       setIsLoading(true);
 
-      const [productData, suggestionsData, contentData] = await Promise.all([
+      const [productData, suggestionsData, contentData, latestData, bestSellingData] = await Promise.all([
         productService.getProductById(productId),
         productService.getProductSuggestions(productId),
         artworkContentService.getPublic(productId).catch(() => null),
+        productService.getLatestProducts(7).catch(() => []),
+        productService.getBestSellingProducts(7).catch(() => []),
       ]);
 
       setProduct(productData);
       setSuggestions(suggestionsData);
       setArtworkContent(contentData);
+      setLatestProducts(latestData.filter(item => item.maTacPham !== productId).slice(0, 6));
+      setBestSellingProducts(bestSellingData.filter(item => item.maTacPham !== productId).slice(0, 6));
     } catch (err: any) {
       console.error('Error loading product detail:', err);
       setError(err.message || 'Không thể tải thông tin sản phẩm');
@@ -425,6 +468,20 @@ export default function ProductDetailScreen({
             </View>
           )}
 
+          <DetailProductRail
+            title="Sản phẩm mới nhất"
+            subtitle="VỪA CẬP NHẬT"
+            products={latestProducts}
+            onPress={handleSuggestionPress}
+          />
+
+          <DetailProductRail
+            title="Sản phẩm bán chạy"
+            subtitle="ĐƯỢC KHÁCH HÀNG LỰA CHỌN"
+            products={bestSellingProducts.length ? bestSellingProducts : suggestions.slice(0, 6)}
+            onPress={handleSuggestionPress}
+          />
+
           {/* Reviews Section */}
           <View style={styles.section}>
             <View style={styles.reviewsHeader}>
@@ -699,6 +756,84 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     paddingHorizontal: 8,
     paddingBottom: 8,
+  },
+  collectionSection: {
+    marginHorizontal: -16,
+    marginBottom: 28,
+    paddingVertical: 22,
+    backgroundColor: '#f8fafc',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  collectionEyebrow: {
+    paddingHorizontal: 16,
+    color: '#c2410c',
+    fontSize: 10.5,
+    fontWeight: '900',
+    letterSpacing: 0.9,
+  },
+  collectionTitle: {
+    paddingHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 14,
+    color: '#172033',
+    fontSize: 20,
+    fontWeight: '900',
+  },
+  collectionRail: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  collectionCard: {
+    width: 178,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    backgroundColor: '#fff',
+  },
+  collectionImage: {
+    width: '100%',
+    height: 160,
+    backgroundColor: '#e5e7eb',
+  },
+  collectionImagePlaceholder: {
+    width: '100%',
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e5e7eb',
+  },
+  collectionInfo: {
+    minHeight: 125,
+    padding: 11,
+  },
+  collectionCategory: {
+    color: '#9a3412',
+    fontSize: 9.5,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  collectionName: {
+    minHeight: 39,
+    marginTop: 5,
+    color: '#1e293b',
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '800',
+  },
+  collectionArtist: {
+    marginTop: 3,
+    color: '#64748b',
+    fontSize: 11.5,
+  },
+  collectionPrice: {
+    marginTop: 8,
+    color: '#c2410c',
+    fontSize: 15,
+    fontWeight: '900',
   },
   favoriteButtonPosition: {
     position: 'absolute',

@@ -17,6 +17,8 @@ public interface IBaiVietRepository
     Task<bool> UpdateCategory(int id, string name, string slug, bool active);
     Task<List<HinhAnhBaiViet>> GetImages(int maBaiViet);
     Task<int> AddImage(int maBaiViet, string path, string? caption, int order);
+    Task<HinhAnhBaiViet?> GetImage(int maBaiViet, int maHinhAnh);
+    Task<bool> DeleteImage(int maBaiViet, int maHinhAnh);
     Task<List<TacPham>> GetPublicLinkedArtworks(int maBaiViet);
     Task ReplaceArtworkLinks(int maBaiViet, IReadOnlyCollection<int> maTacPhams);
 }
