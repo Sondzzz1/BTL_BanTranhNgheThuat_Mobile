@@ -93,7 +93,19 @@ export const contentService = {
   },
 
   async layDanhMucBaiViet(): Promise<DanhMucBaiVietResponse[]> { return (await apiClient.get('/bai-viet/danh-muc')).data; },
-  async layDanhMucBaiVietAdmin(): Promise<DanhMucBaiVietResponse[]> { return (await apiClient.get('/admin/bai-viet/danh-muc')).data; },
+  async layDanhMucBaiVietAdmin(): Promise<DanhMucBaiVietResponse[]> {
+    try {
+      return (await apiClient.get('/admin/bai-viet/danh-muc')).data;
+    } catch (error: any) {
+      if (error?.response?.status !== 404) throw error;
+      try {
+        return (await apiClient.get('/bai-viet/danh-muc')).data;
+      } catch (fallbackError: any) {
+        if (fallbackError?.response?.status === 404) return [];
+        throw fallbackError;
+      }
+    }
+  },
   async taoDanhMucBaiViet(data:{tenDanhMuc:string;slug:string;trangThai:boolean}):Promise<void>{await apiClient.post('/admin/bai-viet/danh-muc',data);},
   async capNhatDanhMucBaiViet(id:number,data:{tenDanhMuc:string;slug:string;trangThai:boolean}):Promise<void>{await apiClient.put(`/admin/bai-viet/danh-muc/${id}`,data);},
   async taoBaiVietAdmin(data:BaiVietPayload):Promise<void>{await apiClient.post('/admin/bai-viet/create',data);},

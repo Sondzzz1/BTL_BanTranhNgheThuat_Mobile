@@ -26,6 +26,9 @@ export default function AdminContent() {
       ]);
       setItems(articles);
       setCategories(articleCategories);
+    } catch (error: any) {
+      console.error('Không thể tải module Blog:', error);
+      alert(error?.response?.data?.message || 'Không thể tải dữ liệu Blog. Hãy kiểm tra backend và migration.');
     } finally { setLoading(false); }
   };
   useEffect(() => { void load(); }, []);
