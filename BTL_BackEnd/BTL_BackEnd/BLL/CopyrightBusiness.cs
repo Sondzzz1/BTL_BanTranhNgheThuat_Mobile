@@ -50,6 +50,23 @@ public class CopyrightBusiness : ICopyrightBusiness
         await _repository.GetForAdminById(maBanQuyen)
         ?? throw new KeyNotFoundException("Không tìm thấy khai báo bản quyền");
 
+    public async Task VerifyInitialQuantity(
+        int maTacPham,
+        int maTaiKhoan,
+        XacMinhSoLuongBanDauRequest request)
+    {
+        if (maTacPham <= 0) throw new ArgumentException("Mã tác phẩm không hợp lệ");
+        if (request.SoLuongBanDau <= 0) throw new ArgumentException("Số lượng ban đầu phải lớn hơn 0");
+        request.CanCuXacMinh = Required(request.CanCuXacMinh, "Căn cứ xác minh", 2000);
+
+        if (!await _repository.VerifyInitialQuantity(
+                maTacPham,
+                maTaiKhoan,
+                request.SoLuongBanDau,
+                request.CanCuXacMinh))
+            throw new KeyNotFoundException("Không tìm thấy tác phẩm");
+    }
+
     public async Task Review(int maBanQuyen, int maTaiKhoan, byte status, string? note)
     {
         if (status is not (CopyrightStatuses.NeedInfo or CopyrightStatuses.Verified or CopyrightStatuses.Rejected))

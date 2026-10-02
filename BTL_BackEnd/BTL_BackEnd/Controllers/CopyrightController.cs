@@ -120,6 +120,21 @@ public class CopyrightController : ControllerBase
     public async Task<ActionResult> Audit([FromQuery] string? objectName, [FromQuery] int? objectId) =>
         Ok(await _business.GetAuditLogs(objectName, objectId));
 
+    [HttpPost("admin/tac-pham/{artworkId:int}/xac-minh-so-luong-ban-dau")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> VerifyInitialQuantity(
+        int artworkId,
+        [FromBody] XacMinhSoLuongBanDauRequest request)
+    {
+        var accountId = JwtHelper.GetMaTaiKhoan(User);
+        if (!accountId.HasValue) return Unauthorized(new { message = "Token thiếu mã tài khoản" });
+        await _business.VerifyInitialQuantity(artworkId, accountId.Value, request);
+        return Ok(new
+        {
+            message = "Đã đối soát số lượng ban đầu; tồn kho và cờ độc bản được giữ nguyên"
+        });
+    }
+
     [HttpPost("admin/{id:int}/yeu-cau-bo-sung")]
     [Authorize(Roles = "Admin")]
     public Task<ActionResult> NeedInfo(int id, [FromBody] KiemDuyetBanQuyenRequest request) =>

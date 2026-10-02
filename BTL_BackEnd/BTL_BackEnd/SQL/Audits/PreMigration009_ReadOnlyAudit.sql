@@ -134,14 +134,15 @@ ELSE
 
 /* 5. Payment/delivery synchronization. DonHang.TrangThai=3 means DaGiao. */
 SELECT d.MaDonHang,d.TrangThai,d.NgayGiao,COUNT_BIG(p.MaThanhToan) AS PaymentRowCount,
-       SUM(CASE WHEN p.TrangThai=N'DaThanhToan' THEN 1 ELSE 0 END) AS PaidRowCount
+       SUM(CASE WHEN p.TrangThai=N'DaThanhToan' THEN 1 ELSE 0 END) AS PaidRowCount,
+       SUM(CASE WHEN p.TrangThai=N'HoanTien' THEN 1 ELSE 0 END) AS RefundedPaymentRowCount
 FROM dbo.DonHang d
 LEFT JOIN dbo.ThanhToan p ON p.MaDonHang=d.MaDonHang
 WHERE d.TrangThai=3
 GROUP BY d.MaDonHang,d.TrangThai,d.NgayGiao
 HAVING COUNT_BIG(p.MaThanhToan)<>1 OR SUM(CASE WHEN p.TrangThai=N'DaThanhToan' THEN 1 ELSE 0 END)<>1;
 
-SELECT p.PhuongThuc,p.TrangThai,COUNT_BIG(*) AS RowCount
+SELECT p.PhuongThuc,p.TrangThai,COUNT_BIG(*) AS PaymentCount
 FROM dbo.ThanhToan p
 GROUP BY p.PhuongThuc,p.TrangThai
 ORDER BY p.PhuongThuc,p.TrangThai;

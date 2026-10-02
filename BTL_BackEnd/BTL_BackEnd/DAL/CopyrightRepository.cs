@@ -39,7 +39,7 @@ public partial class CopyrightRepository : ICopyrightRepository
         try
         {
             await using var artwork = new SqlCommand(@"
-                SELECT SoLuong,SoLuongBanDau,NgayTao
+                SELECT SoLuongBanDau,NgayTao
                 FROM TacPham WITH (UPDLOCK,HOLDLOCK)
                 WHERE MaTacPham=@MaTacPham AND MaHoaSi=@MaHoaSi;", connection, transaction);
             artwork.Parameters.AddWithValue("@MaTacPham", request.MaTacPham);
@@ -47,27 +47,13 @@ public partial class CopyrightRepository : ICopyrightRepository
             await using var artworkReader = await artwork.ExecuteReaderAsync();
             if (!await artworkReader.ReadAsync())
                 throw new UnauthorizedAccessException("Tác phẩm không thuộc họa sĩ hiện tại");
-            var stock = artworkReader.GetInt32(0);
-            int? initialQuantity = artworkReader.IsDBNull(1) ? null : artworkReader.GetInt32(1);
-            var artworkCreated = artworkReader.GetDateTime(2);
+            int? initialQuantity = artworkReader.IsDBNull(0) ? null : artworkReader.GetInt32(0);
+            var artworkCreated = artworkReader.GetDateTime(1);
             await artworkReader.CloseAsync();
 
-            if (request.LaTacPhamDocBan)
-            {
-                if (initialQuantity is null)
-                {
-                    await using var sales = new SqlCommand(
-                        "SELECT COUNT_BIG(*) FROM ChiTietDonHang WITH (HOLDLOCK) WHERE MaTacPham=@MaTacPham;",
-                        connection, transaction);
-                    sales.Parameters.AddWithValue("@MaTacPham", request.MaTacPham);
-                    var saleCount = Convert.ToInt64(await sales.ExecuteScalarAsync());
-                    if (saleCount != 0 || stock != 1)
-                        throw new InvalidOperationException("Không đủ dữ liệu để xác nhận tác phẩm cũ là độc bản. Cần đối soát số lượng ban đầu và lịch sử bán hàng");
-                    initialQuantity = 1;
-                }
-                if (initialQuantity != 1)
-                    throw new InvalidOperationException("Tác phẩm độc bản phải có số lượng ban đầu bằng 1");
-            }
+            // Không suy ra số lượng ban đầu từ tồn kho hoặc đơn hàng. NULL chỉ được bổ sung
+            // bằng thao tác đối soát riêng có quyền Admin và căn cứ xác minh.
+            ExclusiveArtworkPolicy.EnsureDeclarationAllowed(request.LaTacPhamDocBan, initialQuantity);
 
             await using var duplicate = new SqlCommand(
                 "SELECT COUNT_BIG(*) FROM BanQuyen WITH (UPDLOCK,HOLDLOCK) WHERE MaTacPham=@MaTacPham;",
@@ -77,12 +63,10 @@ public partial class CopyrightRepository : ICopyrightRepository
                 throw new InvalidOperationException("Tác phẩm đã có khai báo bản quyền");
 
             await using var updateArtwork = new SqlCommand(@"
-                UPDATE TacPham SET LaTacPhamDocBan=@LaTacPhamDocBan,
-                    SoLuongBanDau=COALESCE(SoLuongBanDau,@SoLuongBanDau),LoaiTacPham=@LoaiTacPham,
+                UPDATE TacPham SET LaTacPhamDocBan=@LaTacPhamDocBan,LoaiTacPham=@LoaiTacPham,
                     TacGiaGoc=@TacGiaGoc,MaTacPhamGoc=@MaTacPhamGoc,MoTaNguonGoc=@MoTaNguonGoc
                 WHERE MaTacPham=@MaTacPham AND MaHoaSi=@MaHoaSi;", connection, transaction);
             updateArtwork.Parameters.AddWithValue("@LaTacPhamDocBan", request.LaTacPhamDocBan);
-            updateArtwork.Parameters.AddWithValue("@SoLuongBanDau", Db(initialQuantity));
             AddOriginParameters(updateArtwork, request.LoaiTacPham, request.TacGiaGoc, request.MaTacPhamGoc, request.MoTaNguonGoc);
             updateArtwork.Parameters.AddWithValue("@MaTacPham", request.MaTacPham);
             updateArtwork.Parameters.AddWithValue("@MaHoaSi", maHoaSi);

@@ -347,7 +347,6 @@ public class CustomArtRepository : ICustomArtRepository
                         MaHoaSi=@MaHoaSi,
                         Gia=@Gia,
                         SoLuong=0,
-                        SoLuongBanDau=COALESCE(SoLuongBanDau,1),
                         MoTa=@MoTa,
                         HinhAnh=@HinhAnh,
                         ChatLieu=@ChatLieu,

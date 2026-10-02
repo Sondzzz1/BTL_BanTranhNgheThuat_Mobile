@@ -27,6 +27,95 @@ public partial class CopyrightRepository
     public Task<BanQuyenResponse?> GetForAdminById(int maBanQuyen) =>
         QueryOne(CopyrightSelect + " WHERE b.MaBanQuyen=@Id", command => command.Parameters.AddWithValue("@Id", maBanQuyen));
 
+    public async Task<bool> VerifyInitialQuantity(
+        int maTacPham,
+        int maTaiKhoan,
+        int soLuongBanDau,
+        string canCuXacMinh)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            int currentStock;
+            int? currentInitialQuantity;
+            bool exclusive;
+            await using (var check = new SqlCommand(@"
+                SELECT SoLuong,SoLuongBanDau,LaTacPhamDocBan
+                FROM TacPham WITH (UPDLOCK,HOLDLOCK)
+                WHERE MaTacPham=@ArtworkId;", connection, transaction))
+            {
+                check.Parameters.AddWithValue("@ArtworkId", maTacPham);
+                await using var reader = await check.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                currentStock = reader.GetInt32(0);
+                currentInitialQuantity = reader.IsDBNull(1) ? null : reader.GetInt32(1);
+                exclusive = reader.GetBoolean(2);
+            }
+
+            ExclusiveArtworkPolicy.EnsureAdminInitialQuantityAllowed(
+                currentStock,
+                soLuongBanDau,
+                exclusive);
+
+            if (currentInitialQuantity.HasValue)
+            {
+                if (currentInitialQuantity.Value != soLuongBanDau)
+                    throw new BusinessConflictException(
+                        "Số lượng ban đầu đã được ghi nhận và không được ghi đè; cần quy trình hiệu chỉnh dữ liệu riêng");
+
+                // Retry cùng giá trị là idempotent và không tạo thêm sự kiện audit.
+                await transaction.CommitAsync();
+                return true;
+            }
+
+            await using var update = new SqlCommand(@"
+                UPDATE TacPham
+                SET SoLuongBanDau=@InitialQuantity
+                WHERE MaTacPham=@ArtworkId AND SoLuongBanDau IS NULL;", connection, transaction);
+            update.Parameters.AddWithValue("@InitialQuantity", soLuongBanDau);
+            update.Parameters.AddWithValue("@ArtworkId", maTacPham);
+            if (await update.ExecuteNonQueryAsync() != 1)
+                throw new DBConcurrencyException("Số lượng ban đầu đã được thay đổi bởi một yêu cầu khác");
+
+            await AuditLogSql.InsertAsync(
+                connection,
+                transaction,
+                "TacPham",
+                maTacPham,
+                "VERIFY_INITIAL_QUANTITY",
+                maTaiKhoan,
+                1,
+                before: JsonSerializer.Serialize(new
+                {
+                    soLuongBanDau = (int?)null,
+                    soLuongTon = currentStock,
+                    laTacPhamDocBan = exclusive
+                }),
+                after: JsonSerializer.Serialize(new
+                {
+                    soLuongBanDau,
+                    soLuongTon = currentStock,
+                    laTacPhamDocBan = exclusive
+                }),
+                reason: canCuXacMinh);
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     public async Task<bool> Review(int maBanQuyen, int maTaiKhoan, byte status, string? note)
     {
         await using var connection = new SqlConnection(_connectionString);

@@ -39,6 +39,12 @@ public class KiemDuyetBanQuyenRequest
     public string? GhiChu { get; set; }
 }
 
+public class XacMinhSoLuongBanDauRequest
+{
+    public int SoLuongBanDau { get; set; }
+    public string CanCuXacMinh { get; set; } = string.Empty;
+}
+
 public class ThuHoiXacMinhRequest
 {
     public string LyDo { get; set; } = string.Empty;
