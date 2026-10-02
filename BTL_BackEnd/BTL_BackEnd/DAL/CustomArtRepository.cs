@@ -1,5 +1,7 @@
+using System.Data;
 using DoAn2_BackEnd.DAL.Interfaces;
 using DoAn2_BackEnd.DTO;
+using DoAn2_BackEnd.Helpers;
 using DoAn2_BackEnd.Models;
 using Microsoft.Data.SqlClient;
 
@@ -8,6 +10,7 @@ namespace DoAn2_BackEnd.DAL;
 public class CustomArtRepository : ICustomArtRepository
 {
     private readonly string _connectionString;
+    private readonly CopyrightOptions _copyrightOptions;
 
     private const string SelectRequest = @"
         SELECT y.*,
@@ -23,6 +26,7 @@ public class CustomArtRepository : ICustomArtRepository
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string not found");
+        _copyrightOptions = CopyrightOptions.From(configuration);
     }
 
     public async Task<CustomArtRequest> CreateRequest(
@@ -311,12 +315,12 @@ public class CustomArtRepository : ICustomArtRepository
             {
                 const string insertArtworkSql = @"
                     INSERT INTO TacPham
-                        (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, MoTa, HinhAnh, ChatLieu,
+                        (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, SoLuongBanDau, MoTa, HinhAnh, ChatLieu,
                          ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo, LoaiTacPham,
                          TacGiaGoc, MaTacPhamGoc, MaYeuCauVeTranh, MoTaNguonGoc)
                     OUTPUT INSERTED.MaTacPham
                     VALUES
-                        (@TenTacPham, @MaHoaSi, NULL, @Gia, 0, @MoTa, @HinhAnh, @ChatLieu,
+                        (@TenTacPham, @MaHoaSi, NULL, @Gia, 0, 1, @MoTa, @HinhAnh, @ChatLieu,
                          NULL, @KichThuoc, @HiddenStatus, GETDATE(), NULL, @LoaiTacPham,
                          @TacGiaGoc, @MaTacPhamGoc, @MaYeuCau, @MoTaNguonGoc);";
                 await using var insertArtwork = new SqlCommand(insertArtworkSql, connection, transaction);
@@ -343,6 +347,7 @@ public class CustomArtRepository : ICustomArtRepository
                         MaHoaSi=@MaHoaSi,
                         Gia=@Gia,
                         SoLuong=0,
+                        SoLuongBanDau=COALESCE(SoLuongBanDau,1),
                         MoTa=@MoTa,
                         HinhAnh=@HinhAnh,
                         ChatLieu=@ChatLieu,
@@ -504,31 +509,241 @@ public class CustomArtRepository : ICustomArtRepository
 
     public async Task<bool> CreateDeposit(int maYeuCau, int maKhachHang, decimal soTien)
     {
+        return await CreatePayment(maYeuCau, maKhachHang, new TaoThanhToanCustomArtRequest
+        {
+            SoTien = soTien,
+            LoaiThanhToan = "DatCoc",
+            PhuongThuc = "ChuyenKhoan"
+        }) != null;
+    }
+
+    public async Task<int?> CreatePayment(int maYeuCau, int maKhachHang, TaoThanhToanCustomArtRequest request)
+    {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
-        const string validate = @"SELECT COUNT(1) FROM YeuCauVeTranh WITH (UPDLOCK)
-                                  WHERE MaYeuCau=@MaYeuCau AND MaKhachHang=@MaKhachHang
-                                    AND TrangThai=@CustomerAccepted";
-        await using var check = new SqlCommand(validate, connection, transaction);
-        check.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
-        check.Parameters.AddWithValue("@MaKhachHang", maKhachHang);
-        check.Parameters.AddWithValue("@CustomerAccepted", (int)CustomArtStatus.CustomerAccepted);
-        if (Convert.ToInt32(await check.ExecuteScalarAsync()) != 1)
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(request.KhoaChongTrung))
+            {
+                await using var existing = new SqlCommand(@"
+                    SELECT MaThanhToan,SoTien,LoaiThanhToan,PhuongThuc
+                    FROM ThanhToanYeuCau WITH (UPDLOCK,HOLDLOCK)
+                    WHERE MaYeuCau=@RequestId AND IdempotencyKey=@IdempotencyKey;", connection, transaction);
+                existing.Parameters.AddWithValue("@RequestId", maYeuCau);
+                existing.Parameters.AddWithValue("@IdempotencyKey", request.KhoaChongTrung);
+                await using var existingReader = await existing.ExecuteReaderAsync();
+                if (await existingReader.ReadAsync())
+                {
+                    var existingId = existingReader.GetInt32(0);
+                    var samePayload = existingReader.GetDecimal(1) == request.SoTien
+                        && string.Equals(existingReader.GetString(2), request.LoaiThanhToan, StringComparison.Ordinal)
+                        && string.Equals(existingReader.GetString(3), request.PhuongThuc, StringComparison.Ordinal);
+                    await existingReader.CloseAsync();
+                    if (!samePayload)
+                        throw new InvalidOperationException("Khóa chống trùng đã được dùng với nội dung thanh toán khác");
+                    await transaction.CommitAsync();
+                    return existingId;
+                }
+            }
+
+            await using var check = new SqlCommand(@"
+                SELECT q.GiaBaoGia,
+                       ISNULL((SELECT SUM(p.SoTien) FROM ThanhToanYeuCau p WITH (UPDLOCK,HOLDLOCK)
+                               WHERE p.MaYeuCau=y.MaYeuCau AND p.TrangThai IN (N'Pending',N'Completed')),0)
+                FROM YeuCauVeTranh y WITH (UPDLOCK,HOLDLOCK)
+                OUTER APPLY (SELECT TOP (1) GiaBaoGia FROM BaoGiaVeTranh
+                             WHERE MaYeuCau=y.MaYeuCau AND IsActive=1 AND TrangThai=N'CustomerAccepted'
+                             ORDER BY MaBaoGia DESC) q
+                WHERE y.MaYeuCau=@RequestId AND y.MaKhachHang=@CustomerId
+                  AND y.TrangThai NOT IN (@Rejected,@Cancelled);", connection, transaction);
+            check.Parameters.AddWithValue("@RequestId", maYeuCau);
+            check.Parameters.AddWithValue("@CustomerId", maKhachHang);
+            check.Parameters.AddWithValue("@Rejected", (int)CustomArtStatus.Rejected);
+            check.Parameters.AddWithValue("@Cancelled", (int)CustomArtStatus.Cancelled);
+            await using var reader = await check.ExecuteReaderAsync();
+            if (!await reader.ReadAsync() || reader.IsDBNull(0)) return null;
+            var quote = reader.GetDecimal(0);
+            var alreadyRegistered = reader.GetDecimal(1);
+            await reader.CloseAsync();
+            if (alreadyRegistered + request.SoTien > quote)
+                throw new InvalidOperationException("Tổng các khoản thanh toán vượt quá giá báo giá đã chấp nhận");
+
+            await using var insert = new SqlCommand(@"
+                INSERT INTO ThanhToanYeuCau
+                    (MaYeuCau,LoaiThanhToan,SoTien,PhuongThuc,TrangThai,NgayThanhToan,MaGiaoDich,GhiChu,IdempotencyKey)
+                OUTPUT INSERTED.MaThanhToan
+                VALUES(@RequestId,@PaymentType,@Amount,@Method,N'Pending',SYSUTCDATETIME(),@TransactionCode,@Note,@IdempotencyKey);",
+                connection, transaction);
+            insert.Parameters.AddWithValue("@RequestId", maYeuCau);
+            insert.Parameters.AddWithValue("@PaymentType", request.LoaiThanhToan);
+            insert.Parameters.AddWithValue("@Amount", request.SoTien);
+            insert.Parameters.AddWithValue("@Method", request.PhuongThuc);
+            insert.Parameters.AddWithValue("@TransactionCode", (object?)request.MaGiaoDich ?? DBNull.Value);
+            insert.Parameters.AddWithValue("@Note", (object?)request.GhiChu ?? DBNull.Value);
+            insert.Parameters.AddWithValue("@IdempotencyKey", (object?)request.KhoaChongTrung ?? DBNull.Value);
+            var paymentId = Convert.ToInt32(await insert.ExecuteScalarAsync());
+            await AuditLogSql.InsertAsync(connection, transaction, "ThanhToanYeuCau", paymentId,
+                "PAYMENT_REGISTERED", null, null, after: $"Request={maYeuCau};Amount={request.SoTien};Status=Pending");
+            await transaction.CommitAsync();
+            return paymentId;
+        }
+        catch
         {
             await transaction.RollbackAsync();
-            return false;
+            throw;
         }
-        const string insert = @"INSERT INTO ThanhToanYeuCau (MaYeuCau, LoaiThanhToan, SoTien, PhuongThuc, TrangThai, NgayThanhToan)
-                                VALUES (@MaYeuCau, N'DatCoc', @SoTien, N'ChuyenKhoan', N'Completed', GETDATE());
-                                UPDATE YeuCauVeTranh SET TienDatCoc=@SoTien, TrangThai=@TrangThai, NgayCapNhat=GETDATE() WHERE MaYeuCau=@MaYeuCau;";
-        await using var command = new SqlCommand(insert, connection, transaction);
-        command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
-        command.Parameters.AddWithValue("@SoTien", soTien);
-        command.Parameters.AddWithValue("@TrangThai", (int)CustomArtStatus.DepositPaid);
-        await command.ExecuteNonQueryAsync();
-        await transaction.CommitAsync();
-        return true;
+    }
+
+    public async Task<bool> ConfirmPayment(int maThanhToan, int maTaiKhoan, XacNhanThanhToanCustomArtRequest request)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            await using (var check = new SqlCommand(@"
+                SELECT TrangThai,MaGiaoDich FROM ThanhToanYeuCau WITH (UPDLOCK,HOLDLOCK)
+                WHERE MaThanhToan=@PaymentId;", connection, transaction))
+            {
+                check.Parameters.AddWithValue("@PaymentId", maThanhToan);
+                await using var reader = await check.ExecuteReaderAsync();
+                if (!await reader.ReadAsync()) return false;
+                var status = reader.GetString(0);
+                var existingTransactionCode = reader.IsDBNull(1) ? null : reader.GetString(1);
+                if (status == "Completed")
+                {
+                    var sameRequest = string.Equals(existingTransactionCode, request.MaGiaoDich, StringComparison.OrdinalIgnoreCase);
+                    await reader.CloseAsync();
+                    if (sameRequest) { await transaction.CommitAsync(); return true; }
+                    throw new InvalidOperationException("Khoản thanh toán đã được xác nhận bằng mã giao dịch khác");
+                }
+                if (status != "Pending") return false;
+            }
+
+            await using (var duplicate = new SqlCommand(@"
+                SELECT COUNT_BIG(*) FROM ThanhToanYeuCau WITH (UPDLOCK,HOLDLOCK)
+                WHERE MaThanhToan<>@PaymentId AND TrangThai=N'Completed' AND MaGiaoDich=@TransactionCode;",
+                connection, transaction))
+            {
+                duplicate.Parameters.AddWithValue("@PaymentId", maThanhToan);
+                duplicate.Parameters.AddWithValue("@TransactionCode", request.MaGiaoDich);
+                if (Convert.ToInt64(await duplicate.ExecuteScalarAsync()) != 0)
+                    throw new InvalidOperationException("Mã giao dịch đã được dùng để xác nhận khoản thanh toán khác");
+            }
+
+            await using var update = new SqlCommand(@"
+                UPDATE ThanhToanYeuCau SET TrangThai=N'Completed',MaGiaoDich=@TransactionCode,
+                    NguoiXacNhan=@Actor,NgayXacNhan=SYSUTCDATETIME(),NgayThanhToan=SYSUTCDATETIME(),GhiChu=@Note
+                OUTPUT INSERTED.MaYeuCau
+                WHERE MaThanhToan=@PaymentId AND TrangThai=N'Pending';", connection, transaction);
+            update.Parameters.AddWithValue("@TransactionCode", request.MaGiaoDich);
+            update.Parameters.AddWithValue("@Actor", maTaiKhoan);
+            update.Parameters.AddWithValue("@Note", (object?)request.GhiChu ?? DBNull.Value);
+            update.Parameters.AddWithValue("@PaymentId", maThanhToan);
+            var requestIdValue = await update.ExecuteScalarAsync();
+            if (requestIdValue == null || requestIdValue == DBNull.Value) return false;
+            var requestId = Convert.ToInt32(requestIdValue);
+
+            await using var updateRequest = new SqlCommand(@"
+                UPDATE y SET TienDatCoc=paid.TotalPaid,
+                    TrangThai=CASE WHEN y.TrangThai=@CustomerAccepted THEN @DepositPaid ELSE y.TrangThai END,
+                    NgayCapNhat=SYSUTCDATETIME()
+                FROM YeuCauVeTranh y
+                CROSS APPLY (SELECT ISNULL(SUM(SoTien),0) AS TotalPaid FROM ThanhToanYeuCau
+                             WHERE MaYeuCau=y.MaYeuCau AND TrangThai=N'Completed') paid
+                WHERE y.MaYeuCau=@RequestId;", connection, transaction);
+            updateRequest.Parameters.AddWithValue("@CustomerAccepted", (int)CustomArtStatus.CustomerAccepted);
+            updateRequest.Parameters.AddWithValue("@DepositPaid", (int)CustomArtStatus.DepositPaid);
+            updateRequest.Parameters.AddWithValue("@RequestId", requestId);
+            await updateRequest.ExecuteNonQueryAsync();
+            await AuditLogSql.InsertAsync(connection, transaction, "ThanhToanYeuCau", maThanhToan,
+                "PAYMENT_CONFIRMED", maTaiKhoan, 0, after: $"Request={requestId};Transaction={request.MaGiaoDich}");
+            await OwnershipCertificateSql.TryIssueForCustomArtAsync(
+                connection, transaction, requestId, maTaiKhoan, _copyrightOptions.CertificateHashKey);
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<bool> ConfirmHandover(int maYeuCau, int maKhachHang, int maTaiKhoan, string? note)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            await using (var check = new SqlCommand(@"
+                SELECT TrangThai,TrangThaiBanGiao FROM YeuCauVeTranh WITH (UPDLOCK,HOLDLOCK)
+                WHERE MaYeuCau=@RequestId AND MaKhachHang=@CustomerId;", connection, transaction))
+            {
+                check.Parameters.AddWithValue("@RequestId", maYeuCau);
+                check.Parameters.AddWithValue("@CustomerId", maKhachHang);
+                await using var reader = await check.ExecuteReaderAsync();
+                if (!await reader.ReadAsync()) return false;
+                var status = reader.GetInt32(0);
+                var handover = reader.GetByte(1);
+                if (status != (int)CustomArtStatus.Completed) return false;
+                if (handover == 1)
+                {
+                    await reader.CloseAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                }
+            }
+
+            await using var update = new SqlCommand(@"
+                UPDATE YeuCauVeTranh SET TrangThaiBanGiao=1,NgayBanGiao=SYSUTCDATETIME(),
+                    NguoiXacNhanBanGiao=@Actor,GhiChuBanGiao=@Note,NgayCapNhat=SYSUTCDATETIME()
+                WHERE MaYeuCau=@RequestId AND MaKhachHang=@CustomerId AND TrangThai=@Completed
+                  AND TrangThaiBanGiao=0;", connection, transaction);
+            update.Parameters.AddWithValue("@Actor", maTaiKhoan);
+            update.Parameters.AddWithValue("@Note", (object?)note ?? DBNull.Value);
+            update.Parameters.AddWithValue("@RequestId", maYeuCau);
+            update.Parameters.AddWithValue("@CustomerId", maKhachHang);
+            update.Parameters.AddWithValue("@Completed", (int)CustomArtStatus.Completed);
+            if (await update.ExecuteNonQueryAsync() != 1) return false;
+            await AuditLogSql.InsertAsync(connection, transaction, "YeuCauVeTranh", maYeuCau,
+                "PHYSICAL_HANDOVER_CONFIRMED", maTaiKhoan, 1, after: "TrangThaiBanGiao=1", reason: note);
+            await OwnershipCertificateSql.TryIssueForCustomArtAsync(
+                connection, transaction, maYeuCau, maTaiKhoan, _copyrightOptions.CertificateHashKey);
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    public async Task<List<CustomArtPayment>> GetPaymentsByRequest(int maYeuCau)
+    {
+        var result = new List<CustomArtPayment>();
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = new SqlCommand(@"
+            SELECT MaThanhToan,MaYeuCau,LoaiThanhToan,SoTien,PhuongThuc,TrangThai,NgayThanhToan,
+                   MaGiaoDich,NguoiXacNhan,NgayXacNhan,GhiChu
+            FROM ThanhToanYeuCau WHERE MaYeuCau=@RequestId ORDER BY MaThanhToan;", connection);
+        command.Parameters.AddWithValue("@RequestId", maYeuCau);
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) result.Add(new CustomArtPayment
+        {
+            MaThanhToan = reader.GetInt32(0), MaYeuCau = reader.GetInt32(1),
+            LoaiThanhToan = reader.GetString(2), SoTien = reader.GetDecimal(3), PhuongThuc = reader.GetString(4),
+            TrangThai = reader.GetString(5), NgayThanhToan = reader.GetDateTime(6),
+            MaGiaoDich = reader.IsDBNull(7) ? null : reader.GetString(7),
+            NguoiXacNhan = reader.IsDBNull(8) ? null : reader.GetInt32(8),
+            NgayXacNhan = reader.IsDBNull(9) ? null : reader.GetDateTime(9),
+            GhiChu = reader.IsDBNull(10) ? null : reader.GetString(10)
+        });
+        return result;
     }
 
     public async Task<bool> CreateProgress(TaoTienDoRequest request, int maHoaSi)
@@ -779,7 +994,11 @@ public class CustomArtRepository : ICustomArtRepository
         TenKhachHang = GetNullableString(reader, "TenKhachHang"),
         TenHoaSiThucHien = GetNullableString(reader, "TenHoaSiThucHien"),
         MaTacPhamKetQua = GetNullableInt(reader, "MaTacPhamKetQua"),
-        SoLuongTienDo = reader.GetInt32(reader.GetOrdinal("SoLuongTienDo"))
+        SoLuongTienDo = reader.GetInt32(reader.GetOrdinal("SoLuongTienDo")),
+        TrangThaiBanGiao = GetNullableByte(reader, "TrangThaiBanGiao") ?? 0,
+        NgayBanGiao = GetNullableDateTime(reader, "NgayBanGiao"),
+        NguoiXacNhanBanGiao = GetNullableInt(reader, "NguoiXacNhanBanGiao"),
+        GhiChuBanGiao = GetNullableString(reader, "GhiChuBanGiao")
     };
 
     private static CustomArtQuote MapQuote(SqlDataReader reader) => new()

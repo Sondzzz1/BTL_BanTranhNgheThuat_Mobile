@@ -8,6 +8,7 @@ public static class CopyrightStatuses
     public const byte Rejected = 3;
     public const byte Disputed = 4;
     public const byte Legacy = 5;
+    public const byte Revoked = 6;
 
     public static string ToCode(byte value) => value switch
     {
@@ -17,7 +18,30 @@ public static class CopyrightStatuses
         Rejected => "REJECTED",
         Disputed => "DISPUTED",
         Legacy => "LEGACY",
+        Revoked => "REVOKED",
         _ => "UNKNOWN"
+    };
+}
+
+public static class CopyrightUsageBases
+{
+    public const byte AuthorOrRightsOwner = 1;
+    public const byte ReviewedPublicDomain = 2;
+    public const byte PermissionGranted = 3;
+    public const byte OtherLawfulBasis = 4;
+    public const byte Insufficient = 5;
+
+    public static bool IsValid(byte? value) => value is AuthorOrRightsOwner or ReviewedPublicDomain
+        or PermissionGranted or OtherLawfulBasis or Insufficient;
+
+    public static string ToCode(byte? value) => value switch
+    {
+        AuthorOrRightsOwner => "AUTHOR_OR_RIGHTS_OWNER",
+        ReviewedPublicDomain => "REVIEWED_PUBLIC_DOMAIN",
+        PermissionGranted => "PERMISSION_GRANTED",
+        OtherLawfulBasis => "OTHER_LAWFUL_BASIS",
+        Insufficient => "INSUFFICIENT",
+        _ => "UNDECLARED"
     };
 }
 

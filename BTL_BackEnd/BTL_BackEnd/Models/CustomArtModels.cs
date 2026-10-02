@@ -72,6 +72,11 @@ public class CustomArtRequest
     public string? TenHoaSiThucHien { get; set; }
     public int? MaTacPhamKetQua { get; set; }
     public int SoLuongTienDo { get; set; }
+    /// <summary>0=chưa bàn giao, 1=đã bàn giao hiện vật.</summary>
+    public byte TrangThaiBanGiao { get; set; }
+    public DateTime? NgayBanGiao { get; set; }
+    public int? NguoiXacNhanBanGiao { get; set; }
+    public string? GhiChuBanGiao { get; set; }
 }
 
 public class CustomArtImage
@@ -127,4 +132,8 @@ public class CustomArtPayment
     public string PhuongThuc { get; set; } = "ChuyenKhoan";
     public string TrangThai { get; set; } = "Pending";
     public DateTime NgayThanhToan { get; set; } = DateTime.UtcNow;
+    public string? MaGiaoDich { get; set; }
+    public int? NguoiXacNhan { get; set; }
+    public DateTime? NgayXacNhan { get; set; }
+    public string? GhiChu { get; set; }
 }

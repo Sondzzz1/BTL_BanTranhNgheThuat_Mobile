@@ -315,6 +315,9 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('MyReturns')}>
           <Text style={styles.actionButtonText}>📦 Hoàn trả của tôi</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('MyCertificates')}>
+          <Text style={styles.actionButtonText}>◇ Chứng nhận sở hữu</Text>
+        </TouchableOpacity>
         <TouchableOpacity style={styles.actionButton} onPress={() => navigation.getParent()?.navigate('ChangePassword')}>
           <Text style={styles.actionButtonText}>🔒 Đổi mật khẩu</Text>
         </TouchableOpacity>

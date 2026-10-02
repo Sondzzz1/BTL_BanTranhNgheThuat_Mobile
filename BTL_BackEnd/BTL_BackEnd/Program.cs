@@ -5,8 +5,10 @@ using DoAn2_BackEnd.DAL.Interfaces;
 using DoAn2_BackEnd.Middleware;
 using DoAn2_BackEnd.Helpers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -55,6 +57,19 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("public-certificate", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 30,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
 
 // Register DAL (Repository Layer)
 builder.Services.AddScoped<ITaiKhoanRepository, TaiKhoanRepository>();
@@ -75,6 +90,7 @@ builder.Services.AddScoped<IHoanTraRepository, HoanTraRepository>();
 builder.Services.AddScoped<IDanhGiaRepository, DanhGiaRepository>();
 builder.Services.AddScoped<ICustomArtRepository, CustomArtRepository>();
 builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
+builder.Services.AddScoped<ICopyrightRepository, CopyrightRepository>();
 
 // Register BLL (Business Layer)
 builder.Services.AddScoped<IAuthBusiness, AuthBusiness>();
@@ -89,6 +105,9 @@ builder.Services.AddSingleton<ReturnFileHelper>();
 builder.Services.AddSingleton<ContentImageFileHelper>();
 builder.Services.AddScoped<ICustomArtBusiness, CustomArtBusiness>();
 builder.Services.AddScoped<IConsultationBusiness, ConsultationBusiness>();
+builder.Services.AddScoped<ICopyrightBusiness, CopyrightBusiness>();
+builder.Services.AddSingleton<CopyrightFileHelper>();
+builder.Services.AddSingleton<CertificateDocumentService>();
 builder.Services.AddScoped<DoAn2_BackEnd.Helpers.CommissionFileHelper>();
 
 // Swagger/OpenAPI
@@ -141,7 +160,7 @@ app.UseCors("AllowAll");
 
 app.UseExceptionHandlingMiddleware();
 
-
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

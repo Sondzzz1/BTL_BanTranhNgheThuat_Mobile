@@ -56,6 +56,9 @@ export interface CommissionRequest {
   maTacPhamKetQua?: number | null;
   quote?: CommissionQuote | null;
   progress: CommissionProgress[];
+  trangThaiBanGiao?: number;
+  ngayBanGiao?: string | null;
+  ghiChuBanGiao?: string | null;
 }
 
 export interface CommissionQuote {

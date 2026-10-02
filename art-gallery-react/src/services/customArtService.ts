@@ -37,6 +37,9 @@ export interface CustomArtRequestApi {
   soLuongTienDo?: number;
   quote?: CustomArtQuoteResponse | null;
   progress: CustomArtProgressResponse[];
+  trangThaiBanGiao?: number;
+  ngayBanGiao?: string | null;
+  ghiChuBanGiao?: string | null;
 }
 
 export interface CustomArtQuoteRequest {
@@ -66,6 +69,19 @@ export interface CustomArtProgressResponse {
   anhPreview?: string | null;
   trangThai: string;
   ngayTao: string;
+}
+
+export interface CustomArtPaymentResponse {
+  maThanhToan: number;
+  maYeuCau: number;
+  loaiThanhToan: string;
+  soTien: number;
+  phuongThuc: string;
+  trangThai: string;
+  ngayThanhToan: string;
+  maGiaoDich?: string | null;
+  ngayXacNhan?: string | null;
+  ghiChu?: string | null;
 }
 
 export const customArtStatusMap: Record<string, string> = {
@@ -118,6 +134,14 @@ export const customArtService = {
 
   async getById(id: number): Promise<CustomArtRequestApi> {
     return (await apiClient.get(`/tranh-theo-yeu-cau/yeu-cau/${id}`)).data;
+  },
+
+  async getPayments(id: number): Promise<CustomArtPaymentResponse[]> {
+    return (await apiClient.get(`/tranh-theo-yeu-cau/admin/${id}/thanh-toan`)).data || [];
+  },
+
+  async confirmPayment(paymentId: number, maGiaoDich: string, ghiChu?: string) {
+    return (await apiClient.post(`/tranh-theo-yeu-cau/admin/thanh-toan/${paymentId}/xac-nhan`, { maGiaoDich, ghiChu })).data;
   },
 
   async approve(id: number, ghiChu?: string) {

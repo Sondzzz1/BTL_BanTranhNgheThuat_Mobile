@@ -26,6 +26,13 @@ public class BanQuyen
     public string? MoTa { get; set; }
     public string? GhiChu { get; set; }
     public string? SoDangKy { get; set; } // Số đăng ký bản quyền tại cơ quan nhà nước (nếu có)
+    /// <summary>1=Tác giả/chủ thể quyền, 2=Phạm vi công cộng đã được xem xét, 3=Có cho phép, 4=Căn cứ hợp pháp khác, 5=Chưa đủ căn cứ.</summary>
+    public byte? CanCuSuDung { get; set; }
+    public string? NguonThamKhao { get; set; }
+    public bool LaDuLieuCu { get; set; }
+    public bool BiChanBan { get; set; }
+    public DateTime? NgayThuHoiXacMinh { get; set; }
+    public string? LyDoThuHoiXacMinh { get; set; }
     public DateTime NgayTao { get; set; }
     public DateTime NgayCapNhat { get; set; }
     public int? NguoiTao { get; set; } // MaTaiKhoan

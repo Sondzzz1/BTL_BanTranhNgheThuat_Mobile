@@ -49,6 +49,20 @@ export const customArtService = {
     await apiClient.post(`/tranh-theo-yeu-cau/bao-gia/${quoteId}/xac-nhan`);
   },
 
+  async createPayment(requestId: number, amount: number, idempotencyKey: string): Promise<number> {
+    const response = await apiClient.post<{ maThanhToan: number }>(`/tranh-theo-yeu-cau/yeu-cau/${requestId}/thanh-toan`, {
+      soTien: amount,
+      loaiThanhToan: 'DotThanhToan',
+      phuongThuc: 'ChuyenKhoan',
+      khoaChongTrung: idempotencyKey,
+    });
+    return response.data.maThanhToan;
+  },
+
+  async confirmHandover(requestId: number, note?: string): Promise<void> {
+    await apiClient.post(`/tranh-theo-yeu-cau/yeu-cau/${requestId}/xac-nhan-ban-giao`, { ghiChu: note });
+  },
+
   absoluteFileUrl(path?: string | null): string | undefined {
     if (!path) return undefined;
     if (/^data:image\//i.test(path)) return path;

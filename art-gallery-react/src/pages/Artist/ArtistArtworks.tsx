@@ -409,6 +409,13 @@ const ArtistArtworks: React.FC = () => {
                       >
                         <i className="ti-write"></i>
                       </button>
+                      <button
+                        onClick={() => navigate(`/artist/artworks/${artwork.maTacPham}/copyright`)}
+                        title="Nguồn gốc và xác minh tác phẩm"
+                        style={{ background: '#1f3d2f', color: 'white', marginRight: 5 }}
+                      >
+                        <i className="ti-shield"></i>
+                      </button>
                       {isRejected && (
                         <button
                           onClick={() => handleResubmit(artwork.maTacPham, artwork.tenTacPham)}

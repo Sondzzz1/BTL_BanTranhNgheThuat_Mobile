@@ -26,6 +26,7 @@ import Footer from '../../components/Footer';
 import Colors from '../../constants/colors';
 import { ArtworkContent, artworkContentService, resolveContentImageUrl } from '../../services/artworkContentService';
 import ArtworkImage from '../../components/ArtworkImage';
+import { PublicCopyright, certificateService } from '../../services/certificateService';
 
 interface ProductDetailScreenProps {
   route: any;
@@ -80,6 +81,7 @@ export default function ProductDetailScreen({
   const [latestProducts, setLatestProducts] = useState<Product[]>([]);
   const [bestSellingProducts, setBestSellingProducts] = useState<Product[]>([]);
   const [artworkContent, setArtworkContent] = useState<ArtworkContent | null>(null);
+  const [copyright, setCopyright] = useState<PublicCopyright | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
@@ -108,12 +110,13 @@ export default function ProductDetailScreen({
       setError(null);
       setIsLoading(true);
 
-      const [productData, suggestionsData, contentData, latestData, bestSellingData] = await Promise.all([
+      const [productData, suggestionsData, contentData, latestData, bestSellingData, copyrightData] = await Promise.all([
         productService.getProductById(productId),
         productService.getProductSuggestions(productId),
         artworkContentService.getPublic(productId).catch(() => null),
         productService.getLatestProducts(7).catch(() => []),
         productService.getBestSellingProducts(7).catch(() => []),
+        certificateService.getPublicCopyright(productId).catch(() => null),
       ]);
 
       setProduct(productData);
@@ -121,6 +124,7 @@ export default function ProductDetailScreen({
       setArtworkContent(contentData);
       setLatestProducts(latestData.filter(item => item.maTacPham !== productId).slice(0, 6));
       setBestSellingProducts(bestSellingData.filter(item => item.maTacPham !== productId).slice(0, 6));
+      setCopyright(copyrightData);
     } catch (err: any) {
       console.error('Error loading product detail:', err);
       setError(err.message || 'Không thể tải thông tin sản phẩm');
@@ -432,6 +436,17 @@ export default function ProductDetailScreen({
                 </ScrollView>
               </>
             )}
+          </View>
+
+          <View style={styles.provenanceSection}>
+            <View style={styles.provenanceHeader}><Text style={styles.provenanceTitle}>Nguồn gốc & bản quyền</Text><Text style={[styles.provenanceBadge, copyright?.trangThai === 'VERIFIED' && styles.provenanceVerified]}>{copyright?.trangThai || 'CHƯA KHAI BÁO'}</Text></View>
+            {copyright?.trangThai === 'VERIFIED' ? <>
+              <Text style={styles.provenanceLine}>Phân loại: {copyright.loaiTacPhamText}</Text>
+              <Text style={styles.provenanceLine}>Họa sĩ thực hiện: {copyright.hoaSiThucHien}</Text>
+              {copyright.tacGiaGoc ? <Text style={styles.provenanceLine}>Tác giả gốc: {copyright.tacGiaGoc}</Text> : null}
+              <Text style={styles.provenanceLine}>{copyright.laTacPhamDocBan ? 'Tác phẩm độc bản' : 'Tác phẩm nhiều bản / chưa định danh từng bản'}</Text>
+            </> : <Text style={styles.provenanceMuted}>Thông tin nguồn gốc chưa được nền tảng xác minh.</Text>}
+            <Text style={styles.provenanceLegal}>{copyright?.luuYPhapLy || 'Xác minh của nền tảng không thay thế đăng ký quyền tác giả tại cơ quan nhà nước.'}</Text>
           </View>
 
           {/* Suggestions */}
@@ -910,6 +925,14 @@ const styles = StyleSheet.create({
   storyText: { fontSize: 14, color: '#374151', lineHeight: 21 },
   galleryRow: { gap: 10, paddingTop: 14, paddingRight: 4 },
   galleryImage: { width: 210, height: 150, borderRadius: 10, backgroundColor: '#e5e7eb' },
+  provenanceSection:{marginBottom:24,padding:15,borderWidth:1,borderColor:'#fed7aa',borderRadius:14,backgroundColor:'#fff7ed'},
+  provenanceHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:11},
+  provenanceTitle:{fontSize:17,fontWeight:'900',color:'#7c2d12'},
+  provenanceBadge:{paddingHorizontal:8,paddingVertical:4,borderRadius:999,backgroundColor:'#e2e8f0',color:'#475569',fontSize:9,fontWeight:'900'},
+  provenanceVerified:{backgroundColor:'#dcfce7',color:'#166534'},
+  provenanceLine:{marginTop:5,color:'#374151',fontSize:13.5,lineHeight:19},
+  provenanceMuted:{color:'#64748b',lineHeight:20},
+  provenanceLegal:{marginTop:12,paddingTop:10,borderTopWidth:1,borderTopColor:'#fed7aa',color:'#9a3412',fontSize:11,lineHeight:17},
   quantityContainer: {
     flexDirection: 'row',
     alignItems: 'center',

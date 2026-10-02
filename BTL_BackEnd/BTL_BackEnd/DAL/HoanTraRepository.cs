@@ -2,6 +2,7 @@ using System.Data;
 using System.Text.Json;
 using DoAn2_BackEnd.DAL.Interfaces;
 using DoAn2_BackEnd.DTO;
+using DoAn2_BackEnd.Helpers;
 using Microsoft.Data.SqlClient;
 
 namespace DoAn2_BackEnd.DAL;
@@ -239,37 +240,21 @@ public class HoanTraRepository : IHoanTraRepository
                 WHERE y.MaYeuCau=@MaYeuCau AND y.TrangThai='DANG_HOAN_TRA';";
             await using var select = new SqlCommand(selectSql, connection, transaction);
             select.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
-            int lineId, artworkId, customerId, returnQuantity, orderedQuantity, alreadyReturned, artistId;
+            int returnQuantity, orderedQuantity, alreadyReturned;
             await using (var reader = await select.ExecuteReaderAsync())
             {
                 if (!await reader.ReadAsync()) { await transaction.RollbackAsync(); return false; }
-                lineId=reader.GetInt32(0); artworkId=reader.GetInt32(1); customerId=reader.GetInt32(2);
-                returnQuantity=reader.GetInt32(3); orderedQuantity=reader.GetInt32(4); alreadyReturned=reader.GetInt32(5); artistId=reader.GetInt32(6);
+                returnQuantity=reader.GetInt32(3); orderedQuantity=reader.GetInt32(4); alreadyReturned=reader.GetInt32(5);
             }
             if (returnQuantity<=0 || alreadyReturned+returnQuantity>orderedQuantity) throw new InvalidOperationException("Số lượng nhận lại không hợp lệ");
-
-            await using var updateLine = new SqlCommand(@"UPDATE ChiTietDonHang SET SoLuongDaHoan=SoLuongDaHoan+@SoLuongTra
-                WHERE MaChiTietDH=@MaChiTietDH AND SoLuongDaHoan+@SoLuongTra<=SoLuong;", connection, transaction);
-            updateLine.Parameters.AddWithValue("@SoLuongTra",returnQuantity); updateLine.Parameters.AddWithValue("@MaChiTietDH",lineId);
-            if (await updateLine.ExecuteNonQueryAsync()!=1) throw new InvalidOperationException("Dòng đơn đã được hoàn đủ số lượng");
-
-            if (coTheBanLai)
-            {
-                await using var stock = new SqlCommand("UPDATE TacPham SET SoLuong=SoLuong+@SoLuongTra WHERE MaTacPham=@MaTacPham;",connection,transaction);
-                stock.Parameters.AddWithValue("@SoLuongTra",returnQuantity); stock.Parameters.AddWithValue("@MaTacPham",artworkId);
-                if (await stock.ExecuteNonQueryAsync()!=1) throw new InvalidOperationException("Không thể cập nhật tồn kho tác phẩm");
-            }
-
-            // Lịch sử sở hữu hiện theo tác phẩm, không theo từng bản sao. Chỉ chuyển owner
-            // khi toàn bộ số lượng của dòng đơn đã quay về để tránh mất owner của phần còn lại.
-            if (alreadyReturned + returnQuantity == orderedQuantity)
-                await ReverseOwnershipIfAvailable(connection,transaction,artworkId,customerId,artistId,maYeuCau);
 
             await using var updateReturn = new SqlCommand(@"UPDATE YeuCauHoanTra SET TrangThai='DA_NHAN_HANG',CoTheBanLai=@CoTheBanLai,
                 NguoiNhanHang=@NguoiNhanHang,NgayNhanHang=GETDATE(),NgayCapNhat=GETDATE()
                 WHERE MaYeuCau=@MaYeuCau AND TrangThai='DANG_HOAN_TRA';",connection,transaction);
             updateReturn.Parameters.AddWithValue("@CoTheBanLai",coTheBanLai); updateReturn.Parameters.AddWithValue("@NguoiNhanHang",maTaiKhoan); updateReturn.Parameters.AddWithValue("@MaYeuCau",maYeuCau);
             if (await updateReturn.ExecuteNonQueryAsync()!=1) throw new DBConcurrencyException("Yêu cầu đã được xử lý");
+            await AuditLogSql.InsertAsync(connection,transaction,"YeuCauHoanTra",maYeuCau,"PHYSICAL_RETURN_RECEIVED",maTaiKhoan,0,
+                after:$"CoTheBanLai={coTheBanLai};OwnershipUnchanged=true;CertificateUnchanged=true");
             await transaction.CommitAsync();
             return true;
         }
@@ -283,18 +268,32 @@ public class HoanTraRepository : IHoanTraRepository
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
-            await using var select = new SqlCommand(@"SELECT y.MaDonHang,y.SoLuongTra,c.DonGia,d.TongTien
+            await using var select = new SqlCommand(@"SELECT y.MaDonHang,y.SoLuongTra,c.DonGia,d.TongTien,
+                       y.MaChiTietDH,y.MaTacPham,y.MaNguoiDung,y.CoTheBanLai,c.SoLuong,c.SoLuongDaHoan,
+                       t.MaHoaSi,t.LaTacPhamDocBan,t.SoLuongBanDau
                 FROM YeuCauHoanTra y WITH (UPDLOCK,HOLDLOCK) INNER JOIN ChiTietDonHang c ON c.MaChiTietDH=y.MaChiTietDH
-                INNER JOIN DonHang d ON d.MaDonHang=y.MaDonHang WHERE y.MaYeuCau=@MaYeuCau AND y.TrangThai='DA_NHAN_HANG';",connection,transaction);
+                INNER JOIN DonHang d ON d.MaDonHang=y.MaDonHang
+                INNER JOIN TacPham t WITH (UPDLOCK,HOLDLOCK) ON t.MaTacPham=y.MaTacPham
+                WHERE y.MaYeuCau=@MaYeuCau AND y.TrangThai='DA_NHAN_HANG';",connection,transaction);
             select.Parameters.AddWithValue("@MaYeuCau",maYeuCau);
-            int orderId; decimal maximumRefund,orderTotal;
+            int orderId,lineId,artworkId,customerId,returnQuantity,orderedQuantity,alreadyReturned,artistId;
+            bool canResell,exclusive;
+            int? initialQuantity;
+            decimal maximumRefund,orderTotal;
             await using (var reader=await select.ExecuteReaderAsync())
             {
                 if (!await reader.ReadAsync()) { await transaction.RollbackAsync(); return false; }
-                orderId=reader.GetInt32(0); maximumRefund=reader.GetInt32(1)*reader.GetDecimal(2); orderTotal=reader.GetDecimal(3);
+                orderId=reader.GetInt32(0); returnQuantity=reader.GetInt32(1);
+                maximumRefund=returnQuantity*reader.GetDecimal(2); orderTotal=reader.GetDecimal(3);
+                lineId=reader.GetInt32(4); artworkId=reader.GetInt32(5); customerId=reader.GetInt32(6);
+                canResell=!reader.IsDBNull(7)&&reader.GetBoolean(7); orderedQuantity=reader.GetInt32(8);
+                alreadyReturned=reader.GetInt32(9); artistId=reader.GetInt32(10); exclusive=reader.GetBoolean(11);
+                initialQuantity=reader.IsDBNull(12)?null:reader.GetInt32(12);
             }
             var refundAmount=request.SoTienHoan??maximumRefund;
             if (refundAmount<=0 || refundAmount>maximumRefund) { await transaction.RollbackAsync(); return false; }
+            if (exclusive && (initialQuantity!=1 || orderedQuantity!=1 || returnQuantity!=1))
+                throw new InvalidOperationException("Dữ liệu hoàn trả độc bản không nhất quán");
 
             await using var update=new SqlCommand(@"UPDATE YeuCauHoanTra SET TrangThai='DA_HOAN_TIEN',SoTienHoan=@SoTienHoan,
                 PhuongThucHoanTien=@PhuongThuc,TrangThaiHoanTien='DA_HOAN_TIEN',NguoiHoanTien=@NguoiHoanTien,
@@ -302,6 +301,21 @@ public class HoanTraRepository : IHoanTraRepository
             update.Parameters.AddWithValue("@SoTienHoan",refundAmount); update.Parameters.AddWithValue("@PhuongThuc",request.PhuongThucHoanTien);
             update.Parameters.AddWithValue("@NguoiHoanTien",maTaiKhoan); update.Parameters.AddWithValue("@MaYeuCau",maYeuCau);
             if (await update.ExecuteNonQueryAsync()!=1) { await transaction.RollbackAsync(); return false; }
+
+            await using var updateLine = new SqlCommand(@"UPDATE ChiTietDonHang SET SoLuongDaHoan=SoLuongDaHoan+@SoLuongTra
+                WHERE MaChiTietDH=@MaChiTietDH AND SoLuongDaHoan+@SoLuongTra<=SoLuong;",connection,transaction);
+            updateLine.Parameters.AddWithValue("@SoLuongTra",returnQuantity); updateLine.Parameters.AddWithValue("@MaChiTietDH",lineId);
+            if (await updateLine.ExecuteNonQueryAsync()!=1) throw new InvalidOperationException("Dòng đơn đã được hoàn đủ số lượng");
+
+            if (canResell)
+            {
+                await using var stock = new SqlCommand("UPDATE TacPham SET SoLuong=SoLuong+@SoLuongTra WHERE MaTacPham=@MaTacPham;",connection,transaction);
+                stock.Parameters.AddWithValue("@SoLuongTra",returnQuantity); stock.Parameters.AddWithValue("@MaTacPham",artworkId);
+                if (await stock.ExecuteNonQueryAsync()!=1) throw new InvalidOperationException("Không thể cập nhật tồn kho tác phẩm");
+            }
+
+            if (exclusive && alreadyReturned+returnQuantity==orderedQuantity)
+                await ReverseOwnershipIfAvailable(connection,transaction,artworkId,customerId,artistId,maYeuCau);
 
             await using var sum=new SqlCommand(@"SELECT ISNULL(SUM(SoTienHoan),0) FROM YeuCauHoanTra
                 WHERE MaDonHang=@MaDonHang AND TrangThai IN ('DA_HOAN_TIEN','HOAN_TAT');",connection,transaction);
@@ -311,6 +325,8 @@ public class HoanTraRepository : IHoanTraRepository
                 await using var payment=new SqlCommand("UPDATE ThanhToan SET TrangThai='HoanTien',NgayThanhToan=GETDATE() WHERE MaDonHang=@MaDonHang AND TrangThai<>'HoanTien';",connection,transaction);
                 payment.Parameters.AddWithValue("@MaDonHang",orderId); await payment.ExecuteNonQueryAsync();
             }
+            await AuditLogSql.InsertAsync(connection,transaction,"YeuCauHoanTra",maYeuCau,"REFUND_COMPLETED",maTaiKhoan,0,
+                after:$"Amount={refundAmount};Quantity={returnQuantity};OwnershipReversed={exclusive}");
             await transaction.CommitAsync(); return true;
         }
         catch { await transaction.RollbackAsync(); throw; }
@@ -346,9 +362,11 @@ public class HoanTraRepository : IHoanTraRepository
         if (Convert.ToInt64(await other.ExecuteScalarAsync())!=0) throw new InvalidOperationException("Tác phẩm đang có owner CURRENT khác");
 
         await using var insert=new SqlCommand(@"INSERT INTO LichSuSoHuu
-            (MaTacPham,MaNguoiDung,MaHoaSi,NgayNhan,NgayChuyenGiao,LoaiChuyenGiao,TrangThai,MaDonHang,GhiChu,NgayTao)
-            VALUES (@MaTacPham,NULL,@MaHoaSi,GETDATE(),NULL,3,1,NULL,CONCAT(N'RETURN #',@MaYeuCau),GETDATE());",connection,transaction);
+            (MaTacPham,MaNguoiDung,MaHoaSi,NgayNhan,NgayChuyenGiao,LoaiChuyenGiao,TrangThai,MaDonHang,MaYeuCauHoanTra,GhiChu,EventKey,NgayTao)
+            VALUES (@MaTacPham,NULL,@MaHoaSi,SYSUTCDATETIME(),NULL,3,1,NULL,@MaYeuCau,
+                    CONCAT(N'RETURN #',@MaYeuCau),@EventKey,SYSUTCDATETIME());",connection,transaction);
         insert.Parameters.AddWithValue("@MaTacPham",artworkId); insert.Parameters.AddWithValue("@MaHoaSi",artistId); insert.Parameters.AddWithValue("@MaYeuCau",returnId);
+        insert.Parameters.AddWithValue("@EventKey",$"RETURN:{returnId}");
         await insert.ExecuteNonQueryAsync();
 
         await using var certSchema=new SqlCommand(@"SELECT CASE WHEN OBJECT_ID(N'dbo.ChungNhan',N'U') IS NOT NULL
@@ -360,6 +378,8 @@ public class HoanTraRepository : IHoanTraRepository
                 LyDoThuHoi=CONCAT(N'Hoàn trả tác phẩm #',@MaYeuCau) WHERE MaLichSuSoHuu=@MaLichSuSoHuu AND TrangThai=1;",connection,transaction);
             revoke.Parameters.AddWithValue("@MaYeuCau",returnId); revoke.Parameters.AddWithValue("@MaLichSuSoHuu",ownershipId); await revoke.ExecuteNonQueryAsync();
         }
+        await AuditLogSql.InsertAsync(connection,transaction,"LichSuSoHuu",ownershipId,"RETURN_REVERSED",null,null,
+            after:$"Return={returnId};Artwork={artworkId};Artist={artistId}");
     }
 
     private async Task<List<HoanTraSummaryResponse>> QuerySummaries(string sql, Action<SqlCommand> configure)

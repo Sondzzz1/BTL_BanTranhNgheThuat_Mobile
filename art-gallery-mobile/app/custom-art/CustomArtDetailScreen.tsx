@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { customArtService } from '../../services/customArtService';
@@ -12,6 +12,10 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentAttemptKey, setPaymentAttemptKey] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [handingOver, setHandingOver] = useState(false);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
   const load = useCallback(async (refresh = false) => {
@@ -22,6 +26,7 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
         AsyncStorage.getItem('authToken'),
       ]);
       setItem(detail);
+      if (detail.quote && !paymentAmount) setPaymentAmount(String(Math.max(0, Number(detail.quote.giaBaoGia) - Number(detail.tienDatCoc || 0))));
       setAuthToken(token);
     } catch (error: any) {
       Alert.alert('Không thể tải chi tiết', error?.response?.data?.message || 'Vui lòng thử lại.');
@@ -58,6 +63,30 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
         catch (error: any) { Alert.alert('Không thể hủy', error?.response?.data?.message || 'Vui lòng thử lại.'); }
       },
     },
+  ]);
+
+  const registerPayment = async () => {
+    const amount = Number(paymentAmount.replace(/[^0-9]/g, ''));
+    if (!Number.isFinite(amount) || amount <= 0) return Alert.alert('Số tiền không hợp lệ');
+    try {
+      setPaying(true);
+      const key = paymentAttemptKey || `CUSTOM-PAYMENT-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      setPaymentAttemptKey(key);
+      const paymentId = await customArtService.createPayment(id, amount, key);
+      setPaymentAttemptKey(null);
+      Alert.alert('Đã ghi nhận', `Khoản thanh toán #${paymentId} đang chờ Admin đối soát. Quyền sở hữu chưa được chuyển ở bước này.`);
+      await load();
+    } catch (error: any) { Alert.alert('Không thể ghi nhận thanh toán', error?.response?.data?.message || 'Vui lòng thử lại.'); }
+    finally { setPaying(false); }
+  };
+
+  const confirmHandover = () => Alert.alert('Xác nhận bàn giao hiện vật', 'Chỉ xác nhận sau khi bạn đã nhận tác phẩm thực tế. Thao tác này không chuyển quyền tác giả.', [
+    { text: 'Chưa nhận', style: 'cancel' },
+    { text: 'Đã nhận tác phẩm', onPress: async () => {
+      try { setHandingOver(true); await customArtService.confirmHandover(id); await load(); Alert.alert('Thành công', 'Đã xác nhận bàn giao hiện vật.'); }
+      catch (error: any) { Alert.alert('Không thể xác nhận', error?.response?.data?.message || 'Vui lòng thử lại.'); }
+      finally { setHandingOver(false); }
+    } },
   ]);
 
   if (loading) return <ActivityIndicator size="large" color="#ea580c" style={styles.loader} />;
@@ -103,6 +132,14 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
               {accepting ? <ActivityIndicator color="#fff" /> : <Text style={styles.acceptText}>Chấp nhận báo giá</Text>}
             </TouchableOpacity>
           )}
+          {item.quote.trangThai === 'CustomerAccepted' && Number(item.tienDatCoc || 0) < Number(item.quote.giaBaoGia) && (
+            <View style={styles.paymentBox}>
+              <Text style={styles.paymentLabel}>Thanh toán toàn bộ hoặc theo đợt</Text>
+              <Text style={styles.paymentHint}>Đã đối soát: {formatVnd(item.tienDatCoc || 0)} / {formatVnd(item.quote.giaBaoGia)}</Text>
+              <TextInput value={paymentAmount} onChangeText={(value) => { setPaymentAmount(value); setPaymentAttemptKey(null); }} keyboardType="number-pad" style={styles.paymentInput} placeholder="Số tiền chuyển khoản" />
+              <TouchableOpacity style={styles.paymentButton} onPress={registerPayment} disabled={paying}>{paying ? <ActivityIndicator color="#fff" /> : <Text style={styles.paymentButtonText}>Gửi yêu cầu đối soát</Text>}</TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
 
@@ -130,6 +167,14 @@ export default function CustomArtDetailScreen({ route, navigation }: any) {
           <Text style={styles.completedHeading}>Tác phẩm đã hoàn thành</Text>
           {finalImageUrl && <Image source={{ uri: finalImageUrl, headers: finalImageUrl.startsWith('data:image/') ? undefined : imageHeaders }} style={styles.completedImage} />}
           <Text style={styles.completedNote}>{finalProgress.moTa || 'Tác phẩm đã được hoàn thiện.'}</Text>
+        </View>
+      )}
+
+      {item.trangThai === 'COMPLETED' && (
+        <View style={styles.handoverBox}>
+          <Text style={styles.handoverTitle}>Bàn giao hiện vật</Text>
+          <Text style={styles.handoverText}>{item.trangThaiBanGiao === 1 ? `Đã xác nhận bàn giao${item.ngayBanGiao ? ` ngày ${new Date(item.ngayBanGiao).toLocaleDateString('vi-VN')}` : ''}.` : 'Chưa xác nhận nhận tác phẩm thực tế.'}</Text>
+          {item.trangThaiBanGiao !== 1 && <TouchableOpacity style={styles.handoverButton} onPress={confirmHandover} disabled={handingOver}>{handingOver ? <ActivityIndicator color="#fff" /> : <Text style={styles.handoverButtonText}>Tôi đã nhận tác phẩm</Text>}</TouchableOpacity>}
         </View>
       )}
 
@@ -184,6 +229,10 @@ const styles = StyleSheet.create({
   acceptButton: { backgroundColor: '#059669', padding: 13, borderRadius: 10, alignItems: 'center' },
   acceptText: { color: '#fff', fontWeight: '800' },
   budgetWarning: { color: '#b45309', backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fcd34d', borderRadius: 9, padding: 10, marginBottom: 10, fontWeight: '700', lineHeight: 20 },
+  paymentBox:{marginTop:10,paddingTop:12,borderTopWidth:1,borderTopColor:'#a7f3d0'},
+  paymentLabel:{color:'#065f46',fontWeight:'800'},paymentHint:{marginTop:4,color:'#047857',fontSize:12},
+  paymentInput:{marginTop:10,paddingHorizontal:12,height:45,borderWidth:1,borderColor:'#6ee7b7',borderRadius:9,backgroundColor:'#fff'},
+  paymentButton:{alignItems:'center',marginTop:9,padding:12,borderRadius:9,backgroundColor:'#047857'},paymentButtonText:{color:'#fff',fontWeight:'800'},
   imageBox: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12 },
   imageLabel: { fontWeight: '700', color: '#374151', marginBottom: 8 },
   image: { width: '100%', height: 230, borderRadius: 10, resizeMode: 'contain', backgroundColor: '#f3f4f6' },
@@ -191,6 +240,9 @@ const styles = StyleSheet.create({
   completedHeading: { color: '#047857', fontSize: 20, fontWeight: '900', marginBottom: 10 },
   completedImage: { width: '100%', height: 260, borderRadius: 10, resizeMode: 'contain', backgroundColor: '#fff' },
   completedNote: { color: '#065f46', marginTop: 10, lineHeight: 20, fontWeight: '600' },
+  handoverBox:{padding:14,marginBottom:12,borderWidth:1,borderColor:'#fed7aa',borderRadius:14,backgroundColor:'#fff7ed'},
+  handoverTitle:{color:'#9a3412',fontSize:18,fontWeight:'900'},handoverText:{marginTop:6,color:'#7c2d12',lineHeight:20},
+  handoverButton:{alignItems:'center',marginTop:12,padding:12,borderRadius:9,backgroundColor:'#c2410c'},handoverButtonText:{color:'#fff',fontWeight:'800'},
   timelineBox: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb' },
   timelineItem: { position: 'relative', flexDirection: 'row', paddingBottom: 18 },
   timelineDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#ea580c', marginTop: 5, marginRight: 12, zIndex: 2 },

@@ -33,6 +33,10 @@ import AdminArtistArtworks from './pages/Admin/AdminArtistArtworks';
 import ReturnRequests from './pages/Admin/ReturnRequests';
 import AdminCustomArt from './pages/Admin/AdminCustomArt';
 import AdminConsultation from './pages/Admin/AdminConsultation';
+import AdminCopyright from './pages/Admin/AdminCopyright';
+import AdminCertificates from './pages/Admin/AdminCertificates';
+import AdminCopyrightAudit from './pages/Admin/AdminCopyrightAudit';
+import CertificateVerify from './pages/CertificateVerify';
 
 import AdminAuthorRevenue from './pages/Admin/AdminAuthorRevenue';
 import AdminApiTest from './pages/Admin/AdminApiTest';
@@ -47,6 +51,7 @@ import ArtworkDetailContent from './pages/Artist/ArtworkDetailContent';
 import ArtistArticles from './pages/Artist/ArtistArticles';
 import ArtistRevenue from './pages/Artist/ArtistRevenue';
 import ArtistCustomArt from './pages/Artist/ArtistCustomArt';
+import ArtistCopyright from './pages/Artist/ArtistCopyright';
 import UserLayout from './pages/User/UserLayout';
 import UserProfile from './pages/User/UserProfile';
 import UserOrders from './pages/User/UserOrders';
@@ -101,6 +106,9 @@ function App() {
               <Route path="return-requests" element={<ReturnRequests />} />
               <Route path="custom-art" element={<AdminCustomArt />} />
               <Route path="consultation" element={<AdminConsultation />} />
+              <Route path="copyright" element={<AdminCopyright />} />
+              <Route path="certificates" element={<AdminCertificates />} />
+              <Route path="copyright-audit" element={<AdminCopyrightAudit />} />
               <Route path="api-test" element={<AdminApiTest />} />
               <Route path="test-edits" element={<TestEditsAPI />} />
             </Route>
@@ -113,6 +121,7 @@ function App() {
               <Route path="artworks/deleted" element={<ArtistDeletedArtworks />} />
               <Route path="artworks/:id" element={<ArtworkDetailManagement />} />
               <Route path="artworks/:id/content" element={<ArtworkDetailContent />} />
+              <Route path="artworks/:id/copyright" element={<ArtistCopyright />} />
               <Route path="articles" element={<ArtistArticles />} />
               <Route path="revenue" element={<ArtistRevenue />} />
               <Route path="custom-art" element={<ArtistCustomArt />} />
@@ -147,6 +156,8 @@ function App() {
             {/*   <Route path="orders/:id" element={<UserOrderDetail />} /> */}
             {/*   <Route path="favorites" element={<UserFavorites />} /> */}
             {/* </Route> */}
+
+            <Route path="/chung-nhan/xac-minh/:code" element={<CertificateVerify />} />
 
             {/* Fallback - Redirect về Login */}
             <Route path="*" element={<Navigate to="/login" replace />} />

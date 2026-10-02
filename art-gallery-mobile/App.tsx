@@ -39,6 +39,7 @@ import ConsultationBookingScreen from './app/consultation/ConsultationBookingScr
 import ArtServicesScreen from './app/services/ArtServicesScreen';
 import CustomArtIntroScreen from './app/services/CustomArtIntroScreen';
 import ConsultationIntroScreen from './app/services/ConsultationIntroScreen';
+import MyCertificatesScreen from './app/certificates/MyCertificatesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -267,6 +268,11 @@ function MainStackNavigator() {
         name="ConsultationBooking"
         component={ConsultationBookingScreen}
         options={{ title: 'Đặt lịch tư vấn' }}
+      />
+      <Stack.Screen
+        name="MyCertificates"
+        component={MyCertificatesScreen}
+        options={{ title: 'Chứng nhận sở hữu' }}
       />
     </Stack.Navigator>
   );

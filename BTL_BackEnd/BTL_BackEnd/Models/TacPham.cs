@@ -17,6 +17,8 @@ public class TacPham
     public int? MaDanhMuc { get; set; }
     public decimal Gia { get; set; }
     public int SoLuong { get; set; }
+    /// <summary>NULL với dữ liệu cũ chưa được đối soát; chỉ giá trị 1 mới đủ điều kiện đánh dấu độc bản.</summary>
+    public int? SoLuongBanDau { get; set; }
     public string? MoTa { get; set; }
     public string? HinhAnh { get; set; }
     public string? ChatLieu { get; set; }

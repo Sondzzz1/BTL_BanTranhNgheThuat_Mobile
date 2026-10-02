@@ -1,5 +1,7 @@
 namespace DoAn2_BackEnd.Helpers;
 
+using System.Security.Cryptography;
+
 public class CopyrightFileHelper
 {
     private const long MaxFileSize = 5 * 1024 * 1024;
@@ -37,6 +39,13 @@ public class CopyrightFileHelper
         await output.WriteAsync(header.AsMemory(0, bytesRead), cancellationToken);
         await input.CopyToAsync(output, cancellationToken);
         return storedName;
+    }
+
+    public static async Task<string> ComputeSha256Async(IFormFile file, CancellationToken cancellationToken = default)
+    {
+        await using var stream = file.OpenReadStream();
+        var hash = await SHA256.HashDataAsync(stream, cancellationToken);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     public (Stream Stream, string ContentType) OpenRead(string storedName)

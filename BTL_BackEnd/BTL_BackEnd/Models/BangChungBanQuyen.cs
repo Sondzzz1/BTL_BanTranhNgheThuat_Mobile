@@ -12,6 +12,8 @@ public class BangChungBanQuyen
     public string DuongDan { get; set; } = null!; // Relative path
     public string LoaiTep { get; set; } = null!; // MIME type: image/jpeg, image/png, application/pdf
     public long KichThuoc { get; set; } // Bytes
+    public string? MoTa { get; set; }
+    public string? Sha256 { get; set; }
     public DateTime NgayTao { get; set; }
     public int? NguoiTao { get; set; } // MaTaiKhoan
 }

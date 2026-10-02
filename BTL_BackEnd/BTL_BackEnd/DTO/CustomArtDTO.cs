@@ -92,6 +92,27 @@ public class TaoPhanHoiRequest
     public string LoaiPhanHoi { get; set; } = "ChinhSua";
 }
 
+public class TaoThanhToanCustomArtRequest
+{
+    public decimal SoTien { get; set; }
+    public string LoaiThanhToan { get; set; } = "DotThanhToan";
+    public string PhuongThuc { get; set; } = "ChuyenKhoan";
+    public string? MaGiaoDich { get; set; }
+    public string? GhiChu { get; set; }
+    public string? KhoaChongTrung { get; set; }
+}
+
+public class XacNhanThanhToanCustomArtRequest
+{
+    public string MaGiaoDich { get; set; } = string.Empty;
+    public string? GhiChu { get; set; }
+}
+
+public class XacNhanBanGiaoCustomArtRequest
+{
+    public string? GhiChu { get; set; }
+}
+
 public class CustomArtRequestResponse
 {
     public int MaYeuCau { get; set; }
@@ -128,6 +149,9 @@ public class CustomArtRequestResponse
     public DateTime? NgayHoanThanhDuKien { get; set; }
     public int? MaTacPhamKetQua { get; set; }
     public int SoLuongTienDo { get; set; }
+    public byte TrangThaiBanGiao { get; set; }
+    public DateTime? NgayBanGiao { get; set; }
+    public string? GhiChuBanGiao { get; set; }
     public CustomArtQuoteResponse? Quote { get; set; }
     public List<CustomArtProgressResponse> Progress { get; set; } = new();
 }

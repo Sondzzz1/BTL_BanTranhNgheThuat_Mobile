@@ -62,6 +62,21 @@ const AdminLayout: React.FC = () => {
                                     <i className="ti-calendar"></i> Tư vấn nghệ thuật
                                 </li>
                             </NavLink>
+                            <NavLink to="/admin/copyright">
+                                <li className={location.pathname === '/admin/copyright' ? 'active' : ''}>
+                                    <i className="ti-shield"></i> Xác minh bản quyền
+                                </li>
+                            </NavLink>
+                            <NavLink to="/admin/certificates">
+                                <li className={location.pathname === '/admin/certificates' ? 'active' : ''}>
+                                    <i className="ti-medall"></i> Chứng nhận sở hữu
+                                </li>
+                            </NavLink>
+                            <NavLink to="/admin/copyright-audit">
+                                <li className={location.pathname === '/admin/copyright-audit' ? 'active' : ''}>
+                                    <i className="ti-list"></i> Nhật ký sở hữu
+                                </li>
+                            </NavLink>
                             <NavLink to="/admin/customers">
                                 <li className={location.pathname === '/admin/customers' ? 'active' : ''}>
                                     <i className="ti-user"></i> Khách hàng

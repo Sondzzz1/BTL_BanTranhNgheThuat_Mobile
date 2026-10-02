@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   CustomArtRequestApi,
+  CustomArtPaymentResponse,
   customArtService,
   getAuthenticatedCustomArtFileUrl,
   getCustomArtStatusLabel,
@@ -20,6 +21,7 @@ const AdminCustomArt: React.FC = () => {
   const [referencePreview, setReferencePreview] = useState<string>();
   const [evidencePreview, setEvidencePreview] = useState<string>();
   const [progressPreviews, setProgressPreviews] = useState<Record<number, string>>({});
+  const [payments, setPayments] = useState<CustomArtPaymentResponse[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -46,18 +48,20 @@ const AdminCustomArt: React.FC = () => {
   const openDetail = async (id: number) => {
     try {
       const detail = await customArtService.getById(id);
-      const [reference, evidence, progressImages] = await Promise.all([
+      const [reference, evidence, progressImages, paymentItems] = await Promise.all([
         getAuthenticatedCustomArtFileUrl(detail.referenceImageUrl || detail.anhThamKhao),
         getAuthenticatedCustomArtFileUrl(detail.bangChungQuyenSuDung),
         Promise.all((detail.progress || []).map(async (entry) => [
           entry.maTienDo,
           await getAuthenticatedCustomArtFileUrl(entry.anhPreview),
         ] as const)),
+        customArtService.getPayments(id),
       ]);
       setSelected(detail);
       setReferencePreview(reference);
       setEvidencePreview(evidence);
       setProgressPreviews(Object.fromEntries(progressImages.filter((entry): entry is readonly [number, string] => Boolean(entry[1]))));
+      setPayments(paymentItems);
       setNote('');
     }
     catch (error: any) { setMessage(error?.response?.data?.message || 'Không thể tải chi tiết.'); }
@@ -68,6 +72,7 @@ const AdminCustomArt: React.FC = () => {
     setReferencePreview(undefined);
     setEvidencePreview(undefined);
     setProgressPreviews({});
+    setPayments([]);
   };
 
   const review = async (action: 'approve' | 'permission' | 'reject') => {
@@ -89,6 +94,17 @@ const AdminCustomArt: React.FC = () => {
   };
 
   const finalProgress = selected?.progress?.find((entry) => entry.trangThai?.toUpperCase() === 'COMPLETED');
+
+  const confirmPayment = async (payment: CustomArtPaymentResponse) => {
+    const transactionCode = window.prompt('Nhập mã giao dịch đã đối soát:', payment.maGiaoDich || '')?.trim();
+    if (!transactionCode) return;
+    try {
+      await customArtService.confirmPayment(payment.maThanhToan, transactionCode);
+      setPayments(await customArtService.getPayments(payment.maYeuCau));
+      setSelected(await customArtService.getById(payment.maYeuCau));
+      setMessage('Đã xác nhận thanh toán.');
+    } catch (error: any) { setMessage(error?.response?.data?.message || 'Không thể xác nhận thanh toán.'); }
+  };
 
   return (
     <div className="commission-page">
@@ -153,6 +169,32 @@ const AdminCustomArt: React.FC = () => {
               <Field label="Ghi chú hoàn thiện" value={finalProgress?.moTa || '—'} />
               {finalProgress && progressPreviews[finalProgress.maTienDo] && <img className="commission-progress-image" src={progressPreviews[finalProgress.maTienDo]} alt="Tác phẩm hoàn thiện" />}
             </div>}
+            <div className="commission-payment-panel">
+              <div className="commission-progress-header">
+                <h3>Thanh toán và bàn giao</h3>
+                <span>{formatVnd(payments.filter((item) => item.trangThai === 'Completed').reduce((sum, item) => sum + item.soTien, 0))} đã đối soát</span>
+              </div>
+              <Field
+                label="Bàn giao hiện vật"
+                value={selected.trangThaiBanGiao === 1
+                  ? `Đã xác nhận${selected.ngayBanGiao ? ` lúc ${new Date(selected.ngayBanGiao).toLocaleString('vi-VN')}` : ''}`
+                  : 'Chưa xác nhận'}
+              />
+              {selected.ghiChuBanGiao && <Field label="Ghi chú bàn giao" value={selected.ghiChuBanGiao} />}
+              {payments.length ? payments.map((payment) => (
+                <div className="commission-payment-item" key={payment.maThanhToan}>
+                  <div>
+                    <strong>{payment.loaiThanhToan} · {formatVnd(payment.soTien)}</strong>
+                    <p>{payment.phuongThuc} · {payment.trangThai === 'Completed' ? 'Đã xác nhận' : 'Chờ đối soát'}</p>
+                    {payment.maGiaoDich && <small>Mã giao dịch: {payment.maGiaoDich}</small>}
+                  </div>
+                  {payment.trangThai === 'Pending' && (
+                    <button className="commission-approve" onClick={() => confirmPayment(payment)}>Xác nhận thanh toán</button>
+                  )}
+                </div>
+              )) : <div className="commission-progress-empty-box">Chưa có khoản thanh toán nào được đăng ký.</div>}
+              <p className="commission-legal-note">Chứng nhận sở hữu chỉ được cấp khi đủ tiền, đã bàn giao hiện vật và nguồn gốc được xác minh. Chứng nhận hiện vật không chuyển quyền tác giả.</p>
+            </div>
             <div className="commission-progress-panel">
               <div className="commission-progress-header"><h3>Tiến độ thực hiện</h3><span>{selected.progress?.length || 0} cập nhật</span></div>
               {selected.progress?.length ? selected.progress.map((entry) => <div className="commission-progress-item" key={entry.maTienDo}>

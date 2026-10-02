@@ -346,8 +346,43 @@ public class CustomArtController : ControllerBase
         if (!maKhachHang.HasValue) return Unauthorized(new { message = "Token không có MaNguoiDung" });
         return await ExecuteBoolean(
             () => _customArtBusiness.DatCoc(payment.MaYeuCau, maKhachHang.Value, payment.SoTien),
-            "Đặt cọc thành công",
+            "Đã ghi nhận khoản đặt cọc chờ Admin đối soát",
             "Yêu cầu không tồn tại hoặc không thuộc khách hàng");
+    }
+
+    [HttpPost("yeu-cau/{id:int}/thanh-toan")]
+    [Authorize(Roles = "NguoiDung")]
+    public async Task<ActionResult> TaoThanhToan(int id, [FromBody] TaoThanhToanCustomArtRequest request)
+    {
+        var customerId = RequireCustomerId();
+        if (!customerId.HasValue) return Unauthorized(new { message = "Token không có MaNguoiDung" });
+        var paymentId = await _customArtBusiness.TaoThanhToan(id, customerId.Value, request);
+        return Ok(new { maThanhToan = paymentId, trangThai = "Pending", message = "Đã ghi nhận khoản thanh toán chờ đối soát" });
+    }
+
+    [HttpPost("admin/thanh-toan/{paymentId:int}/xac-nhan")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> XacNhanThanhToan(int paymentId, [FromBody] XacNhanThanhToanCustomArtRequest request)
+    {
+        var accountId = JwtHelper.GetMaTaiKhoan(User);
+        if (!accountId.HasValue) return Unauthorized(new { message = "Token không có MaTaiKhoan" });
+        await _customArtBusiness.XacNhanThanhToan(paymentId, accountId.Value, request);
+        return Ok(new { message = "Đã đối soát và xác nhận thanh toán" });
+    }
+
+    [HttpGet("admin/{id:int}/thanh-toan")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> LayThanhToan(int id) => Ok(await _customArtBusiness.LayThanhToan(id));
+
+    [HttpPost("yeu-cau/{id:int}/xac-nhan-ban-giao")]
+    [Authorize(Roles = "NguoiDung")]
+    public async Task<ActionResult> XacNhanBanGiao(int id, [FromBody] XacNhanBanGiaoCustomArtRequest request)
+    {
+        var customerId = RequireCustomerId();
+        var accountId = JwtHelper.GetMaTaiKhoan(User);
+        if (!customerId.HasValue || !accountId.HasValue) return Unauthorized(new { message = "Token thiếu thông tin người dùng" });
+        await _customArtBusiness.XacNhanBanGiao(id, customerId.Value, accountId.Value, request);
+        return Ok(new { message = "Đã xác nhận bàn giao hiện vật" });
     }
 
     [HttpPost("cap-nhat-tien-do")]

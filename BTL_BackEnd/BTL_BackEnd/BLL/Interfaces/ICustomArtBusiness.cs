@@ -20,6 +20,10 @@ public interface ICustomArtBusiness
     Task<CustomArtQuoteResponse> TaoBaoGia(BaoGiaTranhRequest request, int maHoaSi);
     Task<bool> XacNhanBaoGia(int maBaoGia, int maKhachHang);
     Task<bool> DatCoc(int maYeuCau, int maKhachHang, decimal soTien);
+    Task<int> TaoThanhToan(int maYeuCau, int maKhachHang, TaoThanhToanCustomArtRequest request);
+    Task XacNhanThanhToan(int maThanhToan, int maTaiKhoan, XacNhanThanhToanCustomArtRequest request);
+    Task XacNhanBanGiao(int maYeuCau, int maKhachHang, int maTaiKhoan, XacNhanBanGiaoCustomArtRequest request);
+    Task<List<DoAn2_BackEnd.Models.CustomArtPayment>> LayThanhToan(int maYeuCau);
     Task<bool> ThemTienDo(TaoTienDoRequest request, int maHoaSi);
     Task<string?> LayTepTienDo(int maYeuCau, int maTienDo, int? maNguoiDung, int? maHoaSi, bool isAdmin);
     Task<bool> GuiPhanHoi(TaoPhanHoiRequest request, int maKhachHang);

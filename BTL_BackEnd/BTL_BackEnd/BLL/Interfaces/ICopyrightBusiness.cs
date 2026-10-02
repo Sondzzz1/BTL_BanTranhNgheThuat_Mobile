@@ -11,10 +11,17 @@ public interface ICopyrightBusiness
     Task Update(int maBanQuyen, int maHoaSi, int maTaiKhoan, CapNhatBanQuyenRequest request);
     Task<int> AddEvidence(int maBanQuyen, int maHoaSi, int maTaiKhoan, CopyrightEvidenceFile file);
     Task<(BangChungBanQuyen Evidence, int ArtistId)?> GetEvidence(int maBanQuyen, int maBangChung);
+    Task<BangChungBanQuyen> DeleteEvidence(int maBanQuyen, int maBangChung, int maHoaSi, int maTaiKhoan);
     Task<List<BanQuyenResponse>> GetForAdmin(string? status, string? keyword);
     Task<BanQuyenResponse> GetForAdminById(int maBanQuyen);
     Task Review(int maBanQuyen, int maTaiKhoan, byte status, string? note);
+    Task RevokeVerification(int maBanQuyen, int maTaiKhoan, ThuHoiXacMinhRequest request);
     Task<BanQuyenCongKhaiResponse> GetPublic(int maTacPham);
     Task<List<ChungNhanResponse>> GetCertificates(int maNguoiDung);
+    Task<List<ChungNhanResponse>> GetCertificatesForAdmin(string? status, string? keyword);
     Task<ChungNhanResponse> GetCertificate(int maChungNhan, int maNguoiDung);
+    Task<ChungNhanCongKhaiResponse> VerifyCertificate(string code);
+    Task RevokeCertificate(int maChungNhan, int maTaiKhoan, string reason);
+    Task SetCertificateOwnerVisibility(int maChungNhan, int maNguoiDung, bool visible);
+    Task<List<CopyrightAuditResponse>> GetAuditLogs(string? objectName, int? objectId);
 }

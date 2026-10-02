@@ -125,6 +125,35 @@ public class CustomArtBusiness : ICustomArtBusiness
         return _customArtRepo.CreateDeposit(maYeuCau, maKhachHang, soTien);
     }
 
+    public async Task<int> TaoThanhToan(int maYeuCau, int maKhachHang, TaoThanhToanCustomArtRequest request)
+    {
+        if (request.SoTien <= 0) throw new ArgumentException("Số tiền thanh toán phải lớn hơn 0");
+        request.LoaiThanhToan = NormalizePaymentValue(request.LoaiThanhToan, "Loại thanh toán", 50);
+        request.PhuongThuc = NormalizePaymentValue(request.PhuongThuc, "Phương thức thanh toán", 50);
+        request.MaGiaoDich = Optional(request.MaGiaoDich, 100);
+        request.GhiChu = Optional(request.GhiChu, 500);
+        request.KhoaChongTrung = Optional(request.KhoaChongTrung, 100);
+        return await _customArtRepo.CreatePayment(maYeuCau, maKhachHang, request)
+               ?? throw new InvalidOperationException("Yêu cầu không hợp lệ hoặc chưa có báo giá được chấp nhận");
+    }
+
+    public async Task XacNhanThanhToan(int maThanhToan, int maTaiKhoan, XacNhanThanhToanCustomArtRequest request)
+    {
+        request.MaGiaoDich = NormalizePaymentValue(request.MaGiaoDich, "Mã giao dịch", 100);
+        request.GhiChu = Optional(request.GhiChu, 500);
+        if (!await _customArtRepo.ConfirmPayment(maThanhToan, maTaiKhoan, request))
+            throw new InvalidOperationException("Khoản thanh toán không tồn tại hoặc đã được xác nhận");
+    }
+
+    public async Task XacNhanBanGiao(int maYeuCau, int maKhachHang, int maTaiKhoan, XacNhanBanGiaoCustomArtRequest request)
+    {
+        request.GhiChu = Optional(request.GhiChu, 1000);
+        if (!await _customArtRepo.ConfirmHandover(maYeuCau, maKhachHang, maTaiKhoan, request.GhiChu))
+            throw new InvalidOperationException("Yêu cầu chưa hoàn thành, không thuộc khách hàng hoặc đã xác nhận bàn giao");
+    }
+
+    public Task<List<CustomArtPayment>> LayThanhToan(int maYeuCau) => _customArtRepo.GetPaymentsByRequest(maYeuCau);
+
     public async Task<bool> ThemTienDo(TaoTienDoRequest request, int maHoaSi)
     {
         if (string.IsNullOrWhiteSpace(request.TieuDe) || string.IsNullOrWhiteSpace(request.MoTa))
@@ -167,6 +196,21 @@ public class CustomArtBusiness : ICustomArtBusiness
             "evidence" => item?.BangChungQuyenSuDung,
             _ => throw new ArgumentException("Loại tệp không hợp lệ")
         };
+    }
+
+    private static string NormalizePaymentValue(string? value, string field, int maxLength)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized)) throw new ArgumentException($"{field} không được để trống");
+        if (normalized.Length > maxLength) throw new ArgumentException($"{field} không được vượt quá {maxLength} ký tự");
+        return normalized;
+    }
+
+    private static string? Optional(string? value, int maxLength)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        if (normalized?.Length > maxLength) throw new ArgumentException($"Nội dung không được vượt quá {maxLength} ký tự");
+        return normalized;
     }
 
     private static (CustomArtType Type, CustomArtStatus Status, PermissionUsageStatus? Permission) ValidateAndNormalize(TaoYeuCauTranhRequest request)
@@ -318,7 +362,10 @@ public class CustomArtBusiness : ICustomArtBusiness
         NgayCapNhat = model.NgayCapNhat,
         NgayHoanThanhDuKien = model.NgayHoanThanhDuKien,
         MaTacPhamKetQua = model.MaTacPhamKetQua,
-        SoLuongTienDo = model.SoLuongTienDo
+        SoLuongTienDo = model.SoLuongTienDo,
+        TrangThaiBanGiao = model.TrangThaiBanGiao,
+        NgayBanGiao = model.NgayBanGiao,
+        GhiChuBanGiao = model.GhiChuBanGiao
     };
 
     private static string GetTypeName(CustomArtType type) => type switch

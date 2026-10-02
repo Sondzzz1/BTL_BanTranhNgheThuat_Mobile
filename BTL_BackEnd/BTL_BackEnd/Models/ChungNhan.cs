@@ -9,6 +9,7 @@ public class ChungNhan
     public int MaLichSuSoHuu { get; set; }
     public int? MaTacPham { get; set; }
     public int? MaNguoiDung { get; set; }
+    public int? MaYeuCauVeTranh { get; set; }
     public string CertificateCode { get; set; } = null!; // COA-2026-XXXXXXXXXXXX
     public string? ContentHash { get; set; } // Legacy; module hiện tại không sử dụng hash/QR
     public DateTime NgayCap { get; set; }

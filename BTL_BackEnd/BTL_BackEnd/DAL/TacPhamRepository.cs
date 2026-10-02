@@ -1,4 +1,5 @@
 using DoAn2_BackEnd.DAL.Interfaces;
+using DoAn2_BackEnd.Helpers;
 using DoAn2_BackEnd.Models;
 using Microsoft.Data.SqlClient;
 
@@ -7,11 +8,21 @@ namespace DoAn2_BackEnd.DAL;
 public class TacPhamRepository : ITacPhamRepository
 {
     private readonly string _connectionString;
+    private readonly DateTime _copyrightEnforcementStartUtc;
+
+    private const string SellableCopyrightPredicate = @"
+        AND ((NOT EXISTS (SELECT 1 FROM BanQuyen b0 WHERE b0.MaTacPham=tp.MaTacPham)
+              AND tp.NgayTao<@EnforcementStart)
+             OR EXISTS (SELECT 1 FROM BanQuyen b WHERE b.MaTacPham=tp.MaTacPham
+                        AND b.BiChanBan=0
+                        AND (b.TrangThai=2 OR ((tp.NgayTao<@EnforcementStart OR b.LaDuLieuCu=1)
+                             AND b.TrangThai IN (0,1,5)))))";
 
     public TacPhamRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string not found");
+        _copyrightEnforcementStartUtc = CopyrightOptions.From(configuration).EnforcementStartUtc;
     }
 
     public async Task<List<TacPham>> GetAll()
@@ -85,7 +96,10 @@ public class TacPhamRepository : ITacPhamRepository
     }
 
     public Task<List<TacPham>> GetMarketplaceAll() =>
-        QueryList("SELECT * FROM TacPham WHERE MaYeuCauVeTranh IS NULL ORDER BY NgayTao DESC");
+        QueryList(@"SELECT tp.* FROM TacPham tp
+                    WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + SellableCopyrightPredicate +
+                  " ORDER BY tp.NgayTao DESC",
+            command => command.Parameters.AddWithValue("@EnforcementStart", _copyrightEnforcementStartUtc));
 
     public Task<List<TacPham>> GetMarketplaceBestSelling(int top) => QueryList(
         @"SELECT TOP (@Top) tp.*
@@ -97,42 +111,56 @@ public class TacPhamRepository : ITacPhamRepository
               INNER JOIN DonHang dh ON dh.MaDonHang = ct.MaDonHang AND dh.TrangThai = 3
               WHERE ct.MaTacPham = tp.MaTacPham
           ) sales
-          WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai = 1
+          WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai = 1 " + SellableCopyrightPredicate + @"
           ORDER BY ISNULL(sales.SoLuongBan, 0) DESC, tp.NgayTao DESC",
-        command => command.Parameters.AddWithValue("@Top", Math.Clamp(top, 1, 20)));
+        command =>
+        {
+            command.Parameters.AddWithValue("@Top", Math.Clamp(top, 1, 20));
+            command.Parameters.AddWithValue("@EnforcementStart", _copyrightEnforcementStartUtc);
+        });
 
     public async Task<TacPham?> GetMarketplaceById(int maTacPham)
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        const string query = @"SELECT * FROM TacPham
-                               WHERE MaTacPham=@MaTacPham AND MaYeuCauVeTranh IS NULL";
+        var query = @"SELECT tp.* FROM TacPham tp
+                      WHERE tp.MaTacPham=@MaTacPham AND tp.MaYeuCauVeTranh IS NULL
+                        AND tp.TrangThai=1 " + SellableCopyrightPredicate;
         using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
+        command.Parameters.AddWithValue("@EnforcementStart", _copyrightEnforcementStartUtc);
         using var reader = await command.ExecuteReaderAsync();
         return await reader.ReadAsync() ? MapToTacPham(reader) : null;
     }
 
     public Task<List<TacPham>> GetMarketplaceByArtist(int maHoaSi) => QueryList(
-        @"SELECT * FROM TacPham
-          WHERE MaHoaSi=@MaHoaSi AND MaYeuCauVeTranh IS NULL
+        @"SELECT tp.* FROM TacPham tp
+          WHERE tp.MaHoaSi=@MaHoaSi AND tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + SellableCopyrightPredicate + @"
           ORDER BY NgayTao DESC",
-        command => command.Parameters.AddWithValue("@MaHoaSi", maHoaSi));
+        command =>
+        {
+            command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
+            command.Parameters.AddWithValue("@EnforcementStart", _copyrightEnforcementStartUtc);
+        });
 
     public Task<List<TacPham>> GetMarketplaceByCategory(int maDanhMuc) => QueryList(
-        @"SELECT * FROM TacPham
-          WHERE MaDanhMuc=@MaDanhMuc AND MaYeuCauVeTranh IS NULL
+        @"SELECT tp.* FROM TacPham tp
+          WHERE tp.MaDanhMuc=@MaDanhMuc AND tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + SellableCopyrightPredicate + @"
           ORDER BY NgayTao DESC",
-        command => command.Parameters.AddWithValue("@MaDanhMuc", maDanhMuc));
+        command =>
+        {
+            command.Parameters.AddWithValue("@MaDanhMuc", maDanhMuc);
+            command.Parameters.AddWithValue("@EnforcementStart", _copyrightEnforcementStartUtc);
+        });
 
     public async Task<int> Create(TacPham tacPham)
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        var query = @"INSERT INTO TacPham (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, MoTa, HinhAnh, ChatLieu, ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo)
-                      VALUES (@TenTacPham, @MaHoaSi, @MaDanhMuc, @Gia, @SoLuong, @MoTa, @HinhAnh, @ChatLieu, @ChatLieuKhung, @KichThuoc, @TrangThai, @NgayTao, @LyDo);
+        var query = @"INSERT INTO TacPham (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, SoLuongBanDau, MoTa, HinhAnh, ChatLieu, ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo,LaTacPhamDocBan,LoaiTacPham,TacGiaGoc,MaTacPhamGoc,MoTaNguonGoc)
+                      VALUES (@TenTacPham, @MaHoaSi, @MaDanhMuc, @Gia, @SoLuong, @SoLuong, @MoTa, @HinhAnh, @ChatLieu, @ChatLieuKhung, @KichThuoc, @TrangThai, @NgayTao, @LyDo,@LaTacPhamDocBan,@LoaiTacPham,@TacGiaGoc,@MaTacPhamGoc,@MoTaNguonGoc);
                       SELECT CAST(SCOPE_IDENTITY() as int);";
 
         using var command = new SqlCommand(query, connection);
@@ -149,6 +177,11 @@ public class TacPhamRepository : ITacPhamRepository
         command.Parameters.AddWithValue("@TrangThai", tacPham.TrangThai);
         command.Parameters.AddWithValue("@NgayTao", tacPham.NgayTao);
         command.Parameters.AddWithValue("@LyDo", (object?)tacPham.LyDo ?? DBNull.Value);
+        command.Parameters.AddWithValue("@LaTacPhamDocBan", tacPham.LaTacPhamDocBan);
+        command.Parameters.AddWithValue("@LoaiTacPham", tacPham.LoaiTacPham);
+        command.Parameters.AddWithValue("@TacGiaGoc", (object?)tacPham.TacGiaGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@MaTacPhamGoc", (object?)tacPham.MaTacPhamGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@MoTaNguonGoc", (object?)tacPham.MoTaNguonGoc ?? DBNull.Value);
 
         var result = await command.ExecuteScalarAsync();
         return Convert.ToInt32(result);
@@ -279,6 +312,11 @@ public class TacPhamRepository : ITacPhamRepository
                 : null,
             MoTaNguonGoc = HasColumn(reader, "MoTaNguonGoc") && !reader.IsDBNull(reader.GetOrdinal("MoTaNguonGoc"))
                 ? reader.GetString(reader.GetOrdinal("MoTaNguonGoc"))
+                : null,
+            LaTacPhamDocBan = HasColumn(reader, "LaTacPhamDocBan") && !reader.IsDBNull(reader.GetOrdinal("LaTacPhamDocBan"))
+                && reader.GetBoolean(reader.GetOrdinal("LaTacPhamDocBan")),
+            SoLuongBanDau = HasColumn(reader, "SoLuongBanDau") && !reader.IsDBNull(reader.GetOrdinal("SoLuongBanDau"))
+                ? reader.GetInt32(reader.GetOrdinal("SoLuongBanDau"))
                 : null
         };
     }
