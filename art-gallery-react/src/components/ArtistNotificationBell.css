@@ -1,0 +1,23 @@
+.artist-notification { position: relative; display: inline-flex; }
+.artist-notification-trigger { position: relative; border: 0; padding: 5px; background: transparent; color: #475569; cursor: pointer; font-size: 18px; }
+.artist-notification-trigger i { margin: 0 !important; }
+.artist-notification-badge { position: absolute; top: -4px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 10px; font-weight: 800; line-height: 17px; }
+.artist-notification-panel { position: absolute; z-index: 50; top: calc(100% + 12px); right: -12px; width: min(390px, calc(100vw - 32px)); overflow: hidden; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; box-shadow: 0 14px 34px rgba(15,23,42,.18); }
+.artist-notification-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; padding: 13px 14px; border-bottom: 1px solid #e2e8f0; background: #fff; color: #172033; }
+.artist-notification-panel header div { display: grid; gap: 2px; }
+.artist-notification-panel header span { color: #64748b; font-size: 11px; }
+.artist-notification-panel header button { border: 0; padding: 0; background: transparent; color: #c2410c; font-size: 12px; font-weight: 800; cursor: pointer; }
+.artist-notification-list { max-height: 390px; overflow-y: auto; }
+.artist-notification-item { display: grid; grid-template-columns: 8px minmax(0,1fr); width: 100%; gap: 9px; padding: 13px 14px; border: 0; border-bottom: 1px solid #f1f5f9; background: #fff; color: #334155; text-align: left; cursor: pointer; }
+.artist-notification-item:hover { background: #fffaf5; }
+.artist-notification-item.unread { background: #fff7ed; }
+.artist-notification-item > span:last-child { display: grid; min-width: 0; gap: 4px; }
+.artist-notification-item strong { color: #172033; font-size: 13px; }
+.artist-notification-item span span { color: #64748b; font-size: 12px; line-height: 18px; }
+.artist-notification-item time { color: #94a3b8; font-size: 10.5px; }
+.artist-notification-dot { width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: transparent; }
+.artist-notification-item.unread .artist-notification-dot { background: #ea580c; }
+.artist-notification-state { display: block; width: 100%; margin: 0; padding: 20px 14px; border: 0; background: #fff; color: #64748b; text-align: center; font: inherit; font-size: 13px; }
+.artist-notification-state.retry { cursor: pointer; text-decoration: underline; }
+.artist-notification-panel footer { padding: 10px 14px; border-top: 1px solid #e2e8f0; background: #fff; text-align: center; }
+.artist-notification-panel footer button { border: 0; background: transparent; color: #c2410c; cursor: pointer; font: inherit; font-size: 12px; font-weight: 800; }

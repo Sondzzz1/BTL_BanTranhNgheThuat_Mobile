@@ -11,6 +11,8 @@ public interface IBaiVietRepository
     Task<BaiViet?> GetPublishedById(int maBaiViet);
     Task<int> Create(BaiViet baiViet);
     Task<bool> Update(BaiViet baiViet);
+    Task<bool> ReviewWithNotification(int maBaiViet, bool pheDuyet, string? lyDo);
+    Task<bool> ArchiveWithNotification(int maBaiViet);
     Task<bool> Delete(int maBaiViet);
     Task<List<DanhMucBaiViet>> GetCategories(bool onlyActive = true);
     Task<int> CreateCategory(string name, string slug);

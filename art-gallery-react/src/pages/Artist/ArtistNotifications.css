@@ -1,0 +1,15 @@
+.artist-notifications-page { padding: 28px; color: #172033; }
+.artist-notifications-page header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.artist-notifications-page header p { margin: 0 0 4px; color: #c2410c; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.artist-notifications-page header h1 { margin: 0; font-size: 26px; }
+.artist-notifications-page header button, .artist-notifications-pagination button { border: 0; border-radius: 7px; padding: 9px 12px; background: #c2410c; color: #fff; cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; }
+.artist-notifications-page header button:hover, .artist-notifications-pagination button:hover:not(:disabled) { background: #9a3412; }
+.artist-notifications-page button:disabled { cursor: not-allowed; opacity: .5; }
+.artist-notifications-page section { overflow: hidden; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.artist-notification-row { display: grid; grid-template-columns: 10px minmax(0,1fr); width: 100%; gap: 11px; padding: 15px 18px; border: 0; border-bottom: 1px solid #e2e8f0; background: #fff; color: #334155; cursor: pointer; text-align: left; }
+.artist-notification-row:last-child { border-bottom: 0; }.artist-notification-row.unread { background: #fff7ed; }.artist-notification-row:hover { background: #fffaf5; }
+.artist-notification-row > span:last-child { display: grid; gap: 5px; }.artist-notification-row strong { color: #172033; }.artist-notification-row span span { font-size: 13px; line-height: 19px; }.artist-notification-row time { color: #94a3b8; font-size: 11px; }
+.artist-notification-row-dot { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; }.artist-notification-row.unread .artist-notification-row-dot { background: #ea580c; }
+.artist-notifications-state { display: block; width: 100%; box-sizing: border-box; margin: 0; padding: 48px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #64748b; text-align: center; font: inherit; }.artist-notifications-state.retry { cursor: pointer; text-decoration: underline; }
+.artist-notifications-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }.artist-notifications-pagination button { padding: 7px 12px; }
+@media (max-width: 640px) { .artist-notifications-page { padding: 18px; }.artist-notifications-page header { align-items: flex-start; flex-direction: column; } }

@@ -45,6 +45,17 @@ public class XacMinhSoLuongBanDauRequest
     public string CanCuXacMinh { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Admin-only correction path for a wrong initial publication declaration.
+/// It is intentionally unavailable once an order, ownership event, or certificate exists.
+/// </summary>
+public class DieuChinhPhatHanhRequest
+{
+    public bool LaTacPhamDocBan { get; set; }
+    public int SoLuongBanDau { get; set; }
+    public string CanCuXacMinh { get; set; } = string.Empty;
+}
+
 public class ThuHoiXacMinhRequest
 {
     public string LyDo { get; set; } = string.Empty;
@@ -82,6 +93,7 @@ public class BanQuyenResponse
     public bool LaTacPhamDocBan { get; set; }
     public int? SoLuongBanDau { get; set; }
     public int SoLuongTon { get; set; }
+    public int SoDonHang { get; set; }
     public byte LoaiTacPham { get; set; }
     public string LoaiTacPhamText { get; set; } = string.Empty;
     public string? TacGiaGoc { get; set; }
@@ -114,6 +126,8 @@ public class BanQuyenCongKhaiResponse
     public string? HoaSiThucHien { get; set; }
     public string? MoTaNguonGoc { get; set; }
     public bool LaTacPhamDocBan { get; set; }
+    /// <summary>Only returned after VERIFIED. NULL means legacy quantity was never verified.</summary>
+    public int? SoLuongBanDau { get; set; }
     public string LuuYPhapLy { get; set; } =
         "VERIFIED chỉ có nghĩa nền tảng đã kiểm tra thông tin và bằng chứng theo quy trình nội bộ; không phải đăng ký bản quyền do cơ quan nhà nước cấp.";
 }
@@ -134,6 +148,30 @@ public class ChungNhanResponse
     public string? TacGiaGoc { get; set; }
     public string LuuYPhapLy { get; set; } =
         "Chứng nhận này do nền tảng cấp để ghi nhận thông tin tác phẩm và giao dịch, không thay thế việc đăng ký quyền tác giả tại cơ quan nhà nước có thẩm quyền.";
+}
+
+/// <summary>
+/// Trạng thái chỉ đọc cho một giao dịch tranh độc bản đã giao nhưng chưa có
+/// chứng nhận. Dùng để khách hàng biết chính xác điều kiện nào còn thiếu;
+/// endpoint này tuyệt đối không tạo quyền sở hữu hoặc chứng nhận.
+/// </summary>
+public class ChungNhanChoCapResponse
+{
+    public int MaDonHang { get; set; }
+    public int MaChiTietDonHang { get; set; }
+    public int MaTacPham { get; set; }
+    public string TenTacPham { get; set; } = string.Empty;
+    public string? HinhAnh { get; set; }
+    public DateTime? NgayGiao { get; set; }
+    public int SoLuongTrongDon { get; set; }
+    public int? SoLuongBanDau { get; set; }
+    public bool DaThanhToanHopLe { get; set; }
+    public bool DaGiaoThanhCong { get; set; }
+    public bool DangCoYeuCauHoanTra { get; set; }
+    public string TrangThaiBanQuyen { get; set; } = "CHUA_KHAI_BAO";
+    public string TrangThaiChungNhan { get; set; } = string.Empty;
+    public string ThongDiep { get; set; } = string.Empty;
+    public bool DaDuDieuKienCap { get; set; }
 }
 
 public class ChungNhanCongKhaiResponse

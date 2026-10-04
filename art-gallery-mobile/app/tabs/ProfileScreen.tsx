@@ -105,6 +105,11 @@ export default function ProfileScreen() {
       return;
     }
 
+    if (formData.diaChi.trim().length > 500) {
+      Alert.alert('Lỗi', 'Địa chỉ giao hàng tối đa 500 ký tự');
+      return;
+    }
+
     try {
       setIsSaving(true);
       await customerService.updateProfile({
@@ -113,7 +118,12 @@ export default function ProfileScreen() {
         dienThoai: formData.dienThoai.trim(),
         diaChi: formData.diaChi.trim() || undefined,
       });
-      Alert.alert('Thành công', 'Cập nhật thông tin thành công');
+      Alert.alert(
+        'Đã lưu',
+        formData.diaChi.trim()
+          ? 'Thông tin và địa chỉ giao hàng mặc định đã được lưu. Địa chỉ này sẽ tự điền khi thanh toán.'
+          : 'Thông tin cá nhân đã được lưu.'
+      );
       await loadProfile();
       setIsEditing(false);
     } catch (err: any) {
@@ -252,9 +262,9 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* Địa chỉ */}
+        {/* Địa chỉ giao hàng mặc định */}
         <View style={styles.inputContainer}>
-          <Text style={styles.label}>Địa chỉ</Text>
+          <Text style={styles.label}>Địa chỉ giao hàng mặc định</Text>
           <TextInput
             style={[
               styles.input,
@@ -263,10 +273,15 @@ export default function ProfileScreen() {
             ]}
             value={formData.diaChi}
             onChangeText={(text) => setFormData({ ...formData, diaChi: text })}
+            placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành"
+            placeholderTextColor="#9ca3af"
             multiline
             numberOfLines={3}
             editable={isEditing}
           />
+          <Text style={styles.deliveryAddressHint}>
+            Địa chỉ này sẽ được tự động điền ở bước thanh toán. Bạn vẫn có thể sửa riêng cho từng đơn hàng.
+          </Text>
         </View>
 
         {/* Edit Actions */}
@@ -440,6 +455,12 @@ const styles = StyleSheet.create({
   inputDisabled: {
     backgroundColor: '#f9fafb',
     color: '#6b7280',
+  },
+  deliveryAddressHint: {
+    marginTop: 7,
+    color: '#6b7280',
+    fontSize: 12,
+    lineHeight: 18,
   },
   textArea: {
     height: 80,

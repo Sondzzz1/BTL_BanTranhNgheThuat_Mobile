@@ -11,7 +11,9 @@ public class CopyrightBusiness : ICopyrightBusiness
     private readonly ICopyrightRepository _repository;
     private readonly CopyrightOptions _options;
 
-    public CopyrightBusiness(ICopyrightRepository repository, IConfiguration configuration)
+    public CopyrightBusiness(
+        ICopyrightRepository repository,
+        IConfiguration configuration)
     {
         _repository = repository;
         _options = CopyrightOptions.From(configuration);
@@ -67,6 +69,19 @@ public class CopyrightBusiness : ICopyrightBusiness
             throw new KeyNotFoundException("Không tìm thấy tác phẩm");
     }
 
+    public async Task CorrectPublicationDeclaration(
+        int maTacPham,
+        int maTaiKhoan,
+        DieuChinhPhatHanhRequest request)
+    {
+        if (maTacPham <= 0) throw new ArgumentException("Mã tác phẩm không hợp lệ");
+        request.CanCuXacMinh = Required(request.CanCuXacMinh, "Căn cứ hiệu chỉnh", 2000);
+        if (!await _repository.CorrectPublicationDeclaration(
+                maTacPham, maTaiKhoan, request.LaTacPhamDocBan,
+                request.SoLuongBanDau, request.CanCuXacMinh))
+            throw new KeyNotFoundException("Không tìm thấy tác phẩm");
+    }
+
     public async Task Review(int maBanQuyen, int maTaiKhoan, byte status, string? note)
     {
         if (status is not (CopyrightStatuses.NeedInfo or CopyrightStatuses.Verified or CopyrightStatuses.Rejected))
@@ -77,6 +92,7 @@ public class CopyrightBusiness : ICopyrightBusiness
         if (note?.Length > 1000) throw new ArgumentException("Ghi chú kiểm duyệt không được vượt quá 1000 ký tự");
         if (!await _repository.Review(maBanQuyen, maTaiKhoan, status, note))
             throw new InvalidOperationException("Khai báo không tồn tại hoặc không còn ở trạng thái chờ duyệt");
+
     }
 
     public async Task RevokeVerification(int maBanQuyen, int maTaiKhoan, ThuHoiXacMinhRequest request)
@@ -90,6 +106,9 @@ public class CopyrightBusiness : ICopyrightBusiness
 
     public Task<List<ChungNhanResponse>> GetCertificates(int maNguoiDung) =>
         _repository.GetCertificates(maNguoiDung);
+
+    public Task<List<ChungNhanChoCapResponse>> GetPendingCertificates(int maNguoiDung) =>
+        _repository.GetPendingCertificates(maNguoiDung);
 
     public Task<List<ChungNhanResponse>> GetCertificatesForAdmin(string? status, string? keyword) =>
         _repository.GetCertificatesForAdmin(status, keyword);

@@ -13,7 +13,7 @@ public interface IChiTietTacPhamRepository
     // Admin
     Task<List<ChiTietTacPham>> GetAllChoDuyet();
     Task<List<ChiTietTacPham>> GetAll(int trangThai = -1);
-    Task<bool> Duyet(int maTacPham, int maNguoiDuyet, bool pheDuyet, string? lyDoTuChoi);
+    Task<bool> Duyet(int maTacPham, int maNguoiDuyet, bool pheDuyet, string? lyDoTuChoi, ThongBao? thongBao = null);
     
     // Public
     Task<ChiTietTacPham?> GetCongKhai(int maTacPham);

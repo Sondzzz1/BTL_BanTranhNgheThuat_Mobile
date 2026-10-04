@@ -1,0 +1,15 @@
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\bin\Debug\net8.0\PublicationRules.Tests.exe
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\bin\Debug\net8.0\PublicationRules.Tests.deps.json
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\bin\Debug\net8.0\PublicationRules.Tests.runtimeconfig.json
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\bin\Debug\net8.0\PublicationRules.Tests.dll
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\bin\Debug\net8.0\PublicationRules.Tests.pdb
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.AssemblyInfoInputs.cache
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.AssemblyInfo.cs
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.csproj.CoreCompileInputs.cache
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.sourcelink.json
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.dll
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\refint\PublicationRules.Tests.dll
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.pdb
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\PublicationRules.Tests.genruntimeconfig.cache
+C:\Users\huanp\Downloads\BTL_Mobile\BTL_BackEnd\PublicationRules.Tests\obj\Debug\net8.0\ref\PublicationRules.Tests.dll

@@ -317,12 +317,12 @@ public class CustomArtRepository : ICustomArtRepository
                     INSERT INTO TacPham
                         (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, SoLuongBanDau, MoTa, HinhAnh, ChatLieu,
                          ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo, LoaiTacPham,
-                         TacGiaGoc, MaTacPhamGoc, MaYeuCauVeTranh, MoTaNguonGoc)
+                         TacGiaGoc, MaTacPhamGoc, MaYeuCauVeTranh, MoTaNguonGoc, LaTacPhamDocBan)
                     OUTPUT INSERTED.MaTacPham
                     VALUES
                         (@TenTacPham, @MaHoaSi, NULL, @Gia, 0, 1, @MoTa, @HinhAnh, @ChatLieu,
                          NULL, @KichThuoc, @HiddenStatus, GETDATE(), NULL, @LoaiTacPham,
-                         @TacGiaGoc, @MaTacPhamGoc, @MaYeuCau, @MoTaNguonGoc);";
+                         @TacGiaGoc, @MaTacPhamGoc, @MaYeuCau, @MoTaNguonGoc, 1);";
                 await using var insertArtwork = new SqlCommand(insertArtworkSql, connection, transaction);
                 insertArtwork.Parameters.AddWithValue("@TenTacPham", artworkName);
                 insertArtwork.Parameters.AddWithValue("@MaHoaSi", maHoaSi);

@@ -19,6 +19,7 @@ import {
   PermissionUsageStatus,
 } from '../../types/customArt';
 import { NormalizedUploadImage, normalizeImageForUpload } from '../../utils/imageUpload';
+import { formatVnd } from '../../utils/currency';
 
 type FileField = 'reference' | 'source' | 'evidence';
 type SelectField = 'loaiTranh' | 'kichThuoc' | 'phongCach' | 'mauSac' | 'chatLieu';
@@ -177,7 +178,7 @@ export default function CreateCustomArtScreen({ navigation }: any) {
       <Input label="Ngân sách dự kiến *" value={form.giaDuKien} onChangeText={(v: string) => {
         update('giaDuKien', v.replace(/\D/g, ''));
       }} keyboardType="number-pad" />
-      {!!form.giaDuKien && <Text style={styles.moneyPreview}>{Number(form.giaDuKien).toLocaleString('vi-VN')} ₫</Text>}
+      {!!form.giaDuKien && <Text style={styles.moneyPreview}>{formatVnd(form.giaDuKien)}</Text>}
       <Input label="Hạn mong muốn (YYYY-MM-DD)" value={form.ngayHoanThanhDuKien} onChangeText={(v: string) => update('ngayHoanThanhDuKien', v)} />
 
       {type !== 'EXISTING_ARTWORK' && filePicker('reference', 'Ảnh tham khảo')}

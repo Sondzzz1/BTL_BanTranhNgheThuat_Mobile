@@ -46,10 +46,13 @@ public class DanhGiaBusiness : IDanhGiaBusiness
     }
 
     public async Task<DanhGiaResponse> Create(int maNguoiDung, TaoDanhGiaRequest request)
+        => await CreateWithImage(maNguoiDung, request, null);
+
+    public async Task<DanhGiaResponse> CreateWithImage(int maNguoiDung, TaoDanhGiaRequest request, string? hinhAnhDanhGia)
     {
         await EnsureArtworkExists(request.MaTacPham);
         Normalize(request);
-        var id = await _repository.Create(maNguoiDung, request);
+        var id = await _repository.Create(maNguoiDung, request, hinhAnhDanhGia);
         return await _repository.GetById(id) ?? throw new InvalidOperationException("Không thể đọc đánh giá vừa tạo");
     }
 
@@ -63,6 +66,24 @@ public class DanhGiaBusiness : IDanhGiaBusiness
             throw new InvalidOperationException("Không thể cập nhật đánh giá");
         return await _repository.GetById(maDanhGia) ?? throw new InvalidOperationException("Không thể đọc đánh giá vừa cập nhật");
     }
+
+    public async Task<(DanhGiaResponse Review, string? PreviousImageName)> UpdateWithImage(
+        int maNguoiDung,
+        int maDanhGia,
+        CapNhatDanhGiaRequest request,
+        string? hinhAnhDanhGia)
+    {
+        var existing = await _repository.GetById(maDanhGia);
+        if (existing == null) throw new KeyNotFoundException("Không tìm thấy đánh giá");
+        if (existing.MaNguoiDung != maNguoiDung) throw new UnauthorizedAccessException("Bạn không có quyền sửa đánh giá này");
+        Normalize(request);
+        var update = await _repository.UpdateWithImage(maDanhGia, maNguoiDung, request, hinhAnhDanhGia);
+        if (!update.Updated) throw new InvalidOperationException("Không thể cập nhật đánh giá");
+        var review = await _repository.GetById(maDanhGia) ?? throw new InvalidOperationException("Không thể đọc đánh giá vừa cập nhật");
+        return (review, update.PreviousImageName);
+    }
+
+    public Task<string?> GetImageName(int maDanhGia) => _repository.GetImageName(maDanhGia);
 
     public async Task Delete(int maNguoiDung, int maDanhGia)
     {

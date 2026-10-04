@@ -10,9 +10,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { orderService } from '../../services/orderService';
-import { Order, ORDER_STATUS_TEXT } from '../../types/order';
+import { reviewService } from '../../services/reviewService';
+import { Order, OrderItem, ORDER_STATUS_TEXT } from '../../types/order';
+import { ReviewPermission } from '../../types/review';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
+import AddReviewModal from '../../components/AddReviewModal';
 import { formatVnd } from '../../utils/currency';
 
 interface OrderDetailScreenProps {
@@ -29,6 +32,10 @@ export default function OrderDetailScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [reviewPermissions, setReviewPermissions] = useState<Record<number, ReviewPermission>>({});
+  const [isLoadingReviewPermissions, setIsLoadingReviewPermissions] = useState(false);
+  const [selectedReviewItem, setSelectedReviewItem] = useState<OrderItem | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
 
   useEffect(() => {
     if (orderId) {
@@ -42,11 +49,51 @@ export default function OrderDetailScreen({
       setIsLoading(true);
       const orderData = await orderService.getOrderById(orderId);
       setOrder(orderData);
+      await loadReviewPermissions(orderData);
     } catch (err: any) {
       console.error('Error loading order detail:', err);
       setError(err.message || 'Không thể tải thông tin đơn hàng');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadReviewPermissions = async (orderData: Order) => {
+    const productIds = [...new Set(
+      (orderData.chiTiet || [])
+        .map((item) => item.maTacPham)
+        .filter((productId) => productId > 0)
+    )];
+
+    if (orderData.trangThai !== 3 || productIds.length === 0) {
+      setReviewPermissions({});
+      return;
+    }
+
+    try {
+      setIsLoadingReviewPermissions(true);
+      const permissionEntries = await Promise.all(
+        productIds.map(async (productId) => {
+          try {
+            return [productId, await reviewService.getMyPermission(productId)] as const;
+          } catch (permissionError) {
+            // Không làm hỏng màn hình đơn hàng nếu một sản phẩm không thể kiểm tra quyền.
+            console.error(`Error loading review permission for artwork ${productId}:`, permissionError);
+            return [productId, null] as const;
+          }
+        })
+      );
+
+      const nextPermissions = permissionEntries.reduce<Record<number, ReviewPermission>>(
+        (result, [productId, permission]) => {
+          if (permission) result[productId] = permission;
+          return result;
+        },
+        {}
+      );
+      setReviewPermissions(nextPermissions);
+    } finally {
+      setIsLoadingReviewPermissions(false);
     }
   };
 
@@ -76,6 +123,16 @@ export default function OrderDetailScreen({
         },
       ]
     );
+  };
+
+  const handleReviewPress = (item: OrderItem) => {
+    if (!reviewPermissions[item.maTacPham]?.canReview) return;
+    setSelectedReviewItem(item);
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSaved = () => {
+    if (order) void loadReviewPermissions(order);
   };
 
   const formatPrice = formatVnd;
@@ -228,6 +285,24 @@ export default function OrderDetailScreen({
                     <Text style={styles.itemTotal}>
                       Thành tiền: {formatPrice(item.thanhTien)}
                     </Text>
+                    {order.trangThai === 3 && (
+                      isLoadingReviewPermissions ? (
+                        <View style={styles.reviewLoading}>
+                          <ActivityIndicator size="small" color="#2563eb" />
+                        </View>
+                      ) : reviewPermissions[item.maTacPham]?.canReview ? (
+                        <TouchableOpacity
+                          style={styles.reviewButton}
+                          onPress={() => handleReviewPress(item)}
+                        >
+                          <Text style={styles.reviewButtonText}>
+                            {reviewPermissions[item.maTacPham].existingReview
+                              ? '✏️ Sửa đánh giá của bạn'
+                              : '⭐ Đánh giá tác phẩm'}
+                          </Text>
+                        </TouchableOpacity>
+                      ) : null
+                    )}
                   </View>
                 </View>
               ))}
@@ -256,6 +331,20 @@ export default function OrderDetailScreen({
           </Text>
         </View>
       </ScrollView>
+
+      {selectedReviewItem && (
+        <AddReviewModal
+          visible={showReviewModal}
+          productId={selectedReviewItem.maTacPham}
+          productName={selectedReviewItem.tenTacPham || 'Tác phẩm'}
+          existingReview={reviewPermissions[selectedReviewItem.maTacPham]?.existingReview}
+          onClose={() => {
+            setShowReviewModal(false);
+            setSelectedReviewItem(null);
+          }}
+          onReviewAdded={handleReviewSaved}
+        />
+      )}
 
       {/* Nút hành động: Hủy đơn hoặc Yêu cầu hoàn trả */}
       {(canCancelOrder(order.trangThai) || canRequestReturn(order.trangThai, order.ngayGiao ?? order.ngayDat)) && (
@@ -447,6 +536,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#2563eb',
+  },
+  reviewLoading: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    minHeight: 32,
+    justifyContent: 'center',
+  },
+  reviewButton: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 8,
+  },
+  reviewButtonText: {
+    color: '#1d4ed8',
+    fontSize: 13,
+    fontWeight: '700',
   },
   totalRow: {
     flexDirection: 'row',

@@ -27,6 +27,7 @@ export interface CopyrightRecord {
   laTacPhamDocBan: boolean;
   soLuongBanDau?: number;
   soLuongTon: number;
+  soDonHang: number;
   loaiTacPhamText: string;
   loaiTacPham: number;
   tacGiaGoc?: string;
@@ -116,6 +117,9 @@ export const copyrightService = {
   },
   async review(id: number, action: 'xac-minh' | 'yeu-cau-bo-sung' | 'tu-choi', ghiChu?: string) {
     await apiClient.post(`/ban-quyen/admin/${id}/${action}`, { ghiChu });
+  },
+  async correctPublicationDeclaration(artworkId: number, payload: { laTacPhamDocBan: boolean; soLuongBanDau: number; canCuXacMinh: string }) {
+    await apiClient.post(`/ban-quyen/admin/tac-pham/${artworkId}/dieu-chinh-phat-hanh`, payload);
   },
   async revokeVerification(id: number, lyDo: string, tamAnTacPham = true) {
     await apiClient.post(`/ban-quyen/admin/${id}/thu-hoi-xac-minh`, { lyDo, tamAnTacPham });

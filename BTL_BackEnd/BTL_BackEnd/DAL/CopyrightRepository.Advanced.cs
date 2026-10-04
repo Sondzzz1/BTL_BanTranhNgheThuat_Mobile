@@ -2,6 +2,7 @@ using System.Data;
 using System.Text.Json;
 using DoAn2_BackEnd.DTO;
 using DoAn2_BackEnd.Helpers;
+using DoAn2_BackEnd.Models;
 using Microsoft.Data.SqlClient;
 
 namespace DoAn2_BackEnd.DAL;
@@ -116,6 +117,111 @@ public partial class CopyrightRepository
         }
     }
 
+    public async Task<bool> CorrectPublicationDeclaration(
+        int maTacPham,
+        int maTaiKhoan,
+        bool laTacPhamDocBan,
+        int soLuongBanDau,
+        string canCuXacMinh)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            int currentStock;
+            int? currentInitialQuantity;
+            bool currentExclusive;
+            byte? copyrightStatus;
+            await using (var check = new SqlCommand(@"
+                SELECT t.SoLuong,t.SoLuongBanDau,t.LaTacPhamDocBan,
+                       (SELECT TOP (1) b.TrangThai FROM BanQuyen b WITH (UPDLOCK,HOLDLOCK)
+                        WHERE b.MaTacPham=t.MaTacPham ORDER BY b.MaBanQuyen DESC),
+                       CASE WHEN EXISTS (SELECT 1 FROM ChiTietDonHang c WITH (UPDLOCK,HOLDLOCK)
+                                         WHERE c.MaTacPham=t.MaTacPham)
+                                  OR EXISTS (SELECT 1 FROM LichSuSoHuu l WITH (UPDLOCK,HOLDLOCK)
+                                             WHERE l.MaTacPham=t.MaTacPham)
+                                  OR EXISTS (SELECT 1 FROM ChungNhan cn WITH (UPDLOCK,HOLDLOCK)
+                                             WHERE cn.MaTacPham=t.MaTacPham)
+                            THEN 1 ELSE 0 END
+                FROM TacPham t WITH (UPDLOCK,HOLDLOCK)
+                WHERE t.MaTacPham=@ArtworkId AND t.MaYeuCauVeTranh IS NULL;", connection, transaction))
+            {
+                check.Parameters.AddWithValue("@ArtworkId", maTacPham);
+                await using var reader = await check.ExecuteReaderAsync();
+                if (!await reader.ReadAsync())
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+                currentStock = reader.GetInt32(0);
+                currentInitialQuantity = reader.IsDBNull(1) ? null : reader.GetInt32(1);
+                currentExclusive = reader.GetBoolean(2);
+                copyrightStatus = reader.IsDBNull(3) ? null : reader.GetByte(3);
+                if (reader.GetInt32(4) == 1)
+                    throw new BusinessConflictException(
+                        "Không thể hiệu chỉnh loại phát hành vì tác phẩm đã có đơn hàng, lịch sử sở hữu hoặc chứng nhận");
+            }
+
+            ExclusiveArtworkPolicy.EnsureAdminInitialQuantityAllowed(currentStock, soLuongBanDau, laTacPhamDocBan);
+            if (!laTacPhamDocBan && soLuongBanDau < 2)
+                throw new InvalidOperationException("Tranh nhiều bản phải có số lượng ban đầu từ 2 trở lên");
+
+            await using (var update = new SqlCommand(@"
+                UPDATE TacPham
+                SET LaTacPhamDocBan=@Exclusive,SoLuongBanDau=@InitialQuantity,
+                    SoLuong=CASE WHEN @Exclusive=1 THEN 1 ELSE SoLuong END
+                WHERE MaTacPham=@ArtworkId;", connection, transaction))
+            {
+                update.Parameters.AddWithValue("@Exclusive", laTacPhamDocBan);
+                update.Parameters.AddWithValue("@InitialQuantity", soLuongBanDau);
+                update.Parameters.AddWithValue("@ArtworkId", maTacPham);
+                if (await update.ExecuteNonQueryAsync() != 1)
+                    throw new DBConcurrencyException("Tác phẩm đã thay đổi trong lúc hiệu chỉnh");
+            }
+
+            if (copyrightStatus == CopyrightStatuses.Verified)
+            {
+                await using var resetReview = new SqlCommand(@"
+                    UPDATE BanQuyen
+                    SET TrangThai=@Pending,NgayKiemDuyet=NULL,
+                        GhiChuKiemDuyet=N'Loại phát hành hoặc số lượng ban đầu đã được Admin hiệu chỉnh; cần xác minh lại hồ sơ.',
+                        NguoiCapNhat=@Actor,NgayCapNhat=SYSUTCDATETIME()
+                    WHERE MaTacPham=@ArtworkId AND TrangThai=@Verified;", connection, transaction);
+                resetReview.Parameters.AddWithValue("@Pending", CopyrightStatuses.Pending);
+                resetReview.Parameters.AddWithValue("@Verified", CopyrightStatuses.Verified);
+                resetReview.Parameters.AddWithValue("@Actor", maTaiKhoan);
+                resetReview.Parameters.AddWithValue("@ArtworkId", maTacPham);
+                await resetReview.ExecuteNonQueryAsync();
+            }
+
+            await AuditLogSql.InsertAsync(connection, transaction, "TacPham", maTacPham,
+                "CORRECT_PUBLICATION_DECLARATION", maTaiKhoan, 1,
+                before: JsonSerializer.Serialize(new
+                {
+                    laTacPhamDocBan = currentExclusive,
+                    soLuongBanDau = currentInitialQuantity,
+                    soLuongTon = currentStock,
+                    banQuyen = copyrightStatus
+                }),
+                after: JsonSerializer.Serialize(new
+                {
+                    laTacPhamDocBan,
+                    soLuongBanDau,
+                    soLuongTon = laTacPhamDocBan ? 1 : currentStock,
+                    requiresReverification = copyrightStatus == CopyrightStatuses.Verified
+                }),
+                reason: canCuXacMinh);
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
     public async Task<bool> Review(int maBanQuyen, int maTaiKhoan, byte status, string? note)
     {
         await using var connection = new SqlConnection(_connectionString);
@@ -127,9 +233,11 @@ public partial class CopyrightRepository
                 SELECT b.TrangThai,b.MaTacPham,b.CanCuSuDung,t.MaHoaSi,t.LaTacPhamDocBan,
                        t.SoLuongBanDau,t.LoaiTacPham,t.TacGiaGoc,t.MaTacPhamGoc,t.MoTaNguonGoc,
                        t.MaYeuCauVeTranh,
-                       (SELECT COUNT_BIG(*) FROM BangChungBanQuyen e WHERE e.MaBanQuyen=b.MaBanQuyen)
+                       (SELECT COUNT_BIG(*) FROM BangChungBanQuyen e WHERE e.MaBanQuyen=b.MaBanQuyen),
+                       t.TenTacPham,h.MaTaiKhoan,b.NgayCapNhat
                 FROM BanQuyen b WITH (UPDLOCK,HOLDLOCK)
                 INNER JOIN TacPham t WITH (UPDLOCK,HOLDLOCK) ON t.MaTacPham=b.MaTacPham
+                INNER JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi
                 WHERE b.MaBanQuyen=@Id;", connection, transaction);
             check.Parameters.AddWithValue("@Id", maBanQuyen);
             await using var reader = await check.ExecuteReaderAsync();
@@ -144,6 +252,9 @@ public partial class CopyrightRepository
             var hasOrigin = !reader.IsDBNull(7) || !reader.IsDBNull(8) || !reader.IsDBNull(9);
             int? customArtRequestId = reader.IsDBNull(10) ? null : reader.GetInt32(10);
             var evidenceCount = reader.GetInt64(11);
+            var artworkName = reader.GetString(12);
+            var artistAccountId = reader.GetInt32(13);
+            var reviewRevision = reader.GetDateTime(14);
             await reader.CloseAsync();
             if (oldStatus != CopyrightStatuses.Pending) return false;
 
@@ -192,9 +303,34 @@ public partial class CopyrightRepository
                 await initialOwner.ExecuteNonQueryAsync();
             }
 
-            if (status == CopyrightStatuses.Verified && customArtRequestId.HasValue)
-                await OwnershipCertificateSql.TryIssueForCustomArtAsync(
-                    connection, transaction, customArtRequestId.Value, maTaiKhoan, _options.CertificateHashKey);
+            if (status == CopyrightStatuses.Verified)
+            {
+                if (customArtRequestId.HasValue)
+                    await OwnershipCertificateSql.TryIssueForCustomArtAsync(
+                        connection, transaction, customArtRequestId.Value, maTaiKhoan, _options.CertificateHashKey);
+                else if (exclusive)
+                    await OwnershipCertificateSql.TryIssueForVerifiedMarketplaceArtworkAsync(
+                        connection, transaction, artworkId, maTaiKhoan, _options.CertificateHashKey,
+                        _options.EnforcementStartUtc);
+            }
+
+            var isNeedInfo = status == CopyrightStatuses.NeedInfo;
+            var notification = new ThongBao
+            {
+                MaTaiKhoan = artistAccountId,
+                Loai = status == CopyrightStatuses.Verified ? "COPYRIGHT_VERIFIED"
+                    : isNeedInfo ? "COPYRIGHT_NEED_INFO" : "COPYRIGHT_REJECTED",
+                TieuDe = status == CopyrightStatuses.Verified ? "Hồ sơ nguồn gốc đã được xác minh"
+                    : isNeedInfo ? "Cần bổ sung hồ sơ bản quyền" : "Hồ sơ bản quyền bị từ chối",
+                NoiDung = status == CopyrightStatuses.Verified
+                    ? $"Hồ sơ nguồn gốc của tác phẩm “{artworkName}” đã được xác minh."
+                    : $"Tác phẩm “{artworkName}”: {note}",
+                LoaiDoiTuong = "BanQuyen",
+                MaDoiTuong = maBanQuyen,
+                DuongDan = $"/artist/artworks/{artworkId}/copyright",
+                EventKey = $"COPYRIGHT_REVIEW:{maBanQuyen}:{status}:{reviewRevision.Ticks}"
+            };
+            await ThongBaoSql.InsertAsync(connection, transaction, notification);
 
             await AuditLogSql.InsertAsync(connection, transaction, "BanQuyen", maBanQuyen, "REVIEW", maTaiKhoan, 1,
                 before: JsonSerializer.Serialize(new { status = oldStatus }),
@@ -216,13 +352,20 @@ public partial class CopyrightRepository
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
-            await using var check = new SqlCommand(
-                "SELECT MaTacPham,TrangThai FROM BanQuyen WITH (UPDLOCK,HOLDLOCK) WHERE MaBanQuyen=@Id;", connection, transaction);
+            await using var check = new SqlCommand(@"
+                SELECT b.MaTacPham,b.TrangThai,t.TenTacPham,h.MaTaiKhoan,b.NgayCapNhat
+                FROM BanQuyen b WITH (UPDLOCK,HOLDLOCK)
+                INNER JOIN TacPham t ON t.MaTacPham=b.MaTacPham
+                INNER JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi
+                WHERE b.MaBanQuyen=@Id;", connection, transaction);
             check.Parameters.AddWithValue("@Id", maBanQuyen);
             await using var reader = await check.ExecuteReaderAsync();
             if (!await reader.ReadAsync()) return false;
             var artworkId = reader.GetInt32(0);
             var oldStatus = reader.GetByte(1);
+            var artworkName = reader.GetString(2);
+            var artistAccountId = reader.GetInt32(3);
+            var reviewRevision = reader.GetDateTime(4);
             await reader.CloseAsync();
             if (oldStatus != CopyrightStatuses.Verified)
                 throw new InvalidOperationException("Chỉ được thu hồi hồ sơ đang ở trạng thái đã xác minh");
@@ -245,6 +388,17 @@ public partial class CopyrightRepository
             update.Parameters.AddWithValue("@ArtworkId", artworkId);
             update.Parameters.AddWithValue("@Hide", hideArtwork);
             await update.ExecuteNonQueryAsync();
+            await ThongBaoSql.InsertAsync(connection, transaction, new ThongBao
+            {
+                MaTaiKhoan = artistAccountId,
+                Loai = "COPYRIGHT_REVOKED",
+                TieuDe = "Xác minh nguồn gốc đã bị thu hồi",
+                NoiDung = $"Tác phẩm “{artworkName}” đã bị thu hồi xác minh. Lý do: {reason}",
+                LoaiDoiTuong = "BanQuyen",
+                MaDoiTuong = maBanQuyen,
+                DuongDan = $"/artist/artworks/{artworkId}/copyright",
+                EventKey = $"COPYRIGHT_REVOKE:{maBanQuyen}:{reviewRevision.Ticks}"
+            });
             await AuditLogSql.InsertAsync(connection, transaction, "BanQuyen", maBanQuyen,
                 "REVOKE_VERIFICATION", maTaiKhoan, 1, reason: reason,
                 before: JsonSerializer.Serialize(new { status = oldStatus }),
@@ -265,7 +419,7 @@ public partial class CopyrightRepository
         await connection.OpenAsync();
         await using var command = new SqlCommand(@"
             SELECT b.TacGia,b.NgaySangTac,b.NguonGoc,b.MoTa,b.TrangThai,
-                   t.LoaiTacPham,t.TacGiaGoc,h.TenHoaSi,t.MoTaNguonGoc,t.LaTacPhamDocBan
+                   t.LoaiTacPham,t.TacGiaGoc,h.TenHoaSi,t.MoTaNguonGoc,t.LaTacPhamDocBan,t.SoLuongBanDau
             FROM BanQuyen b INNER JOIN TacPham t ON t.MaTacPham=b.MaTacPham
             INNER JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi WHERE b.MaTacPham=@ArtworkId;", connection);
         command.Parameters.AddWithValue("@ArtworkId", maTacPham);
@@ -285,7 +439,8 @@ public partial class CopyrightRepository
             TacGiaGoc = verified && !reader.IsDBNull(6) ? reader.GetString(6) : null,
             HoaSiThucHien = verified ? reader.GetString(7) : null,
             MoTaNguonGoc = verified && !reader.IsDBNull(8) ? reader.GetString(8) : null,
-            LaTacPhamDocBan = verified && reader.GetBoolean(9)
+            LaTacPhamDocBan = verified && reader.GetBoolean(9),
+            SoLuongBanDau = verified && !reader.IsDBNull(10) ? reader.GetInt32(10) : null
         };
     }
 
@@ -295,6 +450,55 @@ public partial class CopyrightRepository
         command.Parameters.AddWithValue("@OwnerId", maNguoiDung);
         command.Parameters.AddWithValue("@Current", OwnershipStatuses.Current);
     });
+
+    /// <summary>
+    /// Returns only delivered marketplace exclusive-order lines belonging to the customer
+    /// for which no ownership certificate exists yet. This intentionally has no issuing
+    /// side effect: it is a transparent explanation surface for the customer UI.
+    /// </summary>
+    public async Task<List<ChungNhanChoCapResponse>> GetPendingCertificates(int maNguoiDung)
+    {
+        var result = new List<ChungNhanChoCapResponse>();
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var command = new SqlCommand(@"
+            SELECT c.MaChiTietDH,d.MaDonHang,c.MaTacPham,t.TenTacPham,t.HinhAnh,d.NgayGiao,
+                   c.SoLuong,ISNULL(c.SoLuongDaHoan,0),t.SoLuongBanDau,b.TrangThai,
+                   CASE WHEN ISNULL(b.LaDuLieuCu,0)=1 OR t.NgayTao<@EnforcementStartUtc
+                        THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END,
+                   ISNULL(b.BiChanBan,0),
+                   CASE WHEN (SELECT COUNT_BIG(*) FROM ThanhToan p
+                              WHERE p.MaDonHang=d.MaDonHang)=1
+                              AND EXISTS (SELECT 1 FROM ThanhToan p
+                                          WHERE p.MaDonHang=d.MaDonHang AND p.TrangThai='DaThanhToan')
+                        THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS DaThanhToanHopLe,
+                   CASE WHEN EXISTS (
+                       SELECT 1 FROM YeuCauHoanTra r
+                       WHERE r.MaChiTietDH=c.MaChiTietDH
+                         AND ISNULL(r.TrangThai,'') NOT IN ('TU_CHOI','DA_HUY'))
+                        THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END AS DangCoYeuCauHoanTra
+            FROM ChiTietDonHang c
+            INNER JOIN DonHang d ON d.MaDonHang=c.MaDonHang
+            INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
+            LEFT JOIN BanQuyen b ON b.MaTacPham=t.MaTacPham
+            WHERE d.MaNguoiDung=@CustomerId
+              AND d.TrangThai=@Delivered
+              AND t.MaYeuCauVeTranh IS NULL
+              AND t.LaTacPhamDocBan=1
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM ChungNhan cn
+                  INNER JOIN LichSuSoHuu l ON l.MaLichSuSoHuu=cn.MaLichSuSoHuu
+                  WHERE l.MaChiTietDH=c.MaChiTietDH AND l.MaNguoiDung=d.MaNguoiDung)
+            ORDER BY d.NgayGiao DESC,c.MaChiTietDH DESC;", connection);
+        command.Parameters.AddWithValue("@CustomerId", maNguoiDung);
+        command.Parameters.AddWithValue("@Delivered", DonHangStatus.DaGiao);
+        command.Parameters.AddWithValue("@EnforcementStartUtc", _options.EnforcementStartUtc);
+
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) result.Add(MapPendingCertificate(reader));
+        return result;
+    }
 
     public Task<List<ChungNhanResponse>> GetCertificatesForAdmin(string? status, string? keyword)
     {
@@ -517,7 +721,8 @@ public partial class CopyrightRepository
             NgayKiemDuyet = reader["NgayKiemDuyet"] == DBNull.Value ? null : Convert.ToDateTime(reader["NgayKiemDuyet"]),
             LaTacPhamDocBan = Convert.ToBoolean(reader["LaTacPhamDocBan"]),
             SoLuongBanDau = reader["SoLuongBanDau"] == DBNull.Value ? null : Convert.ToInt32(reader["SoLuongBanDau"]),
-            SoLuongTon = Convert.ToInt32(reader["SoLuong"]), LoaiTacPham = type, LoaiTacPhamText = ArtworkTypeNames.Get(type),
+            SoLuongTon = Convert.ToInt32(reader["SoLuong"]), SoDonHang = Convert.ToInt32(reader["SoDonHang"]),
+            LoaiTacPham = type, LoaiTacPhamText = ArtworkTypeNames.Get(type),
             TacGiaGoc = reader["TacGiaGoc"] as string,
             MaTacPhamGoc = reader["MaTacPhamGoc"] == DBNull.Value ? null : Convert.ToInt32(reader["MaTacPhamGoc"]),
             MoTaNguonGoc = reader["MoTaNguonGoc"] as string, CanCuSuDungSo = usageBasis,
@@ -528,6 +733,82 @@ public partial class CopyrightRepository
             LyDoThuHoiXacMinh = reader["LyDoThuHoiXacMinh"] as string,
             NgayTao = Convert.ToDateTime(reader["NgayTao"]), NgayCapNhat = Convert.ToDateTime(reader["NgayCapNhat"])
         };
+    }
+
+    private static ChungNhanChoCapResponse MapPendingCertificate(SqlDataReader reader)
+    {
+        var copyrightStatus = reader.IsDBNull(9) ? (byte?)null : reader.GetByte(9);
+        var legacy = reader.GetBoolean(10);
+        var blocked = reader.GetBoolean(11);
+        var paymentValid = reader.GetBoolean(12);
+        var hasOpenReturn = reader.GetBoolean(13);
+        var quantity = reader.GetInt32(6);
+        var returnedQuantity = reader.GetInt32(7);
+        var initialQuantity = reader.IsDBNull(8) ? (int?)null : reader.GetInt32(8);
+
+        var response = new ChungNhanChoCapResponse
+        {
+            MaChiTietDonHang = reader.GetInt32(0),
+            MaDonHang = reader.GetInt32(1),
+            MaTacPham = reader.GetInt32(2),
+            TenTacPham = reader.GetString(3),
+            HinhAnh = reader.IsDBNull(4) ? null : reader.GetString(4),
+            NgayGiao = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
+            SoLuongTrongDon = quantity,
+            SoLuongBanDau = initialQuantity,
+            DaThanhToanHopLe = paymentValid,
+            DaGiaoThanhCong = true,
+            DangCoYeuCauHoanTra = hasOpenReturn,
+            TrangThaiBanQuyen = copyrightStatus.HasValue
+                ? CopyrightStatuses.ToCode(copyrightStatus.Value)
+                : "CHUA_KHAI_BAO"
+        };
+
+        // Keep these conditions in the same precedence as issuance: an unresolved return
+        // or payment can make a verified artwork ineligible, so it must be shown first.
+        if (hasOpenReturn || returnedQuantity > 0)
+        {
+            response.TrangThaiChungNhan = "RETURN_IN_PROGRESS";
+            response.ThongDiep = "Đơn hàng đang có yêu cầu hoàn trả hoặc đã hoàn một phần nên chưa thể cấp chứng nhận.";
+        }
+        else if (!paymentValid)
+        {
+            response.TrangThaiChungNhan = "WAITING_PAYMENT_CONFIRMATION";
+            response.ThongDiep = "Hệ thống đang chờ xác nhận thanh toán hợp lệ cho đơn hàng này.";
+        }
+        else if (quantity != 1 || initialQuantity != 1)
+        {
+            response.TrangThaiChungNhan = "INELIGIBLE_INITIAL_QUANTITY";
+            response.ThongDiep = "Chứng nhận sở hữu hiện vật chỉ áp dụng cho tác phẩm độc bản có số lượng ban đầu bằng 1.";
+        }
+        else if (legacy)
+        {
+            response.TrangThaiChungNhan = "INELIGIBLE_LEGACY";
+            response.ThongDiep = "Tác phẩm thuộc dữ liệu trước khi áp dụng quy trình cấp chứng nhận tự động.";
+        }
+        else if (!copyrightStatus.HasValue)
+        {
+            response.TrangThaiChungNhan = "WAITING_COPYRIGHT_DECLARATION";
+            response.ThongDiep = "Họa sĩ chưa khai báo hồ sơ nguồn gốc/bản quyền cho tác phẩm; chứng nhận sẽ được cấp sau khi hồ sơ hoàn tất và được xác minh.";
+        }
+        else if (blocked || copyrightStatus is CopyrightStatuses.Rejected or CopyrightStatuses.Revoked or CopyrightStatuses.Disputed)
+        {
+            response.TrangThaiChungNhan = "COPYRIGHT_NOT_ELIGIBLE";
+            response.ThongDiep = "Hồ sơ nguồn gốc của tác phẩm hiện không đủ điều kiện cấp chứng nhận.";
+        }
+        else if (copyrightStatus != CopyrightStatuses.Verified)
+        {
+            response.TrangThaiChungNhan = "WAITING_COPYRIGHT_VERIFICATION";
+            response.ThongDiep = "Hồ sơ nguồn gốc đang chờ họa sĩ bổ sung hoặc Admin xác minh; chứng nhận sẽ được cấp tự động khi hồ sơ đạt VERIFIED.";
+        }
+        else
+        {
+            response.TrangThaiChungNhan = "ISSUANCE_PENDING";
+            response.ThongDiep = "Tác phẩm đã đủ điều kiện; chứng nhận đang được hệ thống hoàn tất.";
+            response.DaDuDieuKienCap = true;
+        }
+
+        return response;
     }
 
     private static byte? ParseStatus(string? value) => value?.Trim().ToUpperInvariant() switch

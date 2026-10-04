@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList } from 'react-native';
 import { Review } from '../types/review';
 import StarRating from './StarRating';
 import Colors from '../constants/colors';
@@ -12,12 +12,16 @@ interface ReviewsListProps {
 export default function ReviewsList({ reviews, loading = false }: ReviewsListProps) {
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return dateString;
+
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const reviewDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const diffDays = Math.floor((today.getTime() - reviewDay.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) return 'Hôm nay';
     if (diffDays === 1) return 'Hôm qua';
+    if (diffDays < 0) return date.toLocaleDateString('vi-VN');
     if (diffDays < 7) return `${diffDays} ngày trước`;
     if (diffDays < 30) return `${Math.floor(diffDays / 7)} tuần trước`;
     if (diffDays < 365) return `${Math.floor(diffDays / 30)} tháng trước`;
@@ -43,6 +47,14 @@ export default function ReviewsList({ reviews, loading = false }: ReviewsListPro
 
       {item.binhLuan && (
         <Text style={styles.reviewComment}>{item.binhLuan}</Text>
+      )}
+      {item.hinhAnhDanhGia && (
+        <Image
+          source={{ uri: item.hinhAnhDanhGia }}
+          style={styles.reviewImage}
+          resizeMode="cover"
+          accessibilityLabel={`Ảnh đánh giá của ${item.tenNguoiDung}`}
+        />
       )}
     </View>
   );
@@ -130,6 +142,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.darkGray,
     lineHeight: 20,
+  },
+  reviewImage: {
+    width: '100%',
+    height: 220,
+    marginTop: 12,
+    borderRadius: 10,
+    backgroundColor: Colors.backgroundLight,
   },
   loadingContainer: {
     padding: 32,

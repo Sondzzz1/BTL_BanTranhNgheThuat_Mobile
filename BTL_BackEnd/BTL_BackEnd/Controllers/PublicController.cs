@@ -63,6 +63,8 @@ public class PublicController : ControllerBase
                     TenDanhMuc = x.TenDanhMuc,
                     Gia = x.TacPham.Gia,
                     SoLuong = x.TacPham.SoLuong,
+                    SoLuongBanDau = x.TacPham.SoLuongBanDau,
+                    LaTacPhamDocBan = x.TacPham.LaTacPhamDocBan,
                     MoTa = x.TacPham.MoTa,
                     HinhAnh = x.TacPham.HinhAnh,
                     KichThuoc = x.TacPham.KichThuoc,
@@ -101,6 +103,8 @@ public class PublicController : ControllerBase
                 TenDanhMuc = tp.MaDanhMuc.HasValue ? danhMucMap.GetValueOrDefault(tp.MaDanhMuc.Value) : null,
                 Gia = tp.Gia,
                 SoLuong = tp.SoLuong,
+                SoLuongBanDau = tp.SoLuongBanDau,
+                LaTacPhamDocBan = tp.LaTacPhamDocBan,
                 MoTa = tp.MoTa,
                 HinhAnh = tp.HinhAnh,
                 KichThuoc = tp.KichThuoc,
@@ -148,6 +152,8 @@ public class PublicController : ControllerBase
                 TenDanhMuc = tenDanhMuc,
                 Gia = tacPham.Gia,
                 SoLuong = tacPham.SoLuong,
+                SoLuongBanDau = tacPham.SoLuongBanDau,
+                LaTacPhamDocBan = tacPham.LaTacPhamDocBan,
                 MoTa = tacPham.MoTa,
                 HinhAnh = tacPham.HinhAnh,
                 KichThuoc = tacPham.KichThuoc,
@@ -205,6 +211,8 @@ public class PublicController : ControllerBase
                     TenDanhMuc = x.TacPham.MaDanhMuc.HasValue && danhMucMap.TryGetValue(x.TacPham.MaDanhMuc.Value, out var dm) ? dm : null,
                     Gia = x.TacPham.Gia,
                     SoLuong = x.TacPham.SoLuong,
+                    SoLuongBanDau = x.TacPham.SoLuongBanDau,
+                    LaTacPhamDocBan = x.TacPham.LaTacPhamDocBan,
                     MoTa = x.TacPham.MoTa,
                     HinhAnh = x.TacPham.HinhAnh,
                     KichThuoc = x.TacPham.KichThuoc,
@@ -435,6 +443,8 @@ public class TacPhamResponse
     public string? TenDanhMuc { get; set; }
     public decimal Gia { get; set; }
     public int SoLuong { get; set; }
+    public int? SoLuongBanDau { get; set; }
+    public bool LaTacPhamDocBan { get; set; }
     public string? MoTa { get; set; }
     public string? HinhAnh { get; set; }
     public string? KichThuoc { get; set; }

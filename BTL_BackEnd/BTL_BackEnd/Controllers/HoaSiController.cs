@@ -138,6 +138,14 @@ public class HoaSiController : ControllerBase
             var maTacPham = await _hoaSiBusiness.TaoTacPham(maHoaSi.Value, request);
             return Ok(new { message = "Tạo tác phẩm thành công", maTacPham });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
@@ -164,6 +172,10 @@ public class HoaSiController : ControllerBase
             return StatusCode(403, new { message = ex.Message });
         }
         catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }

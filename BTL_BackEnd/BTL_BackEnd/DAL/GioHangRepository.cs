@@ -9,13 +9,11 @@ namespace DoAn2_BackEnd.DAL;
 public class GioHangRepository : IGioHangRepository
 {
     private readonly string _connectionString;
-    private readonly DateTime _copyrightEnforcementStartUtc;
 
     public GioHangRepository(IConfiguration configuration)
     {
         _connectionString = configuration.GetConnectionString("DefaultConnection")
             ?? throw new InvalidOperationException("Connection string not found");
-        _copyrightEnforcementStartUtc = CopyrightOptions.From(configuration).EnforcementStartUtc;
     }
 
     public async Task<GioHang?> GetByNguoiDung(int maNguoiDung)
@@ -195,23 +193,19 @@ public class GioHangRepository : IGioHangRepository
         {
             const string productSql = @"
                 SELECT t.TenTacPham,t.SoLuong,t.TrangThai,t.MaYeuCauVeTranh,
-                       CASE WHEN ((NOT EXISTS (SELECT 1 FROM BanQuyen b0 WHERE b0.MaTacPham=t.MaTacPham)
-                                      AND t.NgayTao<@EnforcementStart)
-                                  OR EXISTS (SELECT 1 FROM BanQuyen b WHERE b.MaTacPham=t.MaTacPham
-                                             AND b.BiChanBan=0
-                                             AND (b.TrangThai=2 OR ((t.NgayTao<@EnforcementStart OR b.LaDuLieuCu=1)
-                                                  AND b.TrangThai IN (0,1,5)))))
+                       CASE WHEN NOT EXISTS (SELECT 1 FROM BanQuyen b
+                                             WHERE b.MaTacPham=t.MaTacPham
+                                               AND ISNULL(b.BiChanBan,0)=1)
                             THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END
                 FROM TacPham t WITH (UPDLOCK,HOLDLOCK)
                 WHERE t.MaTacPham=@MaTacPham;";
             await using var product = new SqlCommand(productSql, connection, transaction);
             product.Parameters.AddWithValue("@MaTacPham", maTacPham);
-            product.Parameters.AddWithValue("@EnforcementStart", _copyrightEnforcementStartUtc);
             string productName;
             int stock;
             byte status;
             bool isCommission;
-            bool copyrightSellable;
+            bool copyrightNotBlocked;
             await using (var reader = await product.ExecuteReaderAsync())
             {
                 if (!await reader.ReadAsync()) throw new KeyNotFoundException("Tác phẩm không tồn tại");
@@ -219,13 +213,13 @@ public class GioHangRepository : IGioHangRepository
                 stock = reader.GetInt32(1);
                 status = reader.GetByte(2);
                 isCommission = !reader.IsDBNull(3);
-                copyrightSellable = reader.GetBoolean(4);
+                copyrightNotBlocked = reader.GetBoolean(4);
             }
             if (isCommission)
                 throw new BusinessConflictException("Tác phẩm nội bộ của yêu cầu vẽ tranh không được thêm vào giỏ hàng");
             if (status != 1) throw new BusinessConflictException("Tác phẩm hiện không khả dụng");
-            if (!copyrightSellable)
-                throw new BusinessConflictException("Tác phẩm chưa đủ điều kiện nguồn gốc hoặc đã bị từ chối/thu hồi");
+            if (!copyrightNotBlocked)
+                throw new BusinessConflictException("Tác phẩm đang bị chặn bán do hồ sơ bản quyền");
 
             const string cartSql = "SELECT MaGioHang FROM GioHang WITH (UPDLOCK,HOLDLOCK) WHERE MaNguoiDung=@MaNguoiDung;";
             await using var cart = new SqlCommand(cartSql, connection, transaction);

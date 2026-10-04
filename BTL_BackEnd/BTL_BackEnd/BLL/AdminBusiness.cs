@@ -78,12 +78,61 @@ public class AdminBusiness : IAdminBusiness
         var hoaSis = await _hoaSiRepo.GetAll();
         var danhMucs = await _danhMucRepo.GetAll();
 
-        return list.Select(x => new TacPhamHoaSiResponse 
+        return MapTacPhamHoaSiResponses(list, hoaSis, danhMucs);
+    }
+
+    public async Task<TacPhamAdminPageResponse> GetTacPhamQuanLy(AdminArtworkQuery query)
+    {
+        query ??= new AdminArtworkQuery();
+        query.Page = Math.Clamp(query.Page, 1, 100_000);
+        query.PageSize = Math.Clamp(query.PageSize, 10, 100);
+
+        var result = await _tacPhamRepo.GetAdminPage(query);
+        var hoaSis = await _hoaSiRepo.GetAll();
+        var danhMucs = await _danhMucRepo.GetAll();
+        return new TacPhamAdminPageResponse
+        {
+            Items = MapTacPhamHoaSiResponses(result.Items, hoaSis, danhMucs),
+            TotalItems = result.TotalItems,
+            Page = query.Page,
+            PageSize = query.PageSize
+        };
+    }
+
+    public async Task<AdminArtworkFilterOptionsResponse> GetBoLocQuanLyTacPham()
+    {
+        var hoaSiTask = _hoaSiRepo.GetAll();
+        var danhMucTask = _danhMucRepo.GetAll();
+        await Task.WhenAll(hoaSiTask, danhMucTask);
+        var hoaSis = await hoaSiTask;
+        var danhMucs = await danhMucTask;
+
+        return new AdminArtworkFilterOptionsResponse
+        {
+            HoaSi = hoaSis
+                .OrderBy(x => x.TenHoaSi)
+                .Select(x => new AdminArtworkFilterOption { Id = x.MaHoaSi, Ten = x.TenHoaSi })
+                .ToList(),
+            DanhMuc = danhMucs
+                .OrderBy(x => x.TenDanhMuc)
+                .Select(x => new AdminArtworkFilterOption { Id = x.MaDanhMuc, Ten = x.TenDanhMuc })
+                .ToList()
+        };
+    }
+
+    private static List<TacPhamHoaSiResponse> MapTacPhamHoaSiResponses(
+        IEnumerable<TacPham> list,
+        IEnumerable<HoaSi> hoaSis,
+        IEnumerable<DanhMuc> danhMucs)
+    {
+        return list.Select(x => new TacPhamHoaSiResponse
         { 
             MaTacPham = x.MaTacPham, 
             TenTacPham = x.TenTacPham, 
             Gia = x.Gia, 
             SoLuong = x.SoLuong,
+            SoLuongBanDau = x.SoLuongBanDau,
+            LaTacPhamDocBan = x.LaTacPhamDocBan,
             MoTa = x.MoTa,
             KichThuoc = x.KichThuoc,
             ChatLieu = x.ChatLieu,
@@ -109,9 +158,14 @@ public class AdminBusiness : IAdminBusiness
     {
         var tacPham = await GetMarketplaceArtworkForMutation(id);
         if (tacPham == null) return false;
+        if (!request.PheDuyet && string.IsNullOrWhiteSpace(request.LyDo))
+            throw new ArgumentException("Vui lòng nhập lý do từ chối");
         
         // Kiểm tra xem có bản chỉnh sửa chờ duyệt không
         var chinhSua = await _tacPhamChinhSuaRepo.GetByMaTacPhamChoDuyet(id);
+        if (chinhSua == null && ((request.PheDuyet && tacPham.TrangThai == TacPhamStatus.OnSale)
+            || (!request.PheDuyet && tacPham.TrangThai == TacPhamStatus.Rejected)))
+            return true; // Retry cùng trạng thái không phải một sự kiện kiểm duyệt mới.
         
         if (request.PheDuyet)
         {
@@ -130,7 +184,8 @@ public class AdminBusiness : IAdminBusiness
                 
                 // Đánh dấu bản chỉnh sửa đã được duyệt
                 chinhSua.TrangThai = 1; // Đã duyệt
-                await _tacPhamChinhSuaRepo.Update(chinhSua);
+                if (!await _tacPhamChinhSuaRepo.Update(chinhSua))
+                    throw new InvalidOperationException("Không thể lưu kết quả duyệt bản chỉnh sửa tác phẩm");
             }
             
             // Duyệt tác phẩm
@@ -145,7 +200,8 @@ public class AdminBusiness : IAdminBusiness
                 // Từ chối bản chỉnh sửa
                 chinhSua.TrangThai = 2; // Từ chối
                 chinhSua.LyDo = string.IsNullOrWhiteSpace(request.LyDo) ? null : request.LyDo.Trim();
-                await _tacPhamChinhSuaRepo.Update(chinhSua);
+                if (!await _tacPhamChinhSuaRepo.Update(chinhSua))
+                    throw new InvalidOperationException("Không thể lưu kết quả từ chối bản chỉnh sửa tác phẩm");
                 
                 // Tác phẩm gốc vẫn giữ nguyên trạng thái (vẫn đang bán)
                 // KHÔNG thay đổi tacPham.TrangThai
@@ -158,7 +214,20 @@ public class AdminBusiness : IAdminBusiness
             }
         }
         
-        return await _tacPhamRepo.Update(tacPham);
+        var isEditReview = chinhSua != null;
+        var notification = new ThongBao
+        {
+            Loai = request.PheDuyet ? "ARTWORK_APPROVED" : "ARTWORK_REJECTED",
+            TieuDe = request.PheDuyet ? "Tác phẩm đã được phê duyệt" : "Tác phẩm bị từ chối",
+            NoiDung = request.PheDuyet
+                ? $"Tác phẩm “{tacPham.TenTacPham}” của bạn đã được phê duyệt."
+                : $"Tác phẩm “{tacPham.TenTacPham}” đã bị từ chối. Lý do: {request.LyDo!.Trim()}",
+            LoaiDoiTuong = "TacPham",
+            MaDoiTuong = tacPham.MaTacPham,
+            DuongDan = $"/artist/artworks/{tacPham.MaTacPham}",
+            EventKey = $"ARTWORK_REVIEW:{tacPham.MaTacPham}:{(isEditReview ? chinhSua!.MaChinhSua : 0)}:{(request.PheDuyet ? "APPROVED" : "REJECTED")}"
+        };
+        return await _tacPhamRepo.UpdateWithArtistNotification(tacPham, notification);
     }
 
     public async Task<bool> HideTacPham(int id)
@@ -355,11 +424,7 @@ public class AdminBusiness : IAdminBusiness
         if (!request.PheDuyet && string.IsNullOrWhiteSpace(request.LyDo)) throw new ArgumentException("Vui lòng nhập lý do từ chối");
         if (request.PheDuyet)
             await ValidateBlogContentImages(id, BlogContentValidator.Validate(bv.NoiDung));
-        bv.TrangThai = request.PheDuyet ? (byte)2 : (byte)3;
-        bv.LyDo = request.PheDuyet ? null : request.LyDo?.Trim();
-        bv.NgayXuatBan = request.PheDuyet ? DateTime.UtcNow : null;
-        bv.NgayCapNhat = DateTime.UtcNow;
-        return await _baiVietRepo.Update(bv);
+        return await _baiVietRepo.ReviewWithNotification(id, request.PheDuyet, request.LyDo?.Trim());
     }
 
     public async Task<bool> XuatBanBaiViet(int maTaiKhoan, int id)
@@ -375,9 +440,7 @@ public class AdminBusiness : IAdminBusiness
     {
         var bv = await _baiVietRepo.GetById(id);
         if (bv == null) return false;
-        bv.TrangThai = 4; // Archived
-        bv.LyDo = null;
-        return await _baiVietRepo.Update(bv);
+        return await _baiVietRepo.ArchiveWithNotification(id);
     }
 
     public async Task<bool> XoaBaiViet(int id) => await _baiVietRepo.Delete(id);

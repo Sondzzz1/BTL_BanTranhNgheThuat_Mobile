@@ -1,9 +1,7 @@
 
 
 // Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
-export const API_BASE_URL = 'http://192.168.1.6:5273/api';
-// Trang React công khai dùng cho QR/xác minh; đổi theo domain triển khai thực tế.
-export const PUBLIC_WEB_URL = 'http://192.168.1.6:3000';
+export const API_BASE_URL = 'http://192.168.1.3:5273/api';
 
 
 export const API_TIMEOUT = 60000; // 60 seconds (tăng từ 30s)
@@ -57,10 +55,12 @@ export const API_ENDPOINTS = {
 
   // Reviews
   REVIEWS: '/danh-gia',
+  REVIEWS_WITH_IMAGE: '/danh-gia/co-anh',
   REVIEW_BY_PRODUCT: (productId: number) => `/danh-gia/tac-pham/${productId}`,
   REVIEW_SUMMARY: (productId: number) => `/danh-gia/tac-pham/${productId}/tong-hop`,
   REVIEW_PERMISSION: (productId: number) => `/danh-gia/tac-pham/${productId}/quyen-cua-toi`,
   REVIEW_UPDATE: (id: number) => `/danh-gia/${id}`,
+  REVIEW_UPDATE_WITH_IMAGE: (id: number) => `/danh-gia/${id}/co-anh`,
   REVIEW_DELETE: (id: number) => `/danh-gia/${id}`,
   REVIEW_FIVE_STARS: '/danh-gia/5-sao',
 

@@ -31,7 +31,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     {
         ValidateRequest(request);
         // Kiểm tra tác phẩm có thuộc họa sĩ không
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkInternal(maTacPham);
         if (tacPham == null)
             throw new ArgumentException("Không tìm thấy tác phẩm");
         if (tacPham.MaHoaSi != maHoaSi)
@@ -77,7 +77,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     {
         ValidateRequest(request);
         // Kiểm tra quyền
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkInternal(maTacPham);
         if (tacPham == null)
             throw new ArgumentException("Không tìm thấy tác phẩm");
         if (tacPham.MaHoaSi != maHoaSi)
@@ -116,7 +116,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     public async Task<bool> XoaChiTiet(int maHoaSi, int maTacPham)
     {
         // Kiểm tra quyền
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkInternal(maTacPham);
         if (tacPham == null)
             throw new ArgumentException("Không tìm thấy tác phẩm");
         if (tacPham.MaHoaSi != maHoaSi)
@@ -127,7 +127,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
 
     public async Task<bool> CoQuyenQuanLy(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkInternal(maTacPham);
         return tacPham != null && tacPham.MaHoaSi == maHoaSi;
     }
 
@@ -139,7 +139,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         var chiTiet = await _chiTietRepo.GetByMaTacPham(maTacPham);
         if (chiTiet == null) return null;
 
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetMarketplaceArtworkInternal(maTacPham);
         if (tacPham == null) return null;
 
         var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
@@ -192,7 +192,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
 
         foreach (var chiTiet in list)
         {
-            var tacPham = await _tacPhamRepo.GetMarketplaceById(chiTiet.MaTacPham);
+            var tacPham = await GetMarketplaceArtworkInternal(chiTiet.MaTacPham);
             if (tacPham == null) continue;
 
             var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
@@ -240,7 +240,8 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     // ================================================================
     public async Task<bool> DuyetChiTiet(int maTacPham, int maNguoiDuyet, DuyetChiTietTacPhamRequest request)
     {
-        if (await _tacPhamRepo.GetMarketplaceById(maTacPham) == null)
+        var tacPham = await GetMarketplaceArtworkInternal(maTacPham);
+        if (tacPham == null)
             throw new ArgumentException("Không tìm thấy tác phẩm marketplace");
         var chiTiet = await _chiTietRepo.GetByMaTacPham(maTacPham);
         if (chiTiet == null)
@@ -252,7 +253,22 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         if (chiTiet.TrangThai != 0)
             throw new InvalidOperationException("Chỉ nội dung đang chờ duyệt mới có thể được xử lý");
 
-        return await _chiTietRepo.Duyet(maTacPham, maNguoiDuyet, request.PheDuyet, request.LyDoTuChoi?.Trim());
+        ThongBao? notification = null;
+        if (!request.PheDuyet)
+        {
+            var reason = request.LyDoTuChoi!.Trim();
+            notification = new ThongBao
+            {
+                Loai = "ARTWORK_CONTENT_REJECTED",
+                TieuDe = "Nội dung tác phẩm cần chỉnh sửa",
+                NoiDung = $"Tác phẩm “{tacPham.TenTacPham}” chưa được duyệt. Lý do: {reason}",
+                LoaiDoiTuong = "TacPham",
+                MaDoiTuong = maTacPham,
+                DuongDan = $"/artist/artworks/{maTacPham}",
+                EventKey = $"ARTWORK_CONTENT_REVIEW:{maTacPham}:REJECTED"
+            };
+        }
+        return await _chiTietRepo.Duyet(maTacPham, maNguoiDuyet, request.PheDuyet, request.LyDoTuChoi?.Trim(), notification);
     }
 
     // ================================================================
@@ -304,6 +320,17 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             2 => "Từ chối",
             _ => "Không xác định"
         };
+    }
+
+    /// <summary>
+    /// Artist/Admin management must see a newly created marketplace artwork while it is
+    /// pending approval. GetMarketplaceById is intentionally sellable/public-facing and
+    /// therefore cannot be used for this private workflow.
+    /// </summary>
+    private async Task<TacPham?> GetMarketplaceArtworkInternal(int maTacPham)
+    {
+        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        return tacPham?.MaYeuCauVeTranh == null ? tacPham : null;
     }
 
     private static void ValidateRequest(TaoChiTietTacPhamRequest request)

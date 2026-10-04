@@ -321,6 +321,11 @@ export default function ProductDetailScreen({
   }
 
   const isOutOfStock = product.soLuong === 0;
+  const isVerifiedExclusive = Boolean(
+    product.laTacPhamDocBan
+    && copyright?.trangThai === 'VERIFIED'
+    && copyright.laTacPhamDocBan,
+  );
 
   return (
     <View style={styles.container}>
@@ -362,6 +367,22 @@ export default function ProductDetailScreen({
               </View>
             )}
           </View>
+
+          {product.laTacPhamDocBan && (
+            <View style={[
+              styles.exclusiveStatusBadge,
+              isVerifiedExclusive && styles.exclusiveStatusBadgeVerified,
+            ]}>
+              <Text style={[
+                styles.exclusiveStatusText,
+                isVerifiedExclusive && styles.exclusiveStatusTextVerified,
+              ]}>
+                {isVerifiedExclusive
+                  ? 'Độc bản đã xác minh'
+                  : 'Khai báo độc bản · chưa xác minh'}
+              </Text>
+            </View>
+          )}
 
           <Text style={styles.price}>{formatPrice(product.gia)}</Text>
 
@@ -444,7 +465,13 @@ export default function ProductDetailScreen({
               <Text style={styles.provenanceLine}>Phân loại: {copyright.loaiTacPhamText}</Text>
               <Text style={styles.provenanceLine}>Họa sĩ thực hiện: {copyright.hoaSiThucHien}</Text>
               {copyright.tacGiaGoc ? <Text style={styles.provenanceLine}>Tác giả gốc: {copyright.tacGiaGoc}</Text> : null}
-              <Text style={styles.provenanceLine}>{copyright.laTacPhamDocBan ? 'Tác phẩm độc bản' : 'Tác phẩm nhiều bản / chưa định danh từng bản'}</Text>
+              <Text style={styles.provenanceLine}>
+                {copyright.laTacPhamDocBan
+                  ? 'Tranh độc bản · chỉ một hiện vật đã được xác minh'
+                  : copyright.soLuongBanDau && copyright.soLuongBanDau >= 2
+                    ? `Tranh nhiều bản · phát hành ban đầu ${copyright.soLuongBanDau} bản`
+                    : 'Loại phát hành chưa đủ dữ liệu để xác định'}
+              </Text>
             </> : <Text style={styles.provenanceMuted}>Thông tin nguồn gốc chưa được nền tảng xác minh.</Text>}
             <Text style={styles.provenanceLegal}>{copyright?.luuYPhapLy || 'Xác minh của nền tảng không thay thế đăng ký quyền tác giả tại cơ quan nhà nước.'}</Text>
           </View>
@@ -693,6 +720,29 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#3730a3',
     fontWeight: '600',
+  },
+  exclusiveStatusBadge: {
+    alignSelf: 'flex-start',
+    marginTop: -7,
+    marginBottom: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fed7aa',
+  },
+  exclusiveStatusBadgeVerified: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+  },
+  exclusiveStatusText: {
+    color: '#9a3412',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  exclusiveStatusTextVerified: {
+    color: '#166534',
   },
   price: {
     fontSize: 28,

@@ -16,6 +16,8 @@ export const mapToArtwork = (dto: Product): Artwork => {
     soLuongTon: dto.soLuong,
     anhTranh: dto.hinhAnh || '',
     moTa: dto.moTa || '',
+    laTacPhamDocBan: dto.laTacPhamDocBan,
+    soLuongBanDau: dto.soLuongBanDau,
     isFeatured: false,
     isBestSelling: false,
   };

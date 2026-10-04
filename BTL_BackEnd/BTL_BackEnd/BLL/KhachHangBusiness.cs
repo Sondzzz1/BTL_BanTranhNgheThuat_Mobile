@@ -241,6 +241,7 @@ public class KhachHangBusiness : IKhachHangBusiness
         foreach (var donHang in donHangList)
         {
             var thanhToan = await _thanhToanRepo.GetByDonHang(donHang.MaDonHang);
+            var chiTiet = await _donHangRepo.GetChiTiet(donHang.MaDonHang);
             result.Add(new DonHangResponse
             {
                 MaDonHang = donHang.MaDonHang,
@@ -253,6 +254,7 @@ public class KhachHangBusiness : IKhachHangBusiness
                 TrangThai = donHang.TrangThai,
                 TrangThaiText = DonHangStatus.GetText(donHang.TrangThai),
                 TrangThaiThanhToan = thanhToan?.TrangThai,
+                SoSanPham = chiTiet.Sum(item => item.SoLuong),
                 ChiTiet = new List<ChiTietDonHangResponse>()
             });
         }
@@ -305,6 +307,7 @@ public class KhachHangBusiness : IKhachHangBusiness
             TrangThai = donHang.TrangThai,
             TrangThaiText = DonHangStatus.GetText(donHang.TrangThai),
             TrangThaiThanhToan = thanhToan?.TrangThai,
+            SoSanPham = chiTietResponse.Sum(item => item.SoLuong),
             ChiTiet = chiTietResponse
         };
     }

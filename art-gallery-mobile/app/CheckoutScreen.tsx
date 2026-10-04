@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { cartService } from '../services/cartService';
 import { orderService } from '../services/orderService';
 import { customerService } from '../services/customerService';
@@ -30,6 +31,7 @@ export default function CheckoutScreen({ navigation, route }: CheckoutScreenProp
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [savedShippingAddress, setSavedShippingAddress] = useState('');
   
   const [formData, setFormData] = useState({
     tenNguoiNhan: '',
@@ -92,6 +94,7 @@ export default function CheckoutScreen({ navigation, route }: CheckoutScreenProp
         diaChiGiao: profileData.diaChi || '',
         ghiChu: '',
       });
+      setSavedShippingAddress(profileData.diaChi?.trim() || '');
     } catch (err: any) {
       console.error('Error loading checkout data:', err);
       Alert.alert('Lỗi', err.message || 'Không thể tải thông tin');
@@ -262,6 +265,14 @@ export default function CheckoutScreen({ navigation, route }: CheckoutScreenProp
 
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Địa chỉ giao hàng *</Text>
+            {savedShippingAddress ? (
+              <View style={styles.savedAddressNotice}>
+                <Ionicons name="location" size={16} color="#c2410c" />
+                <Text style={styles.savedAddressNoticeText}>Đã tự điền từ địa chỉ giao hàng đã lưu trong hồ sơ</Text>
+              </View>
+            ) : (
+              <Text style={styles.missingAddressHint}>Bạn có thể lưu địa chỉ mặc định trong mục Hồ sơ để dùng cho các lần mua sau.</Text>
+            )}
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Nhập địa chỉ đầy đủ"
@@ -461,6 +472,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     fontSize: 16,
     backgroundColor: '#fff',
+  },
+  savedAddressNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: '#fff7ed',
+  },
+  savedAddressNoticeText: {
+    flex: 1,
+    color: '#9a3412',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600',
+  },
+  missingAddressHint: {
+    marginBottom: 8,
+    color: '#6b7280',
+    fontSize: 12,
+    lineHeight: 17,
   },
   textArea: {
     height: 96,

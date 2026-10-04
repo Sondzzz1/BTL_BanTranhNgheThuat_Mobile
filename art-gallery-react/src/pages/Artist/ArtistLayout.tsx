@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import ArtistNotificationBell from '../../components/ArtistNotificationBell';
 import '../Admin/Admin.css'; // Dùng chung CSS với Admin
 
 const ArtistLayout: React.FC = () => {
@@ -91,7 +92,7 @@ const ArtistLayout: React.FC = () => {
             <input type="text" placeholder="Tìm kiếm..." className="search-box" />
           </div>
           <div className="right">
-            <i className="ti-bell"></i>
+            <ArtistNotificationBell />
             <i className="ti-user"></i> <span>{user?.name || 'Họa sĩ'}</span>
           </div>
         </div>

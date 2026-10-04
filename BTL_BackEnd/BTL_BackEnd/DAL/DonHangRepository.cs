@@ -192,7 +192,7 @@ public class DonHangRepository : IDonHangRepository
 
         try
         {
-            var lines = await LoadCheckoutLines(connection, transaction, maNguoiDung, request, _copyrightOptions.EnforcementStartUtc);
+            var lines = await LoadCheckoutLines(connection, transaction, maNguoiDung, request);
             if (lines.Count == 0)
                 throw new ArgumentException(request.Mode == "BUY_NOW" ? "Sản phẩm không tồn tại" : "Giỏ hàng không có sản phẩm được chọn");
 
@@ -202,8 +202,8 @@ public class DonHangRepository : IDonHangRepository
                 throw new BusinessConflictException("Tác phẩm nội bộ của yêu cầu vẽ tranh không được mua qua marketplace");
             if (lines.Any(x => x.Status != 1))
                 throw new BusinessConflictException("Sản phẩm đã ngừng bán hoặc không còn khả dụng");
-            if (lines.Any(x => !x.CopyrightSellable))
-                throw new BusinessConflictException("Sản phẩm chưa đủ điều kiện nguồn gốc hoặc đã bị từ chối/thu hồi");
+            if (lines.Any(x => !x.CopyrightNotBlocked))
+                throw new BusinessConflictException("Sản phẩm đang bị chặn bán do hồ sơ bản quyền");
 
             var total = lines.Sum(x => x.UnitPrice * x.Quantity);
             const string insertOrderSql = @"
@@ -242,16 +242,12 @@ public class DonHangRepository : IDonHangRepository
                     UPDATE TacPham
                     SET SoLuong=SoLuong-@SoLuong
                     WHERE MaTacPham=@MaTacPham AND TrangThai=1 AND MaYeuCauVeTranh IS NULL AND SoLuong>=@SoLuong
-                      AND ((NOT EXISTS (SELECT 1 FROM BanQuyen b0 WHERE b0.MaTacPham=TacPham.MaTacPham)
-                            AND NgayTao<@EnforcementStart)
-                           OR EXISTS (SELECT 1 FROM BanQuyen b WHERE b.MaTacPham=TacPham.MaTacPham
-                                      AND b.BiChanBan=0
-                                      AND (b.TrangThai=2 OR ((TacPham.NgayTao<@EnforcementStart OR b.LaDuLieuCu=1)
-                                           AND b.TrangThai IN (0,1,5)))));";
+                      AND NOT EXISTS (SELECT 1 FROM BanQuyen b
+                                      WHERE b.MaTacPham=TacPham.MaTacPham
+                                        AND ISNULL(b.BiChanBan,0)=1);";
                 await using var decreaseStock = new SqlCommand(decreaseStockSql, connection, transaction);
                 decreaseStock.Parameters.AddWithValue("@MaTacPham", line.ArtworkId);
                 decreaseStock.Parameters.AddWithValue("@SoLuong", line.Quantity);
-                decreaseStock.Parameters.AddWithValue("@EnforcementStart", _copyrightOptions.EnforcementStartUtc);
                 if (await decreaseStock.ExecuteNonQueryAsync() != 1)
                     throw new BusinessConflictException("Sản phẩm đã hết hoặc không đủ tồn kho");
             }
@@ -456,79 +452,13 @@ public class DonHangRepository : IDonHangRepository
             // Quyết định từ chối/thu hồi vẫn được kiểm tra ở trên và không thể bị nhánh LEGACY vượt qua.
             if (line.Legacy || line.ArtworkCreated.ToUniversalTime() < enforcementStartUtc) continue;
             if (line.CopyrightStatus != CopyrightStatuses.Verified)
-                throw new BusinessConflictException("Tác phẩm độc bản chưa đủ điều kiện xác minh nguồn gốc để chuyển sở hữu");
-            if (certificateKey.Length < 32)
-                throw new InvalidOperationException("Copyright:CertificateHashKey chưa được cấu hình an toàn; không thể cấp chứng nhận");
-
-            await using (var ensureInitial = new SqlCommand(@"
-                IF NOT EXISTS (SELECT 1 FROM LichSuSoHuu WITH (UPDLOCK,HOLDLOCK) WHERE MaTacPham=@ArtworkId)
-                    INSERT INTO LichSuSoHuu
-                        (MaTacPham,MaHoaSi,NgayNhan,LoaiChuyenGiao,TrangThai,GhiChu,EventKey,NgayTao)
-                    VALUES(@ArtworkId,@ArtistId,SYSUTCDATETIME(),0,@Current,
-                           N'Quyền sở hữu hiện vật ban đầu của họa sĩ',@CreationKey,SYSUTCDATETIME());",
-                connection, transaction))
-            {
-                ensureInitial.Parameters.AddWithValue("@ArtworkId", line.ArtworkId);
-                ensureInitial.Parameters.AddWithValue("@ArtistId", line.ArtistId);
-                ensureInitial.Parameters.AddWithValue("@Current", OwnershipStatuses.Current);
-                ensureInitial.Parameters.AddWithValue("@CreationKey", $"CREATION:{line.ArtworkId}");
-                await ensureInitial.ExecuteNonQueryAsync();
-            }
-
-            await using (var closeArtist = new SqlCommand(@"
-                UPDATE LichSuSoHuu SET TrangThai=@Transferred,NgayChuyenGiao=SYSUTCDATETIME()
-                WHERE MaTacPham=@ArtworkId AND MaHoaSi=@ArtistId AND TrangThai=@Current;", connection, transaction))
-            {
-                closeArtist.Parameters.AddWithValue("@Transferred", OwnershipStatuses.Transferred);
-                closeArtist.Parameters.AddWithValue("@ArtworkId", line.ArtworkId);
-                closeArtist.Parameters.AddWithValue("@ArtistId", line.ArtistId);
-                closeArtist.Parameters.AddWithValue("@Current", OwnershipStatuses.Current);
-                if (await closeArtist.ExecuteNonQueryAsync() != 1)
-                    throw new DBConcurrencyException("Không tìm thấy quyền sở hữu hiện vật hiện tại của họa sĩ");
-            }
-
-            int ownershipId;
-            await using (var insertOwner = new SqlCommand(@"
-                INSERT INTO LichSuSoHuu
-                    (MaTacPham,MaNguoiDung,NgayNhan,LoaiChuyenGiao,TrangThai,MaDonHang,MaChiTietDH,GhiChu,EventKey,NgayTao)
-                OUTPUT INSERTED.MaLichSuSoHuu
-                VALUES(@ArtworkId,@CustomerId,SYSUTCDATETIME(),1,@Current,@OrderId,@LineId,
-                       N'Chuyển sở hữu hiện vật sau thanh toán và bàn giao',@EventKey,SYSUTCDATETIME());", connection, transaction))
-            {
-                insertOwner.Parameters.AddWithValue("@ArtworkId", line.ArtworkId);
-                insertOwner.Parameters.AddWithValue("@CustomerId", line.CustomerId);
-                insertOwner.Parameters.AddWithValue("@Current", OwnershipStatuses.Current);
-                insertOwner.Parameters.AddWithValue("@OrderId", orderId);
-                insertOwner.Parameters.AddWithValue("@LineId", line.LineId);
-                insertOwner.Parameters.AddWithValue("@EventKey", $"SALE:{line.LineId}");
-                ownershipId = Convert.ToInt32(await insertOwner.ExecuteScalarAsync());
-            }
-
-            var issued = DateTime.UtcNow;
-            var code = CertificateIntegrityHelper.CreateCode(issued);
-            var hash = CertificateIntegrityHelper.CreateHash(certificateKey, line.ArtworkId, line.CustomerId, ownershipId, issued, code);
-            int certificateId;
-            await using (var certificate = new SqlCommand(@"
-                INSERT INTO ChungNhan
-                    (MaLichSuSoHuu,MaTacPham,MaNguoiDung,CertificateCode,ContentHash,NgayCap,TrangThai,NguoiCap,HienThiChuSoHuu,NgayTao)
-                OUTPUT INSERTED.MaChungNhan
-                VALUES(@OwnershipId,@ArtworkId,@CustomerId,@Code,@Hash,@Issued,@Active,
-                       N'HeThongBanTranh',0,SYSUTCDATETIME());", connection, transaction))
-            {
-                certificate.Parameters.AddWithValue("@OwnershipId", ownershipId);
-                certificate.Parameters.AddWithValue("@ArtworkId", line.ArtworkId);
-                certificate.Parameters.AddWithValue("@CustomerId", line.CustomerId);
-                certificate.Parameters.AddWithValue("@Code", code);
-                certificate.Parameters.AddWithValue("@Hash", hash);
-                certificate.Parameters.AddWithValue("@Issued", issued);
-                certificate.Parameters.AddWithValue("@Active", CertificateStatuses.Active);
-                certificateId = Convert.ToInt32(await certificate.ExecuteScalarAsync());
-            }
-
-            await AuditLogSql.InsertAsync(connection, transaction, "LichSuSoHuu", ownershipId,
-                "SALE_TRANSFER", actorId, 0, after: $"Order={orderId};Line={line.LineId};Owner={line.CustomerId}");
-            await AuditLogSql.InsertAsync(connection, transaction, "ChungNhan", certificateId,
-                "ISSUE", actorId, 0, after: $"Code={code};Ownership={ownershipId}");
+                // Xác minh là điều kiện cấp ownership/chứng nhận, không phải điều kiện
+                // hoàn tất giao hàng. Khi hồ sơ được xác minh sau đó, luồng review sẽ
+                // đối soát lại đơn đã giao và phát hành chứng nhận đúng một lần.
+                continue;
+            await OwnershipCertificateSql.TryIssueForDeliveredMarketplaceOrderLineAsync(
+                connection, transaction, line.LineId, actorId, certificateKey,
+                enforcementStartUtc, reconciledAfterVerification: false, actorRole: 0);
         }
     }
 
@@ -548,26 +478,21 @@ public class DonHangRepository : IDonHangRepository
         SqlConnection connection,
         SqlTransaction transaction,
         int maNguoiDung,
-        TaoDonHangRequest request,
-        DateTime enforcementStart)
+        TaoDonHangRequest request)
     {
         if (request.Mode == "BUY_NOW")
         {
             const string buyNowSql = @"
                 SELECT t.MaTacPham,t.Gia,t.TrangThai,
                        CASE WHEN t.MaYeuCauVeTranh IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END,
-                       CASE WHEN ((NOT EXISTS (SELECT 1 FROM BanQuyen b0 WHERE b0.MaTacPham=t.MaTacPham)
-                                      AND t.NgayTao<@EnforcementStart)
-                                  OR EXISTS (SELECT 1 FROM BanQuyen b WHERE b.MaTacPham=t.MaTacPham
-                                             AND b.BiChanBan=0
-                                             AND (b.TrangThai=2 OR ((t.NgayTao<@EnforcementStart OR b.LaDuLieuCu=1)
-                                                  AND b.TrangThai IN (0,1,5)))))
+                       CASE WHEN NOT EXISTS (SELECT 1 FROM BanQuyen b
+                                             WHERE b.MaTacPham=t.MaTacPham
+                                               AND ISNULL(b.BiChanBan,0)=1)
                             THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END
                 FROM TacPham t WITH (UPDLOCK,HOLDLOCK)
                 WHERE t.MaTacPham=@MaTacPham;";
             await using var command = new SqlCommand(buyNowSql, connection, transaction);
             command.Parameters.AddWithValue("@MaTacPham", request.MaTacPham!.Value);
-            command.Parameters.AddWithValue("@EnforcementStart", enforcementStart);
             await using var reader = await command.ExecuteReaderAsync();
             if (!await reader.ReadAsync()) return new List<CheckoutLine>();
             return new List<CheckoutLine>
@@ -588,12 +513,9 @@ public class DonHangRepository : IDonHangRepository
         var cartSql = $@"
             SELECT c.MaChiTietGH,c.MaTacPham,c.SoLuong,t.Gia,t.TrangThai,
                    CASE WHEN t.MaYeuCauVeTranh IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END,
-                   CASE WHEN ((NOT EXISTS (SELECT 1 FROM BanQuyen b0 WHERE b0.MaTacPham=t.MaTacPham)
-                                  AND t.NgayTao<@EnforcementStart)
-                              OR EXISTS (SELECT 1 FROM BanQuyen b WHERE b.MaTacPham=t.MaTacPham
-                                         AND b.BiChanBan=0
-                                         AND (b.TrangThai=2 OR ((t.NgayTao<@EnforcementStart OR b.LaDuLieuCu=1)
-                                              AND b.TrangThai IN (0,1,5)))))
+                   CASE WHEN NOT EXISTS (SELECT 1 FROM BanQuyen b
+                                         WHERE b.MaTacPham=t.MaTacPham
+                                           AND ISNULL(b.BiChanBan,0)=1)
                         THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END
             FROM GioHang g WITH (UPDLOCK,HOLDLOCK)
             INNER JOIN ChiTietGioHang c WITH (UPDLOCK,HOLDLOCK) ON c.MaGioHang=g.MaGioHang
@@ -602,7 +524,6 @@ public class DonHangRepository : IDonHangRepository
             ORDER BY c.MaTacPham;";
         await using var cartCommand = new SqlCommand(cartSql, connection, transaction);
         cartCommand.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
-        cartCommand.Parameters.AddWithValue("@EnforcementStart", enforcementStart);
         for (var index = 0; index < requestedIds.Count; index++)
             cartCommand.Parameters.AddWithValue(parameterNames[index], requestedIds[index]);
 
@@ -618,7 +539,7 @@ public class DonHangRepository : IDonHangRepository
         return result;
     }
 
-    private sealed record CheckoutLine(int? CartLineId, int ArtworkId, int Quantity, decimal UnitPrice, byte Status, bool IsCommission, bool CopyrightSellable);
+    private sealed record CheckoutLine(int? CartLineId, int ArtworkId, int Quantity, decimal UnitPrice, byte Status, bool IsCommission, bool CopyrightNotBlocked);
 
     private DonHang MapToDonHang(SqlDataReader reader)
     {

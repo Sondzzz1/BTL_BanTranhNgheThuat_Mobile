@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../../services/api';
-import { adminService, TacPhamHoaSiResponse } from '../../services/adminService';
+import {
+    adminService,
+    AdminArtworkFilterOption,
+    TacPhamHoaSiResponse,
+} from '../../services/adminService';
 import { formatVnd } from '../../utils/currency';
 import './AdminArt.css';
 
@@ -18,6 +22,28 @@ const STATUS_CLASS: Record<number, string> = {
     2: 'shipped',
     3: 'canceled',
     99: 'canceled',
+};
+
+const PAGE_SIZE = 20;
+
+type ArtworkFilters = {
+    keyword: string;
+    maHoaSi: string;
+    maDanhMuc: string;
+    trangThai: string;
+    loaiPhatHanh: string;
+    tonKho: string;
+    sapXep: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc' | 'artist';
+};
+
+const DEFAULT_ARTWORK_FILTERS: ArtworkFilters = {
+    keyword: '',
+    maHoaSi: '',
+    maDanhMuc: '',
+    trangThai: '',
+    loaiPhatHanh: '',
+    tonKho: '',
+    sapXep: 'newest',
 };
 
 interface TacPhamChinhSuaResponse {
@@ -64,7 +90,11 @@ const AdminArt: React.FC = () => {
     const [artworks, setArtworks] = useState<TacPhamHoaSiResponse[]>([]);
     const [edits, setEdits] = useState<TacPhamChinhSuaResponse[]>([]);
     const [loading, setLoading] = useState(true);
-    const [statusFilter, setStatusFilter] = useState<number>(-1);
+    const [filters, setFilters] = useState<ArtworkFilters>(DEFAULT_ARTWORK_FILTERS);
+    const [artists, setArtists] = useState<AdminArtworkFilterOption[]>([]);
+    const [categories, setCategories] = useState<AdminArtworkFilterOption[]>([]);
+    const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: PAGE_SIZE, totalItems: 0, totalPages: 0 });
+    const [groupByArtist, setGroupByArtist] = useState(false);
     const [selectedArtwork, setSelectedArtwork] = useState<TacPhamHoaSiResponse | null>(null);
     const [selectedArtworkDetail, setSelectedArtworkDetail] = useState<ArtworkDetailResponse | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
@@ -72,23 +102,71 @@ const AdminArt: React.FC = () => {
 
     useEffect(() => {
         if (activeTab === 'artworks') {
-            loadArtworks();
+            void loadArtworks(1);
+            void loadFilterOptions();
         } else {
             loadEdits();
         }
+        // Bộ lọc chỉ được áp dụng khi Admin nhấn nút "Lọc"; không tự tải lại khi đang nhập.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
 
-    const loadArtworks = async () => {
+    const loadFilterOptions = async () => {
+        try {
+            const data = await adminService.getBoLocTacPhamQuanLy();
+            setArtists(data.hoaSi);
+            setCategories(data.danhMuc);
+        } catch (error) {
+            // Danh sách vẫn dùng được khi một bộ lọc phụ chưa tải được.
+            console.error('Không thể tải dữ liệu bộ lọc tác phẩm:', error);
+        }
+    };
+
+    const loadArtworks = async (page = pageInfo.page, activeFilters = filters) => {
         setLoading(true);
         try {
-            const data = await adminService.getArtworks();
-            setArtworks(data);
+            const data = await adminService.getTacPhamQuanLy({
+                keyword: activeFilters.keyword.trim() || undefined,
+                maHoaSi: activeFilters.maHoaSi ? Number(activeFilters.maHoaSi) : undefined,
+                maDanhMuc: activeFilters.maDanhMuc ? Number(activeFilters.maDanhMuc) : undefined,
+                trangThai: activeFilters.trangThai ? Number(activeFilters.trangThai) : undefined,
+                laTacPhamDocBan: activeFilters.loaiPhatHanh === 'doc-ban'
+                    ? true
+                    : activeFilters.loaiPhatHanh === 'nhieu-ban'
+                        ? false
+                        : undefined,
+                tonKho: activeFilters.tonKho as 'con_hang' | 'sap_het' | 'het_hang' || undefined,
+                sapXep: activeFilters.sapXep,
+                page,
+                pageSize: PAGE_SIZE,
+            });
+            setArtworks(data.items);
+            setPageInfo({
+                page: data.page,
+                pageSize: data.pageSize,
+                totalItems: data.totalItems,
+                totalPages: data.totalPages,
+            });
         } catch (error) {
             console.error('Error loading artworks:', error);
             alert('Không thể tải danh sách tác phẩm');
         } finally {
             setLoading(false);
         }
+    };
+
+    const applyFilters = () => void loadArtworks(1);
+
+    const clearFilters = () => {
+        setFilters(DEFAULT_ARTWORK_FILTERS);
+        void loadArtworks(1, DEFAULT_ARTWORK_FILTERS);
+    };
+
+    const refreshArtworkList = async () => {
+        const targetPage = artworks.length === 1 && pageInfo.page > 1
+            ? pageInfo.page - 1
+            : pageInfo.page;
+        await loadArtworks(targetPage);
     };
 
     const loadEdits = async () => {
@@ -112,7 +190,7 @@ const AdminArt: React.FC = () => {
             await adminService.approveArtwork(id, true);
             setSelectedArtwork(null);
             setSelectedArtworkDetail(null);
-            await loadArtworks();
+            await refreshArtworkList();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Có lỗi xảy ra khi duyệt tác phẩm.');
         }
@@ -126,7 +204,7 @@ const AdminArt: React.FC = () => {
             await adminService.duyetTacPham(id, { pheDuyet: false, lyDo });
             setSelectedArtwork(null);
             setSelectedArtworkDetail(null);
-            await loadArtworks();
+            await refreshArtworkList();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Có lỗi xảy ra khi từ chối tác phẩm.');
         }
@@ -199,7 +277,7 @@ const AdminArt: React.FC = () => {
         if (!window.confirm('Ẩn tác phẩm này khỏi cửa hàng?')) return;
         try {
             await apiClient.put(`/admin/tac-pham/${id}/hide`);
-            await loadArtworks();
+            await refreshArtworkList();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Không thể ẩn tác phẩm');
         }
@@ -209,7 +287,7 @@ const AdminArt: React.FC = () => {
         if (!window.confirm('Mở hiển thị tác phẩm trở lại?')) return;
         try {
             await apiClient.put(`/admin/tac-pham/${id}/show`);
-            await loadArtworks();
+            await refreshArtworkList();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Không thể mở hiển thị tác phẩm');
         }
@@ -219,7 +297,7 @@ const AdminArt: React.FC = () => {
         if (!window.confirm('Xoá vĩnh viễn tác phẩm này?')) return;
         try {
             await adminService.xoaTacPham(id);
-            await loadArtworks();
+            await refreshArtworkList();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Không thể xoá tác phẩm');
         }
@@ -264,11 +342,79 @@ const AdminArt: React.FC = () => {
         return date.toLocaleString('vi-VN');
     };
 
-    const filteredArtworks = artworks.filter((art) =>
-        statusFilter === -1 ? true : art.trangThai === statusFilter
-    );
+    const artworksByArtist = artworks.reduce<Record<string, TacPhamHoaSiResponse[]>>((groups, artwork) => {
+        const artistName = artwork.tenHoaSi || 'Chưa xác định họa sĩ';
+        if (!groups[artistName]) groups[artistName] = [];
+        groups[artistName].push(artwork);
+        return groups;
+    }, {});
 
-    const countByStatus = (s: number) => artworks.filter((a) => a.trangThai === s).length;
+    const renderArtworkRow = (artwork: TacPhamHoaSiResponse) => (
+        <tr key={artwork.maTacPham}>
+            <td>
+                <img
+                    src={artwork.hinhAnh || '/assets/images/no-image.svg'}
+                    alt={artwork.tenTacPham}
+                    style={{ width: '80px', height: '80px', objectFit: 'cover' }}
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/assets/images/no-image.svg';
+                    }}
+                />
+            </td>
+            <td>
+                <strong>{artwork.tenTacPham}</strong>
+                <br />
+                <small style={{ color: '#64748b' }}>Mã #{artwork.maTacPham} · {artwork.laTacPhamDocBan ? 'Độc bản' : 'Nhiều bản'}</small>
+            </td>
+            <td>{artwork.tenDanhMuc || '-'}</td>
+            <td>{artwork.tenHoaSi || '-'}</td>
+            <td>{formatPrice(artwork.gia)}</td>
+            <td>
+                <span className={`status ${STATUS_CLASS[artwork.trangThai] || ''}`}>
+                    {STATUS_TEXT[artwork.trangThai] || artwork.trangThaiText}
+                </span>
+                <small className="artwork-stock">Tồn: {artwork.soLuong}</small>
+            </td>
+            <td>
+                <button
+                    className="artwork-detail-btn"
+                    onClick={() => openArtworkDetail(artwork)}
+                    title={artwork.trangThai === 0 ? 'Xem đầy đủ trước khi duyệt' : 'Xem chi tiết tác phẩm'}
+                >
+                    <i className="ti-eye"></i> {artwork.trangThai === 0 ? 'Xem & duyệt' : 'Chi tiết'}
+                </button>
+                {artwork.trangThai === 0 && (
+                    <span className="review-first-hint">Xem chi tiết trước khi xử lý</span>
+                )}
+                {artwork.trangThai === 1 && (
+                    <button
+                        className="reject-btn"
+                        onClick={() => handleHide(artwork.maTacPham)}
+                        title="Ẩn tác phẩm"
+                    >
+                        <i className="ti-eye"></i> Ẩn
+                    </button>
+                )}
+                {artwork.trangThai === 2 && (
+                    <button
+                        className="approve-btn"
+                        onClick={() => handleShow(artwork.maTacPham)}
+                        title="Hiển thị lại"
+                    >
+                        <i className="ti-eye"></i> Hiển thị
+                    </button>
+                )}
+                <button
+                    className="delete-btn"
+                    onClick={() => handleDelete(artwork.maTacPham)}
+                    title="Xoá vĩnh viễn"
+                    style={{ marginLeft: 6 }}
+                >
+                    <i className="ti-trash"></i>
+                </button>
+            </td>
+        </tr>
+    );
 
     const pendingEdits = edits.filter(e => e.trangThai === 0);
     const approvedEdits = edits.filter(e => e.trangThai === 1);
@@ -292,7 +438,10 @@ const AdminArt: React.FC = () => {
                 <h4>
                     <i className="ti-image"></i> Quản Lý Tác Phẩm
                 </h4>
-                <button className="btn-refresh" onClick={activeTab === 'artworks' ? loadArtworks : loadEdits}>
+                <button
+                    className="btn-refresh"
+                    onClick={() => activeTab === 'artworks' ? void loadArtworks(pageInfo.page) : void loadEdits()}
+                >
                     <i className="ti-reload"></i> Làm mới
                 </button>
             </div>
@@ -318,7 +467,7 @@ const AdminArt: React.FC = () => {
                         fontSize: '15px'
                     }}
                 >
-                    <i className="ti-image"></i> Duyệt Tác Phẩm ({artworks.length})
+                    <i className="ti-image"></i> Duyệt Tác Phẩm ({pageInfo.totalItems})
                 </button>
                 <button
                     onClick={() => setActiveTab('edits')}
@@ -341,27 +490,114 @@ const AdminArt: React.FC = () => {
             {/* Tab Content: Artworks */}
             {activeTab === 'artworks' && (
                 <>
-                    <div className="filter-bar">
-                        <div className="filter-item">
-                            <label>Trạng thái:</label>
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(Number(e.target.value))}
-                            >
-                                <option value={-1}>Tất cả ({artworks.length})</option>
-                                <option value={0}>Chờ duyệt ({countByStatus(0)})</option>
-                                <option value={1}>Đang bán ({countByStatus(1)})</option>
-                                <option value={2}>Đang ẩn ({countByStatus(2)})</option>
-                                <option value={3}>Từ chối ({countByStatus(3)})</option>
-                            </select>
+                    <div className="artwork-management-toolbar">
+                        <div className="artwork-filter-grid">
+                            <label className="artwork-search-field">
+                                <span>Tìm kiếm</span>
+                                <input
+                                    value={filters.keyword}
+                                    onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
+                                    onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+                                    placeholder="Tên tranh, họa sĩ, danh mục..."
+                                />
+                            </label>
+                            <label>
+                                <span>Họa sĩ</span>
+                                <select
+                                    value={filters.maHoaSi}
+                                    onChange={(e) => setFilters({ ...filters, maHoaSi: e.target.value })}
+                                >
+                                    <option value="">Tất cả họa sĩ</option>
+                                    {artists.map((artist) => <option key={artist.id} value={artist.id}>{artist.ten}</option>)}
+                                </select>
+                            </label>
+                            <label>
+                                <span>Danh mục</span>
+                                <select
+                                    value={filters.maDanhMuc}
+                                    onChange={(e) => setFilters({ ...filters, maDanhMuc: e.target.value })}
+                                >
+                                    <option value="">Tất cả danh mục</option>
+                                    {categories.map((category) => <option key={category.id} value={category.id}>{category.ten}</option>)}
+                                </select>
+                            </label>
+                            <label>
+                                <span>Trạng thái</span>
+                                <select
+                                    value={filters.trangThai}
+                                    onChange={(e) => setFilters({ ...filters, trangThai: e.target.value })}
+                                >
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="0">Chờ duyệt</option>
+                                    <option value="1">Đang bán</option>
+                                    <option value="2">Đang ẩn</option>
+                                    <option value="3">Từ chối</option>
+                                    <option value="99">Đã xóa bởi họa sĩ</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Phát hành</span>
+                                <select
+                                    value={filters.loaiPhatHanh}
+                                    onChange={(e) => setFilters({ ...filters, loaiPhatHanh: e.target.value })}
+                                >
+                                    <option value="">Độc bản & nhiều bản</option>
+                                    <option value="doc-ban">Tranh độc bản</option>
+                                    <option value="nhieu-ban">Tranh nhiều bản</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Tồn kho</span>
+                                <select
+                                    value={filters.tonKho}
+                                    onChange={(e) => setFilters({ ...filters, tonKho: e.target.value })}
+                                >
+                                    <option value="">Tất cả tồn kho</option>
+                                    <option value="con_hang">Còn hàng</option>
+                                    <option value="sap_het">Sắp hết (1–3)</option>
+                                    <option value="het_hang">Hết hàng</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Sắp xếp</span>
+                                <select
+                                    value={filters.sapXep}
+                                    onChange={(e) => setFilters({ ...filters, sapXep: e.target.value as ArtworkFilters['sapXep'] })}
+                                >
+                                    <option value="newest">Mới nhất</option>
+                                    <option value="oldest">Cũ nhất</option>
+                                    <option value="artist">Theo tên họa sĩ</option>
+                                    <option value="price_asc">Giá tăng dần</option>
+                                    <option value="price_desc">Giá giảm dần</option>
+                                    <option value="stock_asc">Tồn kho tăng dần</option>
+                                    <option value="stock_desc">Tồn kho giảm dần</option>
+                                </select>
+                            </label>
                         </div>
+                        <div className="artwork-toolbar-actions">
+                            <button className="approve-btn" onClick={applyFilters}><i className="ti-search"></i> Lọc</button>
+                            <button className="artwork-reset-btn" onClick={clearFilters}>Đặt lại</button>
+                            <label className="artwork-group-toggle">
+                                <input
+                                    type="checkbox"
+                                    checked={groupByArtist}
+                                    onChange={(e) => setGroupByArtist(e.target.checked)}
+                                />
+                                Nhóm theo họa sĩ
+                            </label>
+                        </div>
+                    </div>
+
+                    <div className="artwork-list-summary">
+                        Hiển thị {artworks.length === 0 ? 0 : (pageInfo.page - 1) * pageInfo.pageSize + 1}–{Math.min(pageInfo.page * pageInfo.pageSize, pageInfo.totalItems)} / {pageInfo.totalItems} tác phẩm
+                        {groupByArtist && ' · Nhóm trong trang hiện tại'}
                     </div>
 
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '40px' }}>
                             <p>Đang tải dữ liệu...</p>
                         </div>
-                    ) : filteredArtworks.length === 0 ? (
+                    ) : artworks.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '40px' }}>
                             <p>Không tìm thấy tác phẩm nào.</p>
                         </div>
@@ -379,70 +615,23 @@ const AdminArt: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filteredArtworks.map((artwork) => (
-                                    <tr key={artwork.maTacPham}>
-                                        <td>
-                                            <img
-                                                src={artwork.hinhAnh || '/assets/images/no-image.svg'}
-                                                alt={artwork.tenTacPham}
-                                                style={{ width: '80px', height: '80px', objectFit: 'cover' }}
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src =
-                                                        '/assets/images/no-image.svg';
-                                                }}
-                                            />
-                                        </td>
-                                        <td>{artwork.tenTacPham}</td>
-                                        <td>{artwork.tenDanhMuc || '-'}</td>
-                                        <td>{artwork.tenHoaSi || '-'}</td>
-                                        <td>{formatPrice(artwork.gia)}</td>
-                                        <td>
-                                            <span className={`status ${STATUS_CLASS[artwork.trangThai] || ''}`}>
-                                                {STATUS_TEXT[artwork.trangThai] || artwork.trangThaiText}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <button
-                                                className="artwork-detail-btn"
-                                                onClick={() => openArtworkDetail(artwork)}
-                                                title={artwork.trangThai === 0 ? 'Xem đầy đủ trước khi duyệt' : 'Xem chi tiết tác phẩm'}
-                                            >
-                                                <i className="ti-eye"></i> {artwork.trangThai === 0 ? 'Xem & duyệt' : 'Chi tiết'}
-                                            </button>
-                                            {artwork.trangThai === 0 && (
-                                                <span className="review-first-hint">Xem chi tiết trước khi xử lý</span>
-                                            )}
-                                            {artwork.trangThai === 1 && (
-                                                <button
-                                                    className="reject-btn"
-                                                    onClick={() => handleHide(artwork.maTacPham)}
-                                                    title="Ẩn tác phẩm"
-                                                >
-                                                    <i className="ti-eye"></i> Ẩn
-                                                </button>
-                                            )}
-                                            {artwork.trangThai === 2 && (
-                                                <button
-                                                    className="approve-btn"
-                                                    onClick={() => handleShow(artwork.maTacPham)}
-                                                    title="Hiển thị lại"
-                                                >
-                                                    <i className="ti-eye"></i> Hiển thị
-                                                </button>
-                                            )}
-                                            <button
-                                                className="delete-btn"
-                                                onClick={() => handleDelete(artwork.maTacPham)}
-                                                title="Xoá vĩnh viễn"
-                                                style={{ marginLeft: 6 }}
-                                            >
-                                                <i className="ti-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {groupByArtist
+                                    ? Object.keys(artworksByArtist).sort((a, b) => a.localeCompare(b, 'vi')).map((artistName) => (
+                                        <React.Fragment key={artistName}>
+                                            <tr className="artwork-artist-group"><td colSpan={7}><i className="ti-user"></i> {artistName} ({artworksByArtist[artistName].length})</td></tr>
+                                            {artworksByArtist[artistName].map(renderArtworkRow)}
+                                        </React.Fragment>
+                                    ))
+                                    : artworks.map(renderArtworkRow)}
                             </tbody>
                         </table>
+                    )}
+                    {pageInfo.totalPages > 1 && (
+                        <nav className="artwork-pagination" aria-label="Phân trang tác phẩm">
+                            <button disabled={pageInfo.page <= 1} onClick={() => void loadArtworks(pageInfo.page - 1)}>← Trước</button>
+                            <span>Trang {pageInfo.page} / {pageInfo.totalPages}</span>
+                            <button disabled={pageInfo.page >= pageInfo.totalPages} onClick={() => void loadArtworks(pageInfo.page + 1)}>Sau →</button>
+                        </nav>
                     )}
                 </>
             )}

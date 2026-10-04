@@ -46,6 +46,12 @@ export default function ProductCard({
           <FavoriteButton productId={product.maTacPham} size="small" onToggle={onToggleFavorite ? () => onToggleFavorite() : undefined} />
         </View>
 
+        {product.laTacPhamDocBan && (
+          <View style={styles.declaredExclusiveBadge}>
+            <Text style={styles.declaredExclusiveText}>Khai báo độc bản</Text>
+          </View>
+        )}
+
         {isOutOfStock && (
           <View style={styles.outOfStockBadge}>
             <Text style={styles.outOfStockText}>Hết hàng</Text>
@@ -113,6 +119,21 @@ const styles = StyleSheet.create({
     top: 8,
     right: 8,
     zIndex: 2,
+  },
+  declaredExclusiveBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    maxWidth: '72%',
+    backgroundColor: 'rgba(124, 45, 18, 0.92)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 5,
+  },
+  declaredExclusiveText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '800',
   },
   outOfStockBadge: {
     position: 'absolute',

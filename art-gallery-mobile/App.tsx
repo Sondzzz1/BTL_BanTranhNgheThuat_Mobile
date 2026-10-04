@@ -40,6 +40,7 @@ import ArtServicesScreen from './app/services/ArtServicesScreen';
 import CustomArtIntroScreen from './app/services/CustomArtIntroScreen';
 import ConsultationIntroScreen from './app/services/ConsultationIntroScreen';
 import MyCertificatesScreen from './app/certificates/MyCertificatesScreen';
+import CertificateVerificationScreen from './app/certificates/CertificateVerificationScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -273,6 +274,11 @@ function MainStackNavigator() {
         name="MyCertificates"
         component={MyCertificatesScreen}
         options={{ title: 'Chứng nhận sở hữu' }}
+      />
+      <Stack.Screen
+        name="CertificateVerification"
+        component={CertificateVerificationScreen}
+        options={{ title: 'Xác minh chứng nhận' }}
       />
     </Stack.Navigator>
   );

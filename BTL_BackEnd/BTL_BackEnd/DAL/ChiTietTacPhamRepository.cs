@@ -178,23 +178,56 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
     // ================================================================
     // ADMIN - DUYỆT CHI TIẾT
     // ================================================================
-    public async Task<bool> Duyet(int maTacPham, int maNguoiDuyet, bool pheDuyet, string? lyDoTuChoi)
+    public async Task<bool> Duyet(int maTacPham, int maNguoiDuyet, bool pheDuyet, string? lyDoTuChoi, ThongBao? thongBao = null)
     {
-        using var connection = new SqlConnection(_connectionString);
+        await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+        try
+        {
+            int? accountId = null;
+            if (thongBao is not null)
+            {
+                await using var owner = new SqlCommand(@"
+                    SELECT h.MaTaiKhoan FROM TacPham t WITH (UPDLOCK,HOLDLOCK)
+                    INNER JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi
+                    WHERE t.MaTacPham=@MaTacPham AND t.MaYeuCauVeTranh IS NULL;", connection, transaction);
+                owner.Parameters.AddWithValue("@MaTacPham", maTacPham);
+                var value = await owner.ExecuteScalarAsync();
+                if (value is null || value == DBNull.Value)
+                    throw new InvalidOperationException("Không tìm được tài khoản chủ sở hữu tác phẩm");
+                accountId = Convert.ToInt32(value);
+            }
 
-        const string sql = @"UPDATE c SET TrangThai=@TrangThai,
-            LyDoTuChoi=@LyDoTuChoi,NgayDuyet=SYSUTCDATETIME(),MaNguoiDuyet=@MaNguoiDuyet
-            FROM ChiTietTacPham c INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
-            WHERE c.MaTacPham=@MaTacPham AND c.TrangThai=0 AND t.MaYeuCauVeTranh IS NULL;";
-        using var command = new SqlCommand(sql, connection);
+            const string sql = @"UPDATE c SET TrangThai=@TrangThai,
+                LyDoTuChoi=@LyDoTuChoi,NgayDuyet=SYSUTCDATETIME(),MaNguoiDuyet=@MaNguoiDuyet
+                FROM ChiTietTacPham c INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
+                WHERE c.MaTacPham=@MaTacPham AND c.TrangThai=0 AND t.MaYeuCauVeTranh IS NULL;";
+            await using var command = new SqlCommand(sql, connection, transaction);
 
-        command.Parameters.AddWithValue("@MaTacPham", maTacPham);
-        command.Parameters.AddWithValue("@MaNguoiDuyet", maNguoiDuyet);
-        command.Parameters.AddWithValue("@TrangThai", pheDuyet ? 1 : 2);
-        command.Parameters.AddWithValue("@LyDoTuChoi", (object?)lyDoTuChoi ?? DBNull.Value);
+            command.Parameters.AddWithValue("@MaTacPham", maTacPham);
+            command.Parameters.AddWithValue("@MaNguoiDuyet", maNguoiDuyet);
+            command.Parameters.AddWithValue("@TrangThai", pheDuyet ? 1 : 2);
+            command.Parameters.AddWithValue("@LyDoTuChoi", (object?)lyDoTuChoi ?? DBNull.Value);
 
-        return await command.ExecuteNonQueryAsync() == 1;
+            if (await command.ExecuteNonQueryAsync() != 1)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+            if (thongBao is not null)
+            {
+                thongBao.MaTaiKhoan = accountId!.Value;
+                await ThongBaoSql.InsertAsync(connection, transaction, thongBao);
+            }
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     // ================================================================

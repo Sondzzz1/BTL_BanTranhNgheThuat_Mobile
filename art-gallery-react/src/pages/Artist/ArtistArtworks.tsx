@@ -34,6 +34,7 @@ const ArtistArtworks: React.FC = () => {
     gia: '',
     maDanhMuc: '',
     soLuong: '1',
+    loaiPhatHanh: 'exclusive' as 'exclusive' | 'multiple',
     moTa: '',
     kichThuoc: '',
     chatLieu: '',
@@ -77,6 +78,7 @@ const ArtistArtworks: React.FC = () => {
         gia: artwork.gia.toString(),
         maDanhMuc: cat ? cat.maDanhMuc.toString() : (categories.length > 0 ? categories[0].maDanhMuc.toString() : ''),
         soLuong: artwork.soLuong.toString(),
+        loaiPhatHanh: artwork.laTacPhamDocBan ? 'exclusive' : 'multiple',
         moTa: artwork.moTa || '',
         kichThuoc: artwork.kichThuoc || '',
         chatLieu: artwork.chatLieu || '',
@@ -110,6 +112,7 @@ const ArtistArtworks: React.FC = () => {
         gia: '',
         maDanhMuc: categories.length > 0 ? categories[0].maDanhMuc.toString() : '',
         soLuong: '1',
+        loaiPhatHanh: 'exclusive',
         moTa: '',
         kichThuoc: '',
         chatLieu: '',
@@ -189,13 +192,27 @@ const ArtistArtworks: React.FC = () => {
         tenTacPham: formData.tenTacPham,
         gia: parseFloat(formData.gia),
         maDanhMuc: formData.maDanhMuc ? parseInt(formData.maDanhMuc) : undefined,
-        soLuong: parseInt(formData.soLuong),
+        soLuong: formData.loaiPhatHanh === 'exclusive' ? 1 : parseInt(formData.soLuong, 10),
+        laTacPhamDocBan: formData.loaiPhatHanh === 'exclusive',
         hinhAnh: urls[0] || '',
         moTa: formData.moTa,
         kichThuoc: formData.kichThuoc,
         chatLieu: formData.chatLieu,
         chatLieuKhung: formData.chatLieuKhung,
       };
+
+      if (!Number.isInteger(payload.soLuong) || payload.soLuong <= 0) {
+        alert('Số lượng phát hành phải là số nguyên lớn hơn 0.');
+        return;
+      }
+      if (!editingArtwork && payload.laTacPhamDocBan && payload.soLuong !== 1) {
+        alert('Tranh độc bản phải được tạo với số lượng bằng 1.');
+        return;
+      }
+      if (!editingArtwork && !payload.laTacPhamDocBan && payload.soLuong < 2) {
+        alert('Tranh nhiều bản cần khai báo số lượng ban đầu từ 2 trở lên.');
+        return;
+      }
 
       let artworkId: number;
       if (editingArtwork) {
@@ -347,6 +364,7 @@ const ArtistArtworks: React.FC = () => {
                 <th>Tên tranh</th>
                 <th>Danh mục</th>
                 <th>Giá bán</th>
+                <th>Phát hành</th>
                 <th>Số lượng</th>
                 <th>Trạng thái</th>
                 <th>Hành động</th>
@@ -374,6 +392,7 @@ const ArtistArtworks: React.FC = () => {
                     <td><strong>{artwork.tenTacPham}</strong></td>
                     <td>{artwork.tenDanhMuc}</td>
                     <td>{formatPrice(artwork.gia)}</td>
+                    <td><strong>{artwork.laTacPhamDocBan ? 'Độc bản' : 'Nhiều bản'}</strong><br /><small>Ban đầu: {artwork.soLuongBanDau ?? 'chưa đối soát'}</small></td>
                     <td>{artwork.soLuong}</td>
                     <td>
                       <span className={`status ${st.cls}`} title={isRejected ? (artwork.lyDo || '') : ''}>
@@ -540,10 +559,34 @@ const ArtistArtworks: React.FC = () => {
 
                 <div className="form-column">
                   <div className="form-group">
-                    <label>Số lượng: <span style={{ color: 'red' }}>*</span></label>
+                    <label>Loại phát hành: <span style={{ color: 'red' }}>*</span></label>
+                    <select
+                      value={formData.loaiPhatHanh}
+                      disabled={Boolean(editingArtwork)}
+                      onChange={(e) => setFormData({
+                        ...formData,
+                        loaiPhatHanh: e.target.value as 'exclusive' | 'multiple',
+                        soLuong: e.target.value === 'exclusive' ? '1' : (formData.soLuong === '1' ? '2' : formData.soLuong),
+                      })}
+                    >
+                      <option value="exclusive">Tranh độc bản</option>
+                      <option value="multiple">Tranh nhiều bản</option>
+                    </select>
+                    <small style={{ display: 'block', marginTop: 6, color: '#667085', lineHeight: 1.45 }}>
+                      {formData.loaiPhatHanh === 'exclusive'
+                        ? 'Chỉ có một hiện vật. Khai báo cần được Admin xác minh trước khi cấp chứng nhận sở hữu.'
+                        : 'Một mẫu có nhiều hiện vật phát hành. Người mua sở hữu bản đã mua, không sở hữu toàn bộ mẫu tác phẩm.'}
+                    </small>
+                    {editingArtwork && <small style={{ display: 'block', marginTop: 4, color: '#a15c00' }}>Loại phát hành và số lượng ban đầu đã được chốt khi tạo. Nếu khai báo sai, hãy gửi căn cứ cho Admin để hiệu chỉnh và xác minh lại.</small>}
+                  </div>
+
+                  <div className="form-group">
+                    <label>{formData.loaiPhatHanh === 'exclusive' ? 'Số lượng (cố định):' : 'Số lượng phát hành:'} <span style={{ color: 'red' }}>*</span></label>
                     <input 
                       type="number" 
+                      min={formData.loaiPhatHanh === 'exclusive' ? 1 : 2}
                       value={formData.soLuong}
+                      disabled={formData.loaiPhatHanh === 'exclusive'}
                       onChange={(e) => setFormData({ ...formData, soLuong: e.target.value })}
                       required 
                     />

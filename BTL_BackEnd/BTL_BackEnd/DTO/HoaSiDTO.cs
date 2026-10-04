@@ -83,6 +83,9 @@ public class TacPhamHoaSiResponse
     public string? TenDanhMuc { get; set; }
     public decimal Gia { get; set; }
     public int SoLuong { get; set; }
+    public int? SoLuongBanDau { get; set; }
+    public bool LaTacPhamDocBan { get; set; }
+    public string LoaiPhatHanhText => LaTacPhamDocBan ? "Tranh độc bản" : "Tranh nhiều bản";
     public string? MoTa { get; set; }
     public string? HinhAnh { get; set; }
     public string? KichThuoc { get; set; }
@@ -95,12 +98,23 @@ public class TacPhamHoaSiResponse
     public string? LyDo { get; set; }
 }
 
+public class TacPhamAdminPageResponse
+{
+    public List<TacPhamHoaSiResponse> Items { get; set; } = new();
+    public int TotalItems { get; set; }
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages => PageSize <= 0 ? 0 : (int)Math.Ceiling(TotalItems / (double)PageSize);
+}
+
 public class TaoTacPhamRequest
 {
     public string TenTacPham { get; set; } = null!;
     public int? MaDanhMuc { get; set; }
     public decimal Gia { get; set; }
     public int SoLuong { get; set; } = 1;
+    /// <summary>Được khai báo duy nhất tại thời điểm tạo. Không được suy ra từ tồn kho.</summary>
+    public bool LaTacPhamDocBan { get; set; }
     public string? MoTa { get; set; }
     public string? HinhAnh { get; set; }
     public string? KichThuoc { get; set; }

@@ -74,6 +74,12 @@ public class BaiVietRepository : IBaiVietRepository
         return await command.ExecuteNonQueryAsync() == 1;
     }
 
+    public Task<bool> ReviewWithNotification(int maBaiViet, bool pheDuyet, string? lyDo) =>
+        ChangeStatusWithNotification(maBaiViet, pheDuyet ? (byte)2 : (byte)3, lyDo, onlyPending: true);
+
+    public Task<bool> ArchiveWithNotification(int maBaiViet) =>
+        ChangeStatusWithNotification(maBaiViet, 4, null, onlyPending: false);
+
     public async Task<bool> Delete(int id)
     {
         using var connection = new SqlConnection(_connectionString); await connection.OpenAsync();
@@ -198,6 +204,68 @@ public class BaiVietRepository : IBaiVietRepository
     {
         using var connection=new SqlConnection(_connectionString); await connection.OpenAsync(); using var command=new SqlCommand(sql,connection); configure?.Invoke(command);
         var result=new List<BaiViet>(); using var reader=await command.ExecuteReaderAsync(); while(await reader.ReadAsync()) result.Add(Map(reader)); return result;
+    }
+
+    private async Task<bool> ChangeStatusWithNotification(int maBaiViet, byte status, string? lyDo, bool onlyPending)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+        try
+        {
+            await using var get = new SqlCommand(@"
+                SELECT b.TieuDe,b.TrangThai,COALESCE(b.MaTaiKhoanTacGia,h.MaTaiKhoan),
+                       COALESCE(b.NgayCapNhat,b.NgayDang)
+                FROM BaiViet b WITH (UPDLOCK,HOLDLOCK)
+                LEFT JOIN HoaSi h ON h.MaHoaSi=b.MaHoaSi
+                WHERE b.MaBaiViet=@Id;", connection, transaction);
+            get.Parameters.AddWithValue("@Id", maBaiViet);
+            await using var reader = await get.ExecuteReaderAsync();
+            if (!await reader.ReadAsync()) return false;
+            var title = reader.GetString(0);
+            var oldStatus = reader.GetByte(1);
+            var accountId = reader.IsDBNull(2) ? (int?)null : reader.GetInt32(2);
+            var revision = reader.GetDateTime(3);
+            await reader.CloseAsync();
+            if (onlyPending && oldStatus != 1) return false;
+            if (!onlyPending && oldStatus == 4) { await transaction.CommitAsync(); return true; }
+            if (!accountId.HasValue)
+                throw new InvalidOperationException("Không tìm được tài khoản tác giả để gửi thông báo");
+
+            await using var update = new SqlCommand(@"
+                UPDATE BaiViet SET TrangThai=@Status,LyDo=@LyDo,
+                    NgayXuatBan=CASE WHEN @Status=2 THEN SYSUTCDATETIME() ELSE NULL END,
+                    NgayCapNhat=SYSUTCDATETIME()
+                WHERE MaBaiViet=@Id AND (@OnlyPending=0 OR TrangThai=1);", connection, transaction);
+            update.Parameters.AddWithValue("@Status", status);
+            update.Parameters.AddWithValue("@LyDo", (object?)lyDo ?? DBNull.Value);
+            update.Parameters.AddWithValue("@Id", maBaiViet);
+            update.Parameters.AddWithValue("@OnlyPending", onlyPending);
+            if (await update.ExecuteNonQueryAsync() != 1) { await transaction.RollbackAsync(); return false; }
+
+            var isPublished = status == 2;
+            var isArchived = status == 4;
+            await ThongBaoSql.InsertAsync(connection, transaction, new ThongBao
+            {
+                MaTaiKhoan = accountId.Value,
+                Loai = isPublished ? "ARTICLE_PUBLISHED" : isArchived ? "ARTICLE_ARCHIVED" : "ARTICLE_REJECTED",
+                TieuDe = isPublished ? "Bài viết đã được xuất bản" : isArchived ? "Bài viết đã được ẩn" : "Bài viết bị từ chối",
+                NoiDung = isPublished ? $"Bài viết “{title}” của bạn đã được xuất bản."
+                    : isArchived ? $"Bài viết “{title}” đã được ẩn khỏi hệ thống."
+                    : $"Bài viết “{title}” đã bị từ chối. Lý do: {lyDo}",
+                LoaiDoiTuong = "BaiViet",
+                MaDoiTuong = maBaiViet,
+                DuongDan = "/artist/articles",
+                EventKey = $"ARTICLE_STATUS:{maBaiViet}:{status}:{revision.Ticks}"
+            });
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
     private async Task<BaiViet?> QueryOne(string sql,int id)
     {

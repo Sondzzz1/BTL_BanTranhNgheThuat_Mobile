@@ -135,6 +135,18 @@ public class CopyrightController : ControllerBase
         });
     }
 
+    [HttpPost("admin/tac-pham/{artworkId:int}/dieu-chinh-phat-hanh")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> CorrectPublicationDeclaration(
+        int artworkId,
+        [FromBody] DieuChinhPhatHanhRequest request)
+    {
+        var accountId = JwtHelper.GetMaTaiKhoan(User);
+        if (!accountId.HasValue) return Unauthorized(new { message = "Token thiếu mã tài khoản" });
+        await _business.CorrectPublicationDeclaration(artworkId, accountId.Value, request);
+        return Ok(new { message = "Đã hiệu chỉnh loại phát hành. Hồ sơ đã xác minh trước đó (nếu có) phải được xác minh lại." });
+    }
+
     [HttpPost("admin/{id:int}/yeu-cau-bo-sung")]
     [Authorize(Roles = "Admin")]
     public Task<ActionResult> NeedInfo(int id, [FromBody] KiemDuyetBanQuyenRequest request) =>
@@ -197,6 +209,20 @@ public class CertificateController : ControllerBase
             : Unauthorized(new { message = "Token thiếu mã người dùng" });
     }
 
+    /// <summary>
+    /// Các tranh độc bản đã giao của chính khách hàng nhưng chưa có chứng nhận,
+    /// kèm điều kiện còn thiếu. Chỉ đọc, không kích hoạt cấp chứng nhận.
+    /// </summary>
+    [HttpGet("tinh-trang-cua-toi")]
+    [Authorize(Roles = "NguoiDung")]
+    public async Task<ActionResult> MyPendingStatuses()
+    {
+        var ownerId = JwtHelper.GetMaNguoiDung(User);
+        return ownerId.HasValue
+            ? Ok(await _business.GetPendingCertificates(ownerId.Value))
+            : Unauthorized(new { message = "Token thiếu mã người dùng" });
+    }
+
     [HttpGet("{id:int}")]
     [Authorize(Roles = "NguoiDung")]
     public async Task<ActionResult> Detail(int id)
@@ -232,7 +258,9 @@ public class CertificateController : ControllerBase
             LoaiTacPhamText = certificate.LoaiTacPhamText ?? string.Empty,
             TacGiaGoc = certificate.TacGiaGoc
         };
-        return File(_documents.CreatePdf(printable), "application/pdf", $"{certificate.MaChungNhan}.pdf");
+        // Không truyền tên tệp để trình duyệt/Safari hiển thị PDF trực tiếp thay vì
+        // cố tải xuống một attachment không có trình xem trong ứng dụng Mobile.
+        return File(_documents.CreatePdf(printable), "application/pdf");
     }
 
     [HttpGet("{id:int}/qr")]

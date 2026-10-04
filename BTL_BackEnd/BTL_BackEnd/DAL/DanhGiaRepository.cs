@@ -79,7 +79,7 @@ public class DanhGiaRepository : IDanhGiaRepository
         return await HasEligibleOrderLine(connection, null, maNguoiDung, maTacPham);
     }
 
-    public async Task<int> Create(int maNguoiDung, TaoDanhGiaRequest request)
+    public async Task<int> Create(int maNguoiDung, TaoDanhGiaRequest request, string? hinhAnhDanhGia = null)
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -101,12 +101,13 @@ public class DanhGiaRepository : IDanhGiaRepository
             const string insertSql = @"
                 INSERT INTO DanhGia(MaTacPham,MaNguoiDung,SoSao,NoiDung,HinhAnhDanhGia,NgayTao)
                 OUTPUT INSERTED.MaDanhGia
-                VALUES(@MaTacPham,@MaNguoiDung,@SoSao,@NoiDung,NULL,GETDATE());";
+                VALUES(@MaTacPham,@MaNguoiDung,@SoSao,@NoiDung,@HinhAnhDanhGia,GETDATE());";
             await using var insert = new SqlCommand(insertSql, connection, transaction);
             insert.Parameters.AddWithValue("@MaTacPham", request.MaTacPham);
             insert.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
             insert.Parameters.AddWithValue("@SoSao", request.DanhGia);
             insert.Parameters.AddWithValue("@NoiDung", (object?)request.BinhLuan ?? DBNull.Value);
+            insert.Parameters.AddWithValue("@HinhAnhDanhGia", (object?)hinhAnhDanhGia ?? DBNull.Value);
             var id = Convert.ToInt32(await insert.ExecuteScalarAsync());
             await transaction.CommitAsync();
             return id;
@@ -136,6 +137,41 @@ public class DanhGiaRepository : IDanhGiaRepository
         command.Parameters.AddWithValue("@MaDanhGia", maDanhGia);
         command.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
         return await command.ExecuteNonQueryAsync() == 1;
+    }
+
+    public async Task<(bool Updated, string? PreviousImageName)> UpdateWithImage(
+        int maDanhGia,
+        int maNguoiDung,
+        CapNhatDanhGiaRequest request,
+        string? hinhAnhDanhGia)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        const string sql = @"
+            UPDATE DanhGia
+            SET SoSao=@SoSao,NoiDung=@NoiDung,HinhAnhDanhGia=@HinhAnhDanhGia
+            OUTPUT DELETED.HinhAnhDanhGia
+            WHERE MaDanhGia=@MaDanhGia AND MaNguoiDung=@MaNguoiDung;";
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@SoSao", request.DanhGia);
+        command.Parameters.AddWithValue("@NoiDung", (object?)request.BinhLuan ?? DBNull.Value);
+        command.Parameters.AddWithValue("@HinhAnhDanhGia", (object?)hinhAnhDanhGia ?? DBNull.Value);
+        command.Parameters.AddWithValue("@MaDanhGia", maDanhGia);
+        command.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
+        await using var reader = await command.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return (false, null);
+        return (true, reader.IsDBNull(0) ? null : reader.GetString(0));
+    }
+
+    public async Task<string?> GetImageName(int maDanhGia)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        const string sql = "SELECT HinhAnhDanhGia FROM DanhGia WHERE MaDanhGia=@MaDanhGia;";
+        await using var command = new SqlCommand(sql, connection);
+        command.Parameters.AddWithValue("@MaDanhGia", maDanhGia);
+        var result = await command.ExecuteScalarAsync();
+        return result == null || result == DBNull.Value ? null : Convert.ToString(result);
     }
 
     public async Task<bool> Delete(int maDanhGia, int maNguoiDung)
@@ -189,9 +225,12 @@ public class DanhGiaRepository : IDanhGiaRepository
         return result.FirstOrDefault();
     }
 
-    private static DanhGiaResponse Map(SqlDataReader reader) => new()
+    private static DanhGiaResponse Map(SqlDataReader reader)
     {
-        MaDanhGia = reader.GetInt32(reader.GetOrdinal("MaDanhGia")),
+        var maDanhGia = reader.GetInt32(reader.GetOrdinal("MaDanhGia"));
+        return new DanhGiaResponse
+        {
+        MaDanhGia = maDanhGia,
         MaTacPham = reader.GetInt32(reader.GetOrdinal("MaTacPham")),
         TenTacPham = reader.GetString(reader.GetOrdinal("TenTacPham")),
         HinhAnhTacPham = reader.IsDBNull(reader.GetOrdinal("HinhAnhTacPham")) ? null : reader.GetString(reader.GetOrdinal("HinhAnhTacPham")),
@@ -199,7 +238,8 @@ public class DanhGiaRepository : IDanhGiaRepository
         TenNguoiDung = reader.GetString(reader.GetOrdinal("TenNguoiDung")),
         DanhGia = reader.GetInt32(reader.GetOrdinal("SoSao")),
         BinhLuan = reader.IsDBNull(reader.GetOrdinal("NoiDung")) ? null : reader.GetString(reader.GetOrdinal("NoiDung")),
-        HinhAnhDanhGia = reader.IsDBNull(reader.GetOrdinal("HinhAnhDanhGia")) ? null : reader.GetString(reader.GetOrdinal("HinhAnhDanhGia")),
+        HinhAnhDanhGia = reader.IsDBNull(reader.GetOrdinal("HinhAnhDanhGia")) ? null : $"/api/danh-gia/{maDanhGia}/hinh-anh",
         NgayDanhGia = reader.GetDateTime(reader.GetOrdinal("NgayTao"))
-    };
+        };
+    }
 }

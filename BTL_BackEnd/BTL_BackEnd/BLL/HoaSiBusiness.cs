@@ -40,7 +40,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         var hoaSi = await _hoaSiRepo.GetById(maHoaSi);
         if (hoaSi == null) return null;
 
-        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
+        var tacPhamList = await GetManagedArtworksForArtist(maHoaSi);
         var tongDoanhThu = await TinhTongDoanhThu(maHoaSi);
 
         return new HoSoHoaSiResponse
@@ -49,7 +49,7 @@ public class HoaSiBusiness : IHoaSiBusiness
             TenHoaSi = hoaSi.TenHoaSi,
             TieuSu = hoaSi.TieuSu,
             AnhDaiDien = hoaSi.AnhDaiDien,
-            SoTacPham = tacPhamList.Count,
+            SoTacPham = tacPhamList.Count(tp => tp.TrangThai != TacPhamStatus.Deleted),
             TongDoanhThu = tongDoanhThu
         };
     }
@@ -80,7 +80,9 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Tác phẩm
     public async Task<List<TacPhamHoaSiResponse>> GetTacPhamCuaToi(int maHoaSi)
     {
-        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
+        // Đây là danh sách quản lý riêng của họa sĩ, không phải marketplace.
+        // Vì vậy phải nhìn thấy cả tranh chờ duyệt, ẩn và bị từ chối.
+        var tacPhamList = await GetManagedArtworksForArtist(maHoaSi);
         var result = new List<TacPhamHoaSiResponse>();
 
         foreach (var tacPham in tacPhamList.Where(tp => tp.TrangThai != 99))
@@ -99,6 +101,8 @@ public class HoaSiBusiness : IHoaSiBusiness
                 TenDanhMuc = tenDanhMuc,
                 Gia = tacPham.Gia,
                 SoLuong = tacPham.SoLuong,
+                SoLuongBanDau = tacPham.SoLuongBanDau,
+                LaTacPhamDocBan = tacPham.LaTacPhamDocBan,
                 MoTa = tacPham.MoTa,
                 HinhAnh = tacPham.HinhAnh,
                 KichThuoc = tacPham.KichThuoc,
@@ -116,7 +120,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<TacPhamHoaSiResponse?> GetTacPhamById(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistRead(maTacPham);
         if (tacPham == null) return null;
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền xem tác phẩm này");
@@ -135,6 +139,8 @@ public class HoaSiBusiness : IHoaSiBusiness
             TenDanhMuc = tenDanhMuc,
             Gia = tacPham.Gia,
             SoLuong = tacPham.SoLuong,
+            SoLuongBanDau = tacPham.SoLuongBanDau,
+            LaTacPhamDocBan = tacPham.LaTacPhamDocBan,
             MoTa = tacPham.MoTa,
             HinhAnh = tacPham.HinhAnh,
             KichThuoc = tacPham.KichThuoc,
@@ -153,8 +159,7 @@ public class HoaSiBusiness : IHoaSiBusiness
             throw new ArgumentException("Tên tác phẩm không được để trống");
         if (request.Gia <= 0)
             throw new ArgumentException("Giá phải lớn hơn 0");
-        if (request.SoLuong < 0)
-            throw new ArgumentException("Số lượng không được âm");
+        ExclusiveArtworkPolicy.EnsureCreateDeclaration(request.LaTacPhamDocBan, request.SoLuong);
 
         var tacPham = new TacPham
         {
@@ -163,6 +168,8 @@ public class HoaSiBusiness : IHoaSiBusiness
             MaDanhMuc = request.MaDanhMuc,
             Gia = request.Gia,
             SoLuong = request.SoLuong,
+            SoLuongBanDau = request.SoLuong,
+            LaTacPhamDocBan = request.LaTacPhamDocBan,
             MoTa = request.MoTa?.Trim(),
             HinhAnh = request.HinhAnh?.Trim(),
             KichThuoc = request.KichThuoc?.Trim(),
@@ -184,10 +191,17 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (request.SoLuong < 0)
             throw new ArgumentException("Số lượng không được âm");
 
-        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistMutation(maTacPham);
         if (tacPham == null) return false;
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền sửa tác phẩm này");
+
+        // The initial publication declaration is intentionally immutable in the artist edit API.
+        // This prevents a many-edition artwork with one remaining unit from becoming "exclusive".
+        ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(
+            tacPham.LaTacPhamDocBan,
+            tacPham.SoLuongBanDau,
+            request.SoLuong);
 
         // Nếu tác phẩm đang bán (TrangThai = 1), lưu thay đổi vào bảng TacPhamChinhSua
         // để admin duyệt, KHÔNG thay đổi nội dung hiện tại
@@ -264,7 +278,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> XoaTacPham(int maHoaSi, int maTacPham)
     {
-        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistMutation(maTacPham);
         if (tacPham == null) return false;
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền xoá tác phẩm này");
@@ -279,7 +293,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> KhoiPhucTacPham(int maHoaSi, int maTacPham)
     {
-        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistMutation(maTacPham);
         if (tacPham == null) 
             return false;
             
@@ -296,7 +310,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<List<TacPhamHoaSiResponse>> GetTacPhamDaXoa(int maHoaSi)
     {
-        var tacPhams = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
+        var tacPhams = await GetManagedArtworksForArtist(maHoaSi);
         var result = new List<TacPhamHoaSiResponse>();
         
         foreach (var tp in tacPhams.Where(tp => tp.TrangThai == 99))
@@ -315,6 +329,8 @@ public class HoaSiBusiness : IHoaSiBusiness
                 TenDanhMuc = tenDanhMuc,
                 Gia = tp.Gia,
                 SoLuong = tp.SoLuong,
+                SoLuongBanDau = tp.SoLuongBanDau,
+                LaTacPhamDocBan = tp.LaTacPhamDocBan,
                 MoTa = tp.MoTa,
                 HinhAnh = tp.HinhAnh,
                 KichThuoc = tp.KichThuoc,
@@ -332,7 +348,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> CapNhatTrangThaiTacPham(int maHoaSi, int maTacPham, CapNhatTrangThaiTacPhamRequest request)
     {
-        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistMutation(maTacPham);
         if (tacPham == null) return false;
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền cập nhật trạng thái tác phẩm này");
@@ -352,7 +368,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<bool> GuiDuyetLaiTacPham(int maHoaSi, int maTacPham)
     {
-        var tacPham = await GetMarketplaceArtworkForArtistMutation(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistMutation(maTacPham);
         if (tacPham == null) 
             return false;
             
@@ -796,7 +812,23 @@ public class HoaSiBusiness : IHoaSiBusiness
         };
     }
 
-    private async Task<TacPham?> GetMarketplaceArtworkForArtistMutation(int maTacPham)
+    /// <summary>
+    /// Tác phẩm thuộc mục quản lý của họa sĩ: bao gồm mọi trạng thái nội bộ,
+    /// nhưng loại trừ tác phẩm sinh ra từ yêu cầu đặt vẽ riêng.
+    /// </summary>
+    private async Task<List<TacPham>> GetManagedArtworksForArtist(int maHoaSi)
+    {
+        var artworks = await _tacPhamRepo.GetByHoaSi(maHoaSi);
+        return artworks.Where(tp => tp.MaYeuCauVeTranh == null).ToList();
+    }
+
+    private async Task<TacPham?> GetManagedArtworkForArtistRead(int maTacPham)
+    {
+        var tacPham = await _tacPhamRepo.GetById(maTacPham);
+        return tacPham?.MaYeuCauVeTranh == null ? tacPham : null;
+    }
+
+    private async Task<TacPham?> GetManagedArtworkForArtistMutation(int maTacPham)
     {
         var tacPham = await _tacPhamRepo.GetById(maTacPham);
         if (tacPham?.MaYeuCauVeTranh != null)
@@ -809,7 +841,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Chi tiết tác phẩm - Thống kê
     public async Task<TacPhamThongKeResponse?> GetTacPhamThongKe(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistRead(maTacPham);
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi) return null;
 
         var allDonHang = (await _donHangRepo.GetAll())
@@ -859,7 +891,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Chi tiết tác phẩm - Đơn hàng
     public async Task<List<TacPhamDonHangResponse>> GetTacPhamDonHang(int maHoaSi, int maTacPham)
     {
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistRead(maTacPham);
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi)
             return new List<TacPhamDonHangResponse>();
 
@@ -900,7 +932,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Chi tiết tác phẩm - Doanh thu theo tháng
     public async Task<List<TacPhamDoanhThuTheoThangResponse>> GetTacPhamDoanhThuTheoThang(int maHoaSi, int maTacPham, int nam)
     {
-        var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
+        var tacPham = await GetManagedArtworkForArtistRead(maTacPham);
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi)
             return new List<TacPhamDoanhThuTheoThangResponse>();
 

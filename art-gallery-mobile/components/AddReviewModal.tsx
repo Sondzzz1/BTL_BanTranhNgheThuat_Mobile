@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   Modal,
   TextInput,
@@ -12,10 +13,12 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import StarRating from './StarRating';
 import Colors from '../constants/colors';
 import { reviewService } from '../services/reviewService';
 import { Review } from '../types/review';
+import { NormalizedUploadImage, normalizeImageForUpload } from '../utils/imageUpload';
 
 interface AddReviewModalProps {
   visible: boolean;
@@ -36,13 +39,62 @@ export default function AddReviewModal({
 }: AddReviewModalProps) {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [reviewImage, setReviewImage] = useState<NormalizedUploadImage | null>(null);
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
     setRating(existingReview?.danhGia ?? 5);
     setComment(existingReview?.binhLuan ?? '');
+    setReviewImage(null);
+    setRemoveExistingImage(false);
   }, [visible, existingReview]);
+
+  const selectImage = async (source: 'camera' | 'library') => {
+    const permission = source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Cần quyền truy cập', source === 'camera'
+        ? 'Vui lòng cấp quyền sử dụng camera để chụp ảnh đánh giá.'
+        : 'Vui lòng cấp quyền truy cập thư viện ảnh.');
+      return;
+    }
+
+    const result = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+    if (result.canceled || !result.assets[0]) return;
+
+    try {
+      setReviewImage(await normalizeImageForUpload(result.assets[0], 'review'));
+      setRemoveExistingImage(false);
+    } catch {
+      Alert.alert('Không thể xử lý ảnh', 'Vui lòng chọn ảnh JPG, PNG hoặc WEBP khác.');
+    }
+  };
+
+  const showImageOptions = () => {
+    Alert.alert('Thêm ảnh đánh giá', 'Chọn nguồn ảnh', [
+      { text: 'Hủy', style: 'cancel' },
+      { text: '📷 Chụp ảnh', onPress: () => void selectImage('camera') },
+      { text: '🖼️ Chọn từ thư viện', onPress: () => void selectImage('library') },
+    ]);
+  };
+
+  const removeImage = () => {
+    if (reviewImage) {
+      setReviewImage(null);
+      return;
+    }
+    setRemoveExistingImage(true);
+  };
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -53,16 +105,26 @@ export default function AddReviewModal({
     try {
       setIsSubmitting(true);
       if (existingReview) {
-        await reviewService.updateReview(existingReview.maDanhGia, {
+        const request = {
           danhGia: rating,
           binhLuan: comment.trim() || undefined,
-        });
+        };
+        if (reviewImage || removeExistingImage) {
+          await reviewService.updateReviewWithImage(existingReview.maDanhGia, request, reviewImage || undefined, removeExistingImage);
+        } else {
+          await reviewService.updateReview(existingReview.maDanhGia, request);
+        }
       } else {
-        await reviewService.addReview({
+        const request = {
           maTacPham: productId,
           danhGia: rating,
           binhLuan: comment.trim() || undefined,
-        });
+        };
+        if (reviewImage) {
+          await reviewService.addReviewWithImage(request, reviewImage);
+        } else {
+          await reviewService.addReview(request);
+        }
       }
 
       Alert.alert('Thành công', existingReview ? 'Đánh giá đã được cập nhật' : 'Đánh giá của bạn đã được gửi');
@@ -78,8 +140,12 @@ export default function AddReviewModal({
   const handleClose = () => {
     setRating(5);
     setComment('');
+    setReviewImage(null);
+    setRemoveExistingImage(false);
     onClose();
   };
+
+  const previewImage = reviewImage?.uri || (!removeExistingImage ? existingReview?.hinhAnhDanhGia : undefined);
 
   return (
     <Modal
@@ -152,6 +218,28 @@ export default function AddReviewModal({
                 textAlignVertical="top"
               />
               <Text style={styles.characterCount}>{comment.length}/500</Text>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.label}>Ảnh đánh giá (Không bắt buộc)</Text>
+              {previewImage ? (
+                <>
+                  <Image source={{ uri: previewImage }} style={styles.reviewImagePreview} resizeMode="cover" />
+                  <View style={styles.imageActions}>
+                    <TouchableOpacity style={styles.imageActionButton} onPress={showImageOptions}>
+                      <Text style={styles.imageActionText}>Đổi ảnh</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.removeImageButton} onPress={removeImage}>
+                      <Text style={styles.removeImageText}>Xóa ảnh</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <TouchableOpacity style={styles.addImageButton} onPress={showImageOptions}>
+                  <Text style={styles.addImageButtonText}>🖼️ Thêm ảnh đánh giá</Text>
+                </TouchableOpacity>
+              )}
+              <Text style={styles.imageHint}>Chấp nhận JPG, PNG hoặc WEBP; tối đa 5 MB.</Text>
             </View>
           </ScrollView>
 
@@ -262,6 +350,57 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
     textAlign: 'right',
+    marginTop: 8,
+  },
+  addImageButton: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: Colors.primary,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.backgroundLight,
+  },
+  addImageButtonText: {
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  reviewImagePreview: {
+    width: '100%',
+    height: 190,
+    borderRadius: 12,
+    backgroundColor: Colors.backgroundLight,
+  },
+  imageActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 10,
+  },
+  imageActionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.backgroundLight,
+  },
+  imageActionText: {
+    color: Colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  removeImageButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  removeImageText: {
+    color: '#dc2626',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  imageHint: {
+    color: Colors.gray,
+    fontSize: 12,
     marginTop: 8,
   },
   footer: {

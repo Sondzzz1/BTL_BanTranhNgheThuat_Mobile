@@ -20,6 +20,7 @@ export interface TaoTacPhamRequest {
     maDanhMuc?: number;
     gia: number;
     soLuong: number;
+    laTacPhamDocBan: boolean;
     moTa?: string;
     hinhAnh?: string;
     kichThuoc?: string;
@@ -75,6 +76,9 @@ export interface TacPhamHoaSiResponse {
     tenDanhMuc?: string;
     gia: number;
     soLuong: number;
+    soLuongBanDau?: number;
+    laTacPhamDocBan: boolean;
+    loaiPhatHanhText: string;
     moTa?: string;
     hinhAnh?: string;
     kichThuoc?: string;
@@ -180,6 +184,10 @@ export const artistDashboardService = {
   // --- TÁC PHẨM ---
   getTacPhamCuaToi: async (): Promise<TacPhamHoaSiResponse[]> => {
     const response = await apiClient.get('/hoa-si/tac-pham/get-all');
+    return response.data;
+  },
+  getTacPhamById: async (id: number): Promise<TacPhamHoaSiResponse> => {
+    const response = await apiClient.get(`/hoa-si/tac-pham/${id}`);
     return response.data;
   },
   taoTacPham: async (data: TaoTacPhamRequest): Promise<{ message: string; maTacPham: number }> => {

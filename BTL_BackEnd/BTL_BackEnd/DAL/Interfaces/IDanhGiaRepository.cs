@@ -11,7 +11,13 @@ public interface IDanhGiaRepository
     Task<DanhGiaResponse?> GetById(int maDanhGia);
     Task<DanhGiaResponse?> GetByUserAndArtwork(int maNguoiDung, int maTacPham);
     Task<bool> CanCreate(int maNguoiDung, int maTacPham);
-    Task<int> Create(int maNguoiDung, TaoDanhGiaRequest request);
+    Task<int> Create(int maNguoiDung, TaoDanhGiaRequest request, string? hinhAnhDanhGia = null);
     Task<bool> Update(int maDanhGia, int maNguoiDung, CapNhatDanhGiaRequest request);
+    Task<(bool Updated, string? PreviousImageName)> UpdateWithImage(
+        int maDanhGia,
+        int maNguoiDung,
+        CapNhatDanhGiaRequest request,
+        string? hinhAnhDanhGia);
+    Task<string?> GetImageName(int maDanhGia);
     Task<bool> Delete(int maDanhGia, int maNguoiDung);
 }

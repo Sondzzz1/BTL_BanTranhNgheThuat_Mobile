@@ -32,6 +32,8 @@ public interface IAdminBusiness
     Task<List<HoaSiXepHangResponse>> XepHangHoaSi(string tieuChi, int top);
     
     Task<List<TacPhamHoaSiResponse>> GetAllTacPham(byte? trangThai = null);
+    Task<TacPhamAdminPageResponse> GetTacPhamQuanLy(AdminArtworkQuery query);
+    Task<AdminArtworkFilterOptionsResponse> GetBoLocQuanLyTacPham();
     Task<bool> DuyetTacPham(int id, DuyetTacPhamRequest request);
     Task<bool> HideTacPham(int id);
     Task<bool> ShowTacPham(int id);

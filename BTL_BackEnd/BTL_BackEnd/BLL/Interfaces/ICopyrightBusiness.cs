@@ -15,10 +15,12 @@ public interface ICopyrightBusiness
     Task<List<BanQuyenResponse>> GetForAdmin(string? status, string? keyword);
     Task<BanQuyenResponse> GetForAdminById(int maBanQuyen);
     Task VerifyInitialQuantity(int maTacPham, int maTaiKhoan, XacMinhSoLuongBanDauRequest request);
+    Task CorrectPublicationDeclaration(int maTacPham, int maTaiKhoan, DieuChinhPhatHanhRequest request);
     Task Review(int maBanQuyen, int maTaiKhoan, byte status, string? note);
     Task RevokeVerification(int maBanQuyen, int maTaiKhoan, ThuHoiXacMinhRequest request);
     Task<BanQuyenCongKhaiResponse> GetPublic(int maTacPham);
     Task<List<ChungNhanResponse>> GetCertificates(int maNguoiDung);
+    Task<List<ChungNhanChoCapResponse>> GetPendingCertificates(int maNguoiDung);
     Task<List<ChungNhanResponse>> GetCertificatesForAdmin(string? status, string? keyword);
     Task<ChungNhanResponse> GetCertificate(int maChungNhan, int maNguoiDung);
     Task<ChungNhanCongKhaiResponse> VerifyCertificate(string code);

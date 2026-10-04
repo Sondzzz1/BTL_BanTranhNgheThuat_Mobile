@@ -7,10 +7,21 @@ public class TaoDanhGiaRequest
     public string? BinhLuan { get; set; }
 }
 
+public class TaoDanhGiaForm : TaoDanhGiaRequest
+{
+    public IFormFile? HinhAnhDanhGiaFile { get; set; }
+}
+
 public class CapNhatDanhGiaRequest
 {
     public int DanhGia { get; set; }
     public string? BinhLuan { get; set; }
+}
+
+public class CapNhatDanhGiaForm : CapNhatDanhGiaRequest
+{
+    public IFormFile? HinhAnhDanhGiaFile { get; set; }
+    public bool XoaHinhAnh { get; set; }
 }
 
 public class DanhGiaResponse

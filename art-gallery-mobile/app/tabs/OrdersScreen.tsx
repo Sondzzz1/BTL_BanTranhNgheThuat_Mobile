@@ -132,10 +132,13 @@ export default function OrdersScreen({ navigation }: OrdersScreenProps) {
         {/* Items Summary */}
         {(() => {
           const chiTietList = item.chiTiet || [];
+          const productCount = Number.isFinite(item.soSanPham)
+            ? Math.max(0, item.soSanPham as number)
+            : chiTietList.reduce((total, chiTiet) => total + (chiTiet.soLuong || 0), 0);
           return (
             <View style={styles.orderBody}>
               <Text style={styles.itemsLabel}>
-                {chiTietList.length} sản phẩm
+                {productCount} sản phẩm
               </Text>
               {chiTietList.slice(0, 2).map((detail, index) => (
                 <Text key={index} style={styles.itemName} numberOfLines={1}>

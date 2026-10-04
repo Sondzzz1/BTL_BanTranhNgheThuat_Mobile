@@ -512,6 +512,33 @@ public class AdminController : ControllerBase
         }
     }
 
+    /// <summary>Tra cứu tác phẩm cho Admin với lọc/sắp xếp/phân trang tại máy chủ.</summary>
+    [HttpGet("tac-pham/quan-ly")]
+    public async Task<ActionResult<TacPhamAdminPageResponse>> GetTacPhamQuanLy([FromQuery] AdminArtworkQuery query)
+    {
+        try
+        {
+            return Ok(await _adminBusiness.GetTacPhamQuanLy(query));
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+        }
+    }
+
+    [HttpGet("tac-pham/bo-loc")]
+    public async Task<ActionResult<AdminArtworkFilterOptionsResponse>> GetBoLocQuanLyTacPham()
+    {
+        try
+        {
+            return Ok(await _adminBusiness.GetBoLocQuanLyTacPham());
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
+        }
+    }
+
     [HttpPut("tac-pham/{id}/update/duyet")]
     public async Task<ActionResult> DuyetTacPham(int id, [FromBody] DuyetTacPhamRequest request)
     {

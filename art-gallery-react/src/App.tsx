@@ -52,6 +52,7 @@ import ArtistArticles from './pages/Artist/ArtistArticles';
 import ArtistRevenue from './pages/Artist/ArtistRevenue';
 import ArtistCustomArt from './pages/Artist/ArtistCustomArt';
 import ArtistCopyright from './pages/Artist/ArtistCopyright';
+import ArtistNotifications from './pages/Artist/ArtistNotifications';
 import UserLayout from './pages/User/UserLayout';
 import UserProfile from './pages/User/UserProfile';
 import UserOrders from './pages/User/UserOrders';
@@ -122,6 +123,7 @@ function App() {
               <Route path="artworks/:id" element={<ArtworkDetailManagement />} />
               <Route path="artworks/:id/content" element={<ArtworkDetailContent />} />
               <Route path="artworks/:id/copyright" element={<ArtistCopyright />} />
+              <Route path="notifications" element={<ArtistNotifications />} />
               <Route path="articles" element={<ArtistArticles />} />
               <Route path="revenue" element={<ArtistRevenue />} />
               <Route path="custom-art" element={<ArtistCustomArt />} />

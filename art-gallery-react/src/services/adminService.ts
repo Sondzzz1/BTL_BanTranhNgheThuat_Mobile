@@ -152,6 +152,8 @@ export interface TacPhamHoaSiResponse {
   tenDanhMuc?: string;
   gia: number;
   soLuong: number;
+  soLuongBanDau?: number;
+  laTacPhamDocBan?: boolean;
   moTa?: string;
   hinhAnh?: string;
   kichThuoc?: string;
@@ -162,6 +164,36 @@ export interface TacPhamHoaSiResponse {
   ngayTao: string;
   tenHoaSi?: string;
   lyDo?: string;
+}
+
+export interface AdminArtworkQuery {
+  keyword?: string;
+  maHoaSi?: number;
+  maDanhMuc?: number;
+  trangThai?: number;
+  laTacPhamDocBan?: boolean;
+  tonKho?: 'con_hang' | 'sap_het' | 'het_hang';
+  sapXep?: 'newest' | 'oldest' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc' | 'artist';
+  page?: number;
+  pageSize?: number;
+}
+
+export interface TacPhamAdminPageResponse {
+  items: TacPhamHoaSiResponse[];
+  totalItems: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface AdminArtworkFilterOption {
+  id: number;
+  ten: string;
+}
+
+export interface AdminArtworkFilterOptionsResponse {
+  hoaSi: AdminArtworkFilterOption[];
+  danhMuc: AdminArtworkFilterOption[];
 }
 
 export interface HoaSiXepHangResponse {
@@ -488,6 +520,16 @@ export const adminService = {
 
   async getAllTacPham(): Promise<TacPhamHoaSiResponse[]> {
     const response = await apiClient.get('/admin/tac-pham/get-all');
+    return response.data;
+  },
+
+  async getTacPhamQuanLy(params: AdminArtworkQuery): Promise<TacPhamAdminPageResponse> {
+    const response = await apiClient.get('/admin/tac-pham/quan-ly', { params });
+    return response.data;
+  },
+
+  async getBoLocTacPhamQuanLy(): Promise<AdminArtworkFilterOptionsResponse> {
+    const response = await apiClient.get('/admin/tac-pham/bo-loc');
     return response.data;
   },
 

@@ -12,6 +12,8 @@ export interface Artwork {
   soLuongTon: number;
   anhTranh: string;
   moTa?: string;
+  laTacPhamDocBan?: boolean;
+  soLuongBanDau?: number;
   isFeatured?: boolean;
   isBestSelling?: boolean;
 }
@@ -82,4 +84,6 @@ export interface Product {
   kichThuoc?: string;
   chatLieu?: string;
   chatLieuKhung?: string;
+  laTacPhamDocBan?: boolean;
+  soLuongBanDau?: number;
 }

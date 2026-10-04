@@ -36,6 +36,8 @@ export interface Order {
   diaChiGiao?: string;
   trangThai: number;
   lyDoHuy?: string;
+  /** Tổng số lượng sản phẩm, được API danh sách đơn trả về dạng tóm tắt. */
+  soSanPham?: number;
   chiTiet: OrderItem[];
 }
 
