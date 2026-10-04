@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ArtistNotification, notificationService } from '../services/notificationService';
 import './ArtistNotificationBell.css';
 
-export default function ArtistNotificationBell() {
+interface NotificationBellProps {
+  allNotificationsPath?: string;
+}
+
+export default function ArtistNotificationBell({ allNotificationsPath = '/artist/notifications' }: NotificationBellProps) {
   const navigate = useNavigate();
   const [items, setItems] = useState<ArtistNotification[]>([]);
   const [open, setOpen] = useState(false);
@@ -88,7 +92,7 @@ export default function ArtistNotificationBell() {
               ))}
             </div>
           )}
-          <footer><button type="button" onClick={() => { setOpen(false); navigate('/artist/notifications'); }}>Xem tất cả thông báo</button></footer>
+          <footer><button type="button" onClick={() => { setOpen(false); navigate(allNotificationsPath); }}>Xem tất cả thông báo</button></footer>
         </section>
       )}
     </div>

@@ -61,6 +61,12 @@ const ArtistLayout: React.FC = () => {
             </li>
           </NavLink>
 
+          <NavLink to="/artist/notifications">
+            <li className={location.pathname === '/artist/notifications' ? 'active' : ''}>
+              <i className="ti-bell"></i> Thông báo
+            </li>
+          </NavLink>
+
           <NavLink to="/artist/revenue">
             <li className={location.pathname === '/artist/revenue' ? 'active' : ''}>
               <i className="ti-money"></i> Doanh Thu

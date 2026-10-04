@@ -36,6 +36,7 @@ import AdminConsultation from './pages/Admin/AdminConsultation';
 import AdminCopyright from './pages/Admin/AdminCopyright';
 import AdminCertificates from './pages/Admin/AdminCertificates';
 import AdminCopyrightAudit from './pages/Admin/AdminCopyrightAudit';
+import AdminNotifications from './pages/Admin/AdminNotifications';
 import CertificateVerify from './pages/CertificateVerify';
 
 import AdminAuthorRevenue from './pages/Admin/AdminAuthorRevenue';
@@ -110,6 +111,7 @@ function App() {
               <Route path="copyright" element={<AdminCopyright />} />
               <Route path="certificates" element={<AdminCertificates />} />
               <Route path="copyright-audit" element={<AdminCopyrightAudit />} />
+              <Route path="notifications" element={<AdminNotifications />} />
               <Route path="api-test" element={<AdminApiTest />} />
               <Route path="test-edits" element={<TestEditsAPI />} />
             </Route>

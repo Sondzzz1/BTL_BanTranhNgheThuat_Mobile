@@ -49,6 +49,13 @@ const statusLabels: Record<number, string> = {
   6: 'đã thu hồi',
 };
 
+const certificateStatusLabels: Record<number, string> = {
+  1: 'đang có hiệu lực',
+  2: 'đã được thay thế',
+  3: 'đã thu hồi',
+  4: 'đã hết hạn',
+};
+
 type AuditJson = Record<string, unknown>;
 
 function readJson(value?: string): AuditJson | null {
@@ -93,7 +100,10 @@ function formatStructuredChange(item: CopyrightAuditRecord): string | undefined 
   }
 
   const status = number(getValue(data, 'status'));
-  if (status !== undefined) return `Trạng thái hồ sơ được chuyển thành ${statusLabels[status] || `mã ${status}`}.`;
+  if (status !== undefined) {
+    const labels = item.tenDoiTuong === 'ChungNhan' ? certificateStatusLabels : statusLabels;
+    return `Trạng thái được chuyển thành ${labels[status] || `mã ${status}`}.`;
+  }
 
   const artworkId = number(getValue(data, 'maTacPham'));
   const isExclusive = getValue(data, 'laTacPhamDocBan');
@@ -120,6 +130,20 @@ function formatKeyValueChange(item: CopyrightAuditRecord): string | undefined {
 
   if (values.code) return `Mã chứng nhận được cấp: ${values.code}.`;
   if (values.order) return `Thay đổi được thực hiện cho đơn hàng #${values.order}.`;
+  if (values.request) return `Thay đổi được thực hiện cho yêu cầu vẽ #${values.request}.`;
+  if (values.return) return `Quyền sở hữu được hoàn lại theo yêu cầu hoàn trả #${values.return}.`;
+  if (values.cothebanlai) {
+    return values.cothebanlai.toLowerCase() === 'true'
+      ? 'Đã xác nhận nhận lại tranh; tranh có thể được bán lại.'
+      : 'Đã xác nhận nhận lại tranh; tranh chưa được phép bán lại.';
+  }
+  if (values.amount) {
+    const amount = Number(values.amount);
+    const money = Number.isFinite(amount)
+      ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(amount)
+      : values.amount;
+    return `Đã hoàn tiền ${money}${values.quantity ? ` cho ${values.quantity} tác phẩm` : ''}.`;
+  }
   return undefined;
 }
 

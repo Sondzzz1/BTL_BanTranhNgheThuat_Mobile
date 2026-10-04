@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import ArtistNotificationBell from '../../components/ArtistNotificationBell';
 import './Admin.css';
 
 const AdminLayout: React.FC = () => {
@@ -35,6 +36,14 @@ const AdminLayout: React.FC = () => {
                         <NavLink to="/admin" end>
                             <li className={location.pathname === '/admin' ? 'active' : ''}>
                                 <i className="ti-home"></i> Trang chủ
+                            </li>
+                        </NavLink>
+                    )}
+
+                    {isAdmin && (
+                        <NavLink to="/admin/notifications">
+                            <li className={location.pathname === '/admin/notifications' ? 'active' : ''}>
+                                <i className="ti-bell"></i> Thông báo
                             </li>
                         </NavLink>
                     )}
@@ -152,7 +161,7 @@ const AdminLayout: React.FC = () => {
                         <input type="text" placeholder="Tìm kiếm..." className="search-box" />
                     </div>
                     <div className="right">
-                        <i className="ti-bell"></i>
+                        <ArtistNotificationBell allNotificationsPath="/admin/notifications" />
                         <i className="ti-user"></i> <span>{user?.name || 'User'}</span>
                     </div>
                 </div>

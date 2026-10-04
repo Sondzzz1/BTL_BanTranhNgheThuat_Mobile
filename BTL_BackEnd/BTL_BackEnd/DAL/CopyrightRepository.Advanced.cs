@@ -621,7 +621,7 @@ public partial class CopyrightRepository
         await connection.OpenAsync();
         await using var command = new SqlCommand(@"
             SELECT TOP (200) n.MaNhatKy,n.TenDoiTuong,n.MaDoiTuong,n.HanhDong,n.GiaTriTruoc,n.GiaTriSau,
-                   n.NguoiThucHien,n.ThoiGian,n.LyDo,n.ThongTinBoSung,n.VaiTro,tk.TenDangNhap
+                   n.NguoiThucHien,n.ThoiGian,n.LyDo,n.ThongTinBoSung,COALESCE(tk.VaiTro,n.VaiTro),tk.TenDangNhap
             FROM NhatKyHeThong n
             LEFT JOIN TaiKhoan tk ON tk.MaTaiKhoan=n.NguoiThucHien
             WHERE (@ObjectName IS NULL OR n.TenDoiTuong=@ObjectName)
