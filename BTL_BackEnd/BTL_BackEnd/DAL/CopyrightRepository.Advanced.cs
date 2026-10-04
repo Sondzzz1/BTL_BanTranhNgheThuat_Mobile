@@ -620,12 +620,13 @@ public partial class CopyrightRepository
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
         await using var command = new SqlCommand(@"
-            SELECT TOP (200) MaNhatKy,TenDoiTuong,MaDoiTuong,HanhDong,GiaTriTruoc,GiaTriSau,
-                   NguoiThucHien,ThoiGian,LyDo,ThongTinBoSung
-            FROM NhatKyHeThong
-            WHERE (@ObjectName IS NULL OR TenDoiTuong=@ObjectName)
-              AND (@ObjectId IS NULL OR MaDoiTuong=@ObjectId)
-            ORDER BY MaNhatKy DESC;", connection);
+            SELECT TOP (200) n.MaNhatKy,n.TenDoiTuong,n.MaDoiTuong,n.HanhDong,n.GiaTriTruoc,n.GiaTriSau,
+                   n.NguoiThucHien,n.ThoiGian,n.LyDo,n.ThongTinBoSung,n.VaiTro,tk.TenDangNhap
+            FROM NhatKyHeThong n
+            LEFT JOIN TaiKhoan tk ON tk.MaTaiKhoan=n.NguoiThucHien
+            WHERE (@ObjectName IS NULL OR n.TenDoiTuong=@ObjectName)
+              AND (@ObjectId IS NULL OR n.MaDoiTuong=@ObjectId)
+            ORDER BY n.MaNhatKy DESC;", connection);
         command.Parameters.Add("@ObjectName", SqlDbType.NVarChar, 100).Value = Db(objectName);
         command.Parameters.Add("@ObjectId", SqlDbType.Int).Value = Db(objectId);
         await using var reader = await command.ExecuteReaderAsync();
@@ -636,7 +637,9 @@ public partial class CopyrightRepository
             GiaTriSau = reader.IsDBNull(5) ? null : reader.GetString(5),
             NguoiThucHien = reader.IsDBNull(6) ? null : reader.GetInt32(6), ThoiGian = reader.GetDateTime(7),
             LyDo = reader.IsDBNull(8) ? null : reader.GetString(8),
-            ThongTinBoSung = reader.IsDBNull(9) ? null : reader.GetString(9)
+            ThongTinBoSung = reader.IsDBNull(9) ? null : reader.GetString(9),
+            VaiTroNguoiThucHien = reader.IsDBNull(10) ? null : reader.GetByte(10),
+            TenNguoiThucHien = reader.IsDBNull(11) ? null : reader.GetString(11)
         });
         return result;
     }

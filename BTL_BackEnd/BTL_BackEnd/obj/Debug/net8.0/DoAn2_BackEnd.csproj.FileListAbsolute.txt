@@ -545,3 +545,10 @@ C:\Users\huanp\AppData\Local\Temp\btl-public-visibility-build\DoAn2_BackEnd.deps
 C:\Users\huanp\AppData\Local\Temp\btl-public-visibility-build\DoAn2_BackEnd.runtimeconfig.json
 C:\Users\huanp\AppData\Local\Temp\btl-public-visibility-build\DoAn2_BackEnd.dll
 C:\Users\huanp\AppData\Local\Temp\btl-public-visibility-build\DoAn2_BackEnd.pdb
+C:\Users\huanp\AppData\Local\Temp\audit-backend-check\appsettings.Development.json
+C:\Users\huanp\AppData\Local\Temp\audit-backend-check\appsettings.json
+C:\Users\huanp\AppData\Local\Temp\audit-backend-check\DoAn2_BackEnd.exe
+C:\Users\huanp\AppData\Local\Temp\audit-backend-check\DoAn2_BackEnd.deps.json
+C:\Users\huanp\AppData\Local\Temp\audit-backend-check\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\AppData\Local\Temp\audit-backend-check\DoAn2_BackEnd.dll
+C:\Users\huanp\AppData\Local\Temp\audit-backend-check\DoAn2_BackEnd.pdb

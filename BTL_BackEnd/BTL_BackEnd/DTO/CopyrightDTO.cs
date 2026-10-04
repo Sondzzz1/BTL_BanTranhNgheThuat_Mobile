@@ -213,6 +213,8 @@ public class CopyrightAuditResponse
     public string? GiaTriTruoc { get; set; }
     public string? GiaTriSau { get; set; }
     public int? NguoiThucHien { get; set; }
+    public byte? VaiTroNguoiThucHien { get; set; }
+    public string? TenNguoiThucHien { get; set; }
     public DateTime ThoiGian { get; set; }
     public string? LyDo { get; set; }
     public string? ThongTinBoSung { get; set; }

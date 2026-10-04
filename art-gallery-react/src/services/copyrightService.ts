@@ -80,6 +80,8 @@ export interface CopyrightAuditRecord {
   giaTriTruoc?: string;
   giaTriSau?: string;
   nguoiThucHien?: number;
+  vaiTroNguoiThucHien?: number;
+  tenNguoiThucHien?: string;
   thoiGian: string;
   lyDo?: string;
   thongTinBoSung?: string;
