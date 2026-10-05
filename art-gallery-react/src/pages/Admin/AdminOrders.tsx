@@ -10,6 +10,7 @@ const AdminOrders: React.FC = () => {
     const [selectedOrder, setSelectedOrder] = useState<DonHangResponse | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
+    const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
 
     useEffect(() => {
         loadOrders();
@@ -48,9 +49,9 @@ const AdminOrders: React.FC = () => {
             return;
         }
 
-        // 2. Không cho nhảy trạng thái (phải đi tuần tự: 0→1→2→3)
+        // 2. Admin chỉ xử lý đến trạng thái Đang giao; khách hàng xác nhận để hoàn tất.
         if (newStatus > currentStatus + 1 && newStatus !== 5) {
-            alert('Không thể nhảy trạng thái. Vui lòng chuyển tuần tự: Chờ xác nhận → Đã xác nhận → Đang giao → Hoàn thành');
+            alert('Không thể nhảy trạng thái. Vui lòng chuyển tuần tự: Chờ xác nhận → Đã xác nhận → Đang giao. Khách hàng sẽ xác nhận khi đã nhận hàng.');
             return;
         }
 
@@ -64,6 +65,31 @@ const AdminOrders: React.FC = () => {
         if (newStatus === 5 && currentStatus >= 3) {
             alert('Không thể hủy đơn hàng đã hoàn thành.');
             return;
+        }
+
+        // Đơn chuyển khoản chỉ được chuyển sang Đang giao khi Admin đã xác nhận tiền.
+        // Danh sách đơn có thể không chứa dữ liệu thanh toán trên các bản backend cũ,
+        // nên lấy chi tiết đơn trước khi kiểm tra. Backend vẫn là lớp kiểm tra cuối cùng.
+        if (newStatus === 2) {
+            let paymentMethod = currentOrder.phuongThucThanhToan;
+            let paymentStatus = currentOrder.trangThaiThanhToan;
+
+            if (!paymentMethod || !paymentStatus) {
+                try {
+                    const detail = await adminService.getDonHangById(orderId);
+                    paymentMethod = detail.phuongThucThanhToan;
+                    paymentStatus = detail.trangThaiThanhToan;
+                } catch (error) {
+                    console.error('Error checking order payment before shipping:', error);
+                    alert('Không thể kiểm tra trạng thái thanh toán của đơn hàng. Vui lòng thử lại.');
+                    return;
+                }
+            }
+
+            if (isBankTransfer(paymentMethod) && !isPaymentPaid(paymentStatus)) {
+                alert('Đơn chuyển khoản chưa được xác nhận thanh toán. Hãy mở Chi tiết đơn hàng và bấm “Xác nhận đã nhận tiền” trước khi chuyển sang Đang giao.');
+                return;
+            }
         }
 
         // Xử lý lý do hủy
@@ -105,10 +131,62 @@ const AdminOrders: React.FC = () => {
         }
     };
 
+    const handleConfirmBankTransfer = async () => {
+        if (!selectedOrder || !isBankTransfer(selectedOrder.phuongThucThanhToan) || !isPaymentWaitingForConfirmation(selectedOrder.trangThaiThanhToan)) {
+            return;
+        }
+
+        if (!window.confirm(`Xác nhận hệ thống đã nhận ${formatVnd(selectedOrder.tongTien)} cho đơn DH${selectedOrder.maDonHang}?`)) {
+            return;
+        }
+
+        setIsConfirmingPayment(true);
+        try {
+            const result = await adminService.xacNhanDaNhanTienDonHang(selectedOrder.maDonHang);
+            alert(result.message || 'Đã xác nhận đã nhận tiền. Bạn có thể chuyển đơn sang Đang giao.');
+            await loadOrders();
+            await handleViewDetail(selectedOrder.maDonHang);
+        } catch (error: any) {
+            console.error('Error confirming bank transfer:', error);
+            alert(error?.response?.data?.message || error?.message || 'Không thể xác nhận thanh toán.');
+        } finally {
+            setIsConfirmingPayment(false);
+        }
+    };
+
     const formatPrice = formatVnd;
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('vi-VN');
+    };
+
+    const normalizePaymentValue = (value?: string) => (value || '').replace(/[\s_-]/g, '').toLocaleLowerCase('vi-VN');
+
+    const isBankTransfer = (paymentMethod?: string) => {
+        const normalized = normalizePaymentValue(paymentMethod);
+        return normalized === 'banktransfer' || normalized === 'chuyenkhoan';
+    };
+
+    const isPaymentPaid = (paymentStatus?: string) => {
+        const normalized = normalizePaymentValue(paymentStatus);
+        return normalized === 'dathanhtoan' || normalized === 'paid' || normalized === 'completed';
+    };
+
+    const isPaymentWaitingForConfirmation = (paymentStatus?: string) => {
+        const normalized = normalizePaymentValue(paymentStatus);
+        return normalized === 'chothanhtoan' || normalized === 'choxacnhan' || normalized === 'pending';
+    };
+
+    const formatPaymentMethod = (paymentMethod?: string) => {
+        if (isBankTransfer(paymentMethod)) return 'Chuyển khoản';
+        if (normalizePaymentValue(paymentMethod) === 'cod') return 'Thanh toán khi nhận hàng (COD)';
+        return paymentMethod || 'Chưa có thông tin';
+    };
+
+    const formatPaymentStatus = (paymentStatus?: string) => {
+        if (isPaymentPaid(paymentStatus)) return 'Đã thanh toán';
+        if (normalizePaymentValue(paymentStatus) === 'chothanhtoan') return 'Chờ xác nhận';
+        return paymentStatus || 'Chưa có thông tin';
     };
 
     const filteredOrders = orders.filter(order => {
@@ -178,7 +256,7 @@ const AdminOrders: React.FC = () => {
                                     <td>DH{order.maDonHang}</td>
                                     <td>{formatDate(order.ngayDat)}</td>
                                     <td>
-                                        {order.trangThai !== 4 && order.trangThai !== 5 && (
+                                        {order.trangThai <= 2 && (
                                             <select
                                                 value={order.trangThai}
                                                 onChange={(e) => handleStatusChange(order.maDonHang, Number(e.target.value))}
@@ -194,14 +272,17 @@ const AdminOrders: React.FC = () => {
                                                     Đã xác nhận
                                                 </option>
                                                 
-                                                {/* Đang giao (2) - chỉ khi đang ở trạng thái 1 hoặc 2 */}
-                                                <option value={2} disabled={order.trangThai !== 1 && order.trangThai !== 2}>
-                                                    Đang giao
-                                                </option>
-                                                
-                                                {/* Hoàn thành (3) - chỉ khi đang ở trạng thái 2 */}
-                                                <option value={3} disabled={order.trangThai !== 2}>
-                                                    Hoàn thành
+                                                {/* Đang giao (2) - sau đó chờ khách hàng xác nhận nhận hàng */}
+                                                <option
+                                                    value={2}
+                                                    disabled={
+                                                        (order.trangThai !== 1 && order.trangThai !== 2) ||
+                                                        (isBankTransfer(order.phuongThucThanhToan) && !isPaymentPaid(order.trangThaiThanhToan))
+                                                    }
+                                                >
+                                                    {isBankTransfer(order.phuongThucThanhToan) && !isPaymentPaid(order.trangThaiThanhToan)
+                                                        ? 'Đang giao — cần xác nhận tiền'
+                                                        : 'Đang giao — chờ khách xác nhận'}
                                                 </option>
                                                 
                                                 {/* Hủy (5) - chỉ khi chưa hoàn thành */}
@@ -209,6 +290,11 @@ const AdminOrders: React.FC = () => {
                                                     Đã hủy
                                                 </option>
                                             </select>
+                                        )}
+                                        {order.trangThai === 3 && (
+                                            <span className="status status-3" title="Khách hàng đã xác nhận nhận hàng">
+                                                Đã giao
+                                            </span>
                                         )}
                                         {order.trangThai === 5 && (
                                             <span 
@@ -298,6 +384,37 @@ const AdminOrders: React.FC = () => {
                                         <p><strong>Họ tên:</strong> {selectedOrder.tenNguoiNhan}</p>
                                         <p><strong>Số điện thoại:</strong> {selectedOrder.soDienThoai}</p>
                                         <p><strong>Địa chỉ:</strong> {selectedOrder.diaChiGiao}</p>
+                                    </div>
+                                    <div className="info-section payment-info-section">
+                                        <h5><i className="ti-credit-card"></i> Thanh toán</h5>
+                                        <p><strong>Phương thức:</strong> {formatPaymentMethod(selectedOrder.phuongThucThanhToan)}</p>
+                                        <p>
+                                            <strong>Trạng thái:</strong>
+                                            <span
+                                                className={`payment-status ${isPaymentPaid(selectedOrder.trangThaiThanhToan) ? 'payment-status-paid' : 'payment-status-pending'}`}
+                                            >
+                                                {formatPaymentStatus(selectedOrder.trangThaiThanhToan)}
+                                            </span>
+                                        </p>
+
+                                        {isBankTransfer(selectedOrder.phuongThucThanhToan) && isPaymentWaitingForConfirmation(selectedOrder.trangThaiThanhToan) && (
+                                            <div className="bank-transfer-confirmation">
+                                                <p>Đơn chuyển khoản này chưa được xác nhận tiền. Xác nhận sau khi bạn đã đối chiếu khoản tiền nhận được.</p>
+                                                <button
+                                                    type="button"
+                                                    className="btn-confirm-bank-transfer"
+                                                    onClick={handleConfirmBankTransfer}
+                                                    disabled={isConfirmingPayment}
+                                                >
+                                                    <i className="ti-check"></i>{' '}
+                                                    {isConfirmingPayment ? 'Đang xác nhận...' : 'Xác nhận đã nhận tiền'}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {isBankTransfer(selectedOrder.phuongThucThanhToan) && isPaymentPaid(selectedOrder.trangThaiThanhToan) && (
+                                            <p className="payment-confirmed-note"><i className="ti-check-box"></i> Đã xác nhận thanh toán. Có thể chuyển đơn sang Đang giao.</p>
+                                        )}
                                     </div>
                                 </div>
 

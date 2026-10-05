@@ -80,4 +80,20 @@ export const orderService = {
       throw error;
     }
   },
+
+  // Khách hàng xác nhận chỉ sau khi đã nhận hàng thực tế.
+  // API sẽ chuyển đơn Đang giao sang Hoàn thành và xử lý đối soát khi hợp lệ.
+  async confirmReceived(id: number): Promise<{ message: string }> {
+    try {
+      const response = await apiClient.put<{ message: string }>(
+        API_ENDPOINTS.ORDER_CONFIRM_RECEIVED(id)
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error confirming order receipt:', error);
+      const serverError = error.response?.data;
+      const errorMessage = serverError?.error || serverError?.message || error.message || 'Không thể xác nhận đã nhận hàng';
+      throw new Error(errorMessage);
+    }
+  },
 };

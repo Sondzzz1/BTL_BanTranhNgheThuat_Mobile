@@ -16,4 +16,5 @@ public interface IDonHangRepository
     Task<int> CreateTransactional(int maNguoiDung, TaoDonHangRequest request);
     Task<bool> RequestCancellation(int maNguoiDung, int maDonHang, string? lyDo);
     Task<bool> UpdateStatusTransactional(int maDonHang, byte trangThaiMoi, string? ghiChu, int maTaiKhoan);
+    Task<bool> ConfirmReceivedByCustomerTransactional(int maNguoiDung, int maDonHang, int maTaiKhoan);
 }

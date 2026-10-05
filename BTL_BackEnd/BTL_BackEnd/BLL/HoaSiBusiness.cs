@@ -808,6 +808,11 @@ public class HoaSiBusiness : IHoaSiBusiness
                 && payments.Count == 1
                 && payments[0].TrangThai.Equals("DaThanhToan", StringComparison.OrdinalIgnoreCase);
 
+            // Doanh thu chỉ được ghi nhận sau khi đơn đã giao và thanh toán hợp lệ.
+            // Đơn chuyển khoản chưa được Admin xác nhận không được làm tăng bất kỳ tổng,
+            // số đơn, doanh thu tháng hay doanh thu theo tác phẩm nào của họa sĩ.
+            if (!daThanhToanHopLe) continue;
+
             foreach (var ct in chiTiet.Where(item => artworksById.ContainsKey(item.MaTacPham)))
             {
                 // Chỉ trừ khoản hoàn đã được ghi nhận ở dòng đơn; yêu cầu hoàn đang chờ

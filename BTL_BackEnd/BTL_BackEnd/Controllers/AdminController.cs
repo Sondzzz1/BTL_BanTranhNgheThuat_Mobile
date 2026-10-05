@@ -135,6 +135,43 @@ public class AdminController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Admin xác nhận đã nhận tiền cho đơn chuyển khoản. Endpoint theo mã đơn để giao diện
+    /// chi tiết đơn không phải biết mã thanh toán nội bộ; gọi lặp lại là an toàn.
+    /// </summary>
+    [HttpPut("don-hang/{id}/xac-nhan-thanh-toan")]
+    public async Task<ActionResult> XacNhanThanhToanDonHang(int id)
+    {
+        try
+        {
+            var maTaiKhoan = Helpers.JwtHelper.GetMaTaiKhoan(User);
+            if (!maTaiKhoan.HasValue) return Unauthorized(new { message = "Token không có MaTaiKhoan" });
+
+            var success = await _adminBusiness.XacNhanThanhToanTheoDonHang(id, maTaiKhoan.Value);
+            if (!success)
+                return NotFound(new { message = "Không tìm thấy đơn hàng" });
+
+            return Ok(new
+            {
+                message = "Đã xác nhận thanh toán chuyển khoản",
+                maDonHang = id,
+                trangThaiThanhToan = "DaThanhToan"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Helpers.BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { message = "Lỗi server khi xác nhận thanh toán" });
+        }
+    }
+
     [HttpPut("don-hang/{id}/update/trang-thai")]
     public async Task<ActionResult> CapNhatTrangThaiDonHang(int id, [FromBody] CapNhatTrangThaiDonHangRequest request)
     {

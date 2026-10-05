@@ -60,6 +60,7 @@ export interface DonHangAdminResponse {
   tongTien: number;
   trangThaiText: string;
   trangThai: number;
+  phuongThucThanhToan?: string;
   trangThaiThanhToan?: string;
   lyDoHuy?: string;
 }
@@ -73,6 +74,7 @@ export interface DonHangResponse {
   diaChiGiao: string;
   trangThai: number;
   trangThaiText: string;
+  phuongThucThanhToan?: string;
   trangThaiThanhToan?: string;
   lyDoHuy?: string;
   chiTiet: ChiTietDonHangResponse[];
@@ -373,6 +375,17 @@ export const adminService = {
     request: CapNhatTrangThaiDonHangRequest
   ): Promise<void> {
     await apiClient.put(`/admin/don-hang/${id}/update/trang-thai`, request);
+  },
+
+  // Admin xác nhận đã nhận tiền cho đơn chuyển khoản. API tự xác định bản ghi
+  // thanh toán của đơn, nên giao diện không cần (và không nên) truyền paymentId.
+  async xacNhanDaNhanTienDonHang(id: number): Promise<{
+    message: string;
+    maDonHang?: number;
+    trangThaiThanhToan?: string;
+  }> {
+    const response = await apiClient.put(`/admin/don-hang/${id}/xac-nhan-thanh-toan`);
+    return response.data;
   },
 
   async xoaDonHang(id: number): Promise<void> {

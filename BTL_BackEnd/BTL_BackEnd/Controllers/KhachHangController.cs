@@ -317,4 +317,37 @@ public class KhachHangController : ControllerBase
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
         }
     }
+
+    [HttpPut("don-hang/{id}/xac-nhan-da-nhan")]
+    public async Task<ActionResult> XacNhanDaNhanHang(int id)
+    {
+        try
+        {
+            var maNguoiDung = JwtHelper.GetMaNguoiDung(User);
+            if (!maNguoiDung.HasValue)
+                return BadRequest(new { message = "Không tìm thấy thông tin người dùng" });
+
+            var success = await _khachHangBusiness.XacNhanDaNhanHang(maNguoiDung.Value, id);
+            if (!success)
+                return NotFound(new { message = "Không tìm thấy đơn hàng" });
+
+            return Ok(new { message = "Đã xác nhận nhận hàng thành công" });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(403, new { message = ex.Message });
+        }
+        catch (BusinessConflictException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception)
+        {
+            return StatusCode(500, new { message = "Không thể xác nhận nhận hàng" });
+        }
+    }
 }

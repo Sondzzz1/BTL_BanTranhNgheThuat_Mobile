@@ -1,7 +1,7 @@
 
 
 // Option 1: Dùng IP mạng (cho thiết bị thật - ĐÃ TẮT FIREWALL)
-export const API_BASE_URL = 'http://192.168.1.3:5273/api';
+export const API_BASE_URL = 'http://192.168.1.108:5273/api';
 
 
 export const API_TIMEOUT = 60000; // 60 seconds (tăng từ 30s)
@@ -35,6 +35,7 @@ export const API_ENDPOINTS = {
   ORDER_MY: '/don-hang/cua-toi',
   ORDER_DETAIL: (id: number) => `/don-hang/${id}`,
   ORDER_CANCEL: (id: number) => `/don-hang/${id}/huy`,
+  ORDER_CONFIRM_RECEIVED: (id: number) => `/don-hang/${id}/xac-nhan-da-nhan`,
 
   // Profile
   PROFILE: '/khach-hang/thong-tin',

@@ -67,6 +67,7 @@ public interface IAdminBusiness
     Task<List<ThanhToanResponse>> GetAllThanhToan(string? trangThai, DateTime? tuNgay, DateTime? denNgay);
     Task<ThanhToanResponse> GetThanhToanById(int id);
     Task<bool> XacNhanThanhToan(int id, int maTaiKhoan, string? maGiaoDich);
+    Task<bool> XacNhanThanhToanTheoDonHang(int maDonHang, int maTaiKhoan);
     
     Task<List<DoanhThuTheoThangResponse>> GetDoanhThuTheoThang(int nam);
     Task<List<DoanhThuTheoHoaSiResponse>> GetDoanhThuTheoHoaSi(DateTime? tuNgay, DateTime? denNgay);

@@ -689,24 +689,33 @@ public class AdminBusiness : IAdminBusiness
         if (trangThai.HasValue) list = list.Where(x => x.TrangThai == trangThai.Value).ToList();
         
         var users = await _nguoiDungRepo.GetAll();
+        var paymentsByOrder = (await _thanhToanRepo.GetAll())
+            .GroupBy(payment => payment.MaDonHang)
+            .ToDictionary(group => group.Key, group => group.First());
 
-        return list.Select(x => new DonHangAdminResponse 
-        { 
-            MaDonHang = x.MaDonHang, 
-            NgayDat = x.NgayDat, 
-            TongTien = x.TongTien, 
-            TrangThai = x.TrangThai, 
-            TrangThaiText = x.TrangThai switch {
-                0 => "Chờ xác nhận",
-                1 => "Đã xác nhận",
-                2 => "Đang giao",
-                3 => "Đã giao",
-                4 => "Yêu cầu hủy",
-                5 => "Đã hủy",
-                _ => "Không xác định"
-            },
-            LyDoHuy = x.LyDoHuy,
-            TenKhachHang = users.FirstOrDefault(u => u.MaNguoiDung == x.MaNguoiDung)?.Ten ?? "Khách hàng"
+        return list.Select(x =>
+        {
+            paymentsByOrder.TryGetValue(x.MaDonHang, out var payment);
+            return new DonHangAdminResponse
+            {
+                MaDonHang = x.MaDonHang,
+                NgayDat = x.NgayDat,
+                TongTien = x.TongTien,
+                TrangThai = x.TrangThai,
+                TrangThaiText = x.TrangThai switch {
+                    0 => "Chờ xác nhận",
+                    1 => "Đã xác nhận",
+                    2 => "Đang giao",
+                    3 => "Đã giao",
+                    4 => "Yêu cầu hủy",
+                    5 => "Đã hủy",
+                    _ => "Không xác định"
+                },
+                TrangThaiThanhToan = payment?.TrangThai,
+                PhuongThucThanhToan = payment?.PhuongThuc,
+                LyDoHuy = x.LyDoHuy,
+                TenKhachHang = users.FirstOrDefault(u => u.MaNguoiDung == x.MaNguoiDung)?.Ten ?? "Khách hàng"
+            };
         }).ToList();
     }
     public async Task<DonHangResponse> GetDonHangById(int id)
@@ -715,10 +724,12 @@ public class AdminBusiness : IAdminBusiness
         if (order == null) return null!;
 
         var chiTiets = await _donHangRepo.GetChiTiet(id);
+        var thanhToan = await _thanhToanRepo.GetByDonHang(id);
         var result = new DonHangResponse
         {
             MaDonHang = order.MaDonHang,
             NgayDat = order.NgayDat,
+            NgayGiao = order.NgayGiao,
             TongTien = order.TongTien,
             TenNguoiNhan = order.TenNguoiNhan ?? "",
             SoDienThoai = order.SoDienThoai ?? "",
@@ -734,6 +745,8 @@ public class AdminBusiness : IAdminBusiness
                 5 => "Đã hủy",
                 _ => "Không xác định"
             },
+            TrangThaiThanhToan = thanhToan?.TrangThai,
+            PhuongThucThanhToan = thanhToan?.PhuongThuc,
             ChiTiet = new List<ChiTietDonHangResponse>()
         };
 
@@ -767,10 +780,12 @@ public class AdminBusiness : IAdminBusiness
         var allowed = new byte[]
         {
             DonHangStatus.ChoXacNhan, DonHangStatus.DaXacNhan, DonHangStatus.DangGiao,
-            DonHangStatus.DaGiao, DonHangStatus.YeuCauHuy, DonHangStatus.DaHuy
+            DonHangStatus.YeuCauHuy, DonHangStatus.DaHuy
         };
         if (!allowed.Contains(request.TrangThai))
-            throw new ArgumentException("Trạng thái không hợp lệ");
+            throw new ArgumentException(request.TrangThai == DonHangStatus.DaGiao
+                ? "Khách hàng cần xác nhận đã nhận hàng để hoàn tất đơn"
+                : "Trạng thái không hợp lệ");
         var note = string.IsNullOrWhiteSpace(request.GhiChu) ? null : request.GhiChu.Trim();
         if (note?.Length > 500) throw new ArgumentException("Ghi chú quá dài");
         return await _donHangRepo.UpdateStatusTransactional(id, request.TrangThai, note, maTaiKhoan);
@@ -804,15 +819,50 @@ public class AdminBusiness : IAdminBusiness
     {
         var payment = await _thanhToanRepo.GetById(id);
         if (payment == null) return false;
-        if (!payment.PhuongThuc.Equals("BankTransfer", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("Chỉ thanh toán chuyển khoản mới cần Admin xác nhận");
-        if (!payment.TrangThai.Equals("ChoThanhToan", StringComparison.OrdinalIgnoreCase))
-            throw new BusinessConflictException("Thanh toán đã được xử lý");
         var transactionCode = string.IsNullOrWhiteSpace(maGiaoDich) ? null : maGiaoDich.Trim();
         if (transactionCode?.Length > 100) throw new ArgumentException("Mã giao dịch quá dài");
-        if (!await _thanhToanRepo.ConfirmBankTransfer(id, maTaiKhoan, transactionCode))
-            throw new BusinessConflictException("Thanh toán đã được xử lý bởi một yêu cầu khác");
-        return true;
+        return await XacNhanThanhToanChuyenKhoan(payment, maTaiKhoan, transactionCode);
+    }
+
+    public async Task<bool> XacNhanThanhToanTheoDonHang(int maDonHang, int maTaiKhoan)
+    {
+        var order = await _donHangRepo.GetById(maDonHang);
+        if (order == null) return false;
+
+        var payment = await _thanhToanRepo.GetByDonHang(maDonHang);
+        if (payment == null)
+            throw new BusinessConflictException("Đơn hàng chưa có thông tin thanh toán");
+
+        return await XacNhanThanhToanChuyenKhoan(payment, maTaiKhoan, null);
+    }
+
+    /// <summary>
+    /// Xác nhận chuyển khoản theo cách idempotent. Khi một yêu cầu đồng thời đã xác nhận
+    /// trước đó, lần gọi sau vẫn thành công nhưng không ghi đè ngày/người xác nhận.
+    /// </summary>
+    private async Task<bool> XacNhanThanhToanChuyenKhoan(ThanhToan payment, int maTaiKhoan, string? maGiaoDich)
+    {
+        if (!string.Equals(payment.PhuongThuc, "BankTransfer", StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("Chỉ thanh toán chuyển khoản mới cần Admin xác nhận");
+
+        if (string.Equals(payment.TrangThai, "DaThanhToan", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (!string.Equals(payment.TrangThai, "ChoThanhToan", StringComparison.OrdinalIgnoreCase))
+            throw new BusinessConflictException("Thanh toán không ở trạng thái chờ xác nhận");
+
+        if (await _thanhToanRepo.ConfirmBankTransfer(payment.MaThanhToan, maTaiKhoan, maGiaoDich))
+            return true;
+
+        // Có thể một Admin khác vừa xác nhận trong khoảng giữa thao tác đọc và UPDATE.
+        // Đọc lại để giữ endpoint an toàn khi gọi lặp thay vì tạo bản ghi hoặc lỗi dữ liệu.
+        var latestPayment = await _thanhToanRepo.GetById(payment.MaThanhToan);
+        if (latestPayment != null
+            && string.Equals(latestPayment.PhuongThuc, "BankTransfer", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(latestPayment.TrangThai, "DaThanhToan", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        throw new BusinessConflictException("Thanh toán đã được xử lý bởi một yêu cầu khác");
     }
     public Task<List<ThanhToanResponse>> TimKiemThanhToan(string? keyword, string? phuongThuc, string? trangThai, DateTime? tuNgay, DateTime? denNgay, decimal? tuSoTien, decimal? denSoTien, int pageNumber, int pageSize) => throw new NotImplementedException();
 

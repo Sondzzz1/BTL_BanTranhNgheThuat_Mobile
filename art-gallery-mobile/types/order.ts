@@ -35,6 +35,13 @@ export interface Order {
   soDienThoai?: string;
   diaChiGiao?: string;
   trangThai: number;
+  /**
+   * Phương thức thanh toán do API chi tiết đơn hàng trả về, ví dụ COD hoặc
+   * BankTransfer. Trường có thể vắng mặt với dữ liệu/phiên bản API cũ.
+   */
+  phuongThucThanhToan?: string;
+  /** Trạng thái thanh toán do API trả về, ví dụ ChoThanhToan hoặc DaThanhToan. */
+  trangThaiThanhToan?: string;
   lyDoHuy?: string;
   /** Tổng số lượng sản phẩm, được API danh sách đơn trả về dạng tóm tắt. */
   soSanPham?: number;

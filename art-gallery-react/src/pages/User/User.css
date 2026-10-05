@@ -422,7 +422,8 @@
 }
 
 .btn-detail,
-.btn-cancel {
+.btn-cancel,
+.btn-received {
   padding: 10px 20px;
   border: none;
   border-radius: 5px;
@@ -449,6 +450,33 @@
 
 .btn-cancel:hover {
   background: #c82333;
+}
+
+.btn-received {
+  background: #198754;
+  color: white;
+}
+
+.btn-received:hover:not(:disabled) {
+  background: #157347;
+}
+
+.btn-received:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.delivery-status-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #8a5a00;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.delivery-status-note.completed {
+  color: #198754;
 }
 
 /* User Order Detail */
@@ -521,6 +549,32 @@
   color: #333;
   display: inline-block;
   min-width: 140px;
+}
+
+.customer-payment-status {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #fff3cd;
+  color: #8a5a00;
+}
+
+.customer-payment-status.paid {
+  background: #d1fae5;
+  color: #047857;
+}
+
+.customer-payment-hint {
+  margin-top: 12px !important;
+  padding: 10px;
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  background: #fffbeb;
+  color: #92400e !important;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .order-detail-item {
@@ -617,7 +671,8 @@
   }
 
   .btn-detail,
-  .btn-cancel {
+  .btn-cancel,
+  .btn-received {
     width: 100%;
     text-align: center;
   }

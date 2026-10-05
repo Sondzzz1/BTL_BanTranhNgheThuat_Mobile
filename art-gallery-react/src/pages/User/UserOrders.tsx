@@ -14,6 +14,7 @@ const UserOrders: React.FC = () => {
   const [filter, setFilter] = useState<string>('all');
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<{ id: string, maHD: string } | null>(null);
+  const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -72,6 +73,24 @@ const UserOrders: React.FC = () => {
       loadOrders();
     } catch (error: any) {
       alert(error.message || 'Lỗi khi hủy đơn hàng');
+    }
+  };
+
+  const handleConfirmReceived = async (orderId: string, maHD: string) => {
+    const accepted = window.confirm(
+      `Xác nhận bạn đã nhận đầy đủ hàng của đơn #${maHD}? Sau khi xác nhận, đơn sẽ hoàn tất và không thể chuyển lại trạng thái đang giao.`
+    );
+    if (!accepted) return;
+
+    try {
+      setConfirmingOrderId(orderId);
+      const message = await orderService.confirmReceived(Number(orderId));
+      alert(message);
+      await loadOrders();
+    } catch (error: any) {
+      alert(error.message || 'Không thể xác nhận đã nhận hàng');
+    } finally {
+      setConfirmingOrderId(null);
     }
   };
 
@@ -178,6 +197,26 @@ const UserOrders: React.FC = () => {
                   >
                     Xem Chi Tiết
                   </Link>
+                  {order.trangThai === 'shipping' && (
+                    <button
+                      className="btn-received"
+                      onClick={() => handleConfirmReceived(order.id, order.maHD)}
+                      disabled={confirmingOrderId === order.id}
+                    >
+                      <i className="ti-check"></i>{' '}
+                      {confirmingOrderId === order.id ? 'Đang xác nhận...' : 'Đã nhận hàng'}
+                    </button>
+                  )}
+                  {order.trangThai === 'confirmed' && (
+                    <span className="delivery-status-note">
+                      <i className="ti-truck"></i> Chờ đơn chuyển sang đang giao
+                    </span>
+                  )}
+                  {order.trangThai === 'success' && (
+                    <span className="delivery-status-note completed">
+                      <i className="ti-check"></i> Đã hoàn tất nhận hàng
+                    </span>
+                  )}
                   {(order.trangThai === 'pending' || order.trangThai === 'confirmed') && (
                     <button 
                       className="btn-cancel"

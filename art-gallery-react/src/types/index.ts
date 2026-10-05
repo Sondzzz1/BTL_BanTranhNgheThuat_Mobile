@@ -51,6 +51,8 @@ export interface Order {
   address: string;
   ngayLap: string;
   trangThai: 'pending' | 'confirmed' | 'shipping' | 'success' | 'canceled' | 'cancel_pending';
+  phuongThucThanhToan?: string;
+  trangThaiThanhToan?: string;
   tongTien: number;
   items: CartItem[];
   ghiChu?: string;

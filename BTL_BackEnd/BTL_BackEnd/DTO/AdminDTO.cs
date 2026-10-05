@@ -65,6 +65,7 @@ public class DonHangAdminResponse
     public string TrangThaiText { get; set; } = null!;
     public byte TrangThai { get; set; }
     public string? TrangThaiThanhToan { get; set; }
+    public string? PhuongThucThanhToan { get; set; }
     public string? LyDoHuy { get; set; }
 }
 

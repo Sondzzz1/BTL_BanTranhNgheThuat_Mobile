@@ -81,6 +81,7 @@ public class DonHangResponse
     public byte TrangThai { get; set; }
     public string TrangThaiText { get; set; } = null!;
     public string? TrangThaiThanhToan { get; set; }
+    public string? PhuongThucThanhToan { get; set; }
     /// <summary>
     /// Tổng số lượng sản phẩm trong đơn. Danh sách đơn hàng trả dữ liệu tóm tắt,
     /// nên trường này giúp giao diện hiển thị đúng số sản phẩm mà không phải tải chi tiết từng đơn.

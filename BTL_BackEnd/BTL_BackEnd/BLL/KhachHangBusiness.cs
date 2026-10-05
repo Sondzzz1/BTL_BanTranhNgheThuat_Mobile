@@ -254,6 +254,7 @@ public class KhachHangBusiness : IKhachHangBusiness
                 TrangThai = donHang.TrangThai,
                 TrangThaiText = DonHangStatus.GetText(donHang.TrangThai),
                 TrangThaiThanhToan = thanhToan?.TrangThai,
+                PhuongThucThanhToan = thanhToan?.PhuongThuc,
                 SoSanPham = chiTiet.Sum(item => item.SoLuong),
                 ChiTiet = new List<ChiTietDonHangResponse>()
             });
@@ -307,6 +308,7 @@ public class KhachHangBusiness : IKhachHangBusiness
             TrangThai = donHang.TrangThai,
             TrangThaiText = DonHangStatus.GetText(donHang.TrangThai),
             TrangThaiThanhToan = thanhToan?.TrangThai,
+            PhuongThucThanhToan = thanhToan?.PhuongThuc,
             SoSanPham = chiTietResponse.Sum(item => item.SoLuong),
             ChiTiet = chiTietResponse
         };
@@ -328,6 +330,24 @@ public class KhachHangBusiness : IKhachHangBusiness
             throw new ArgumentException("Lý do hủy quá dài (tối đa 500 ký tự)");
 
         if (!await _donHangRepo.RequestCancellation(maNguoiDung, maDonHang, trimmedLyDo))
+            throw new BusinessConflictException("Đơn hàng đã được xử lý bởi một yêu cầu khác");
+        return true;
+    }
+
+    public async Task<bool> XacNhanDaNhanHang(int maNguoiDung, int maDonHang)
+    {
+        var donHang = await _donHangRepo.GetById(maDonHang);
+        if (donHang == null) return false;
+        if (donHang.MaNguoiDung != maNguoiDung)
+            throw new UnauthorizedAccessException("Không có quyền xác nhận đơn hàng này");
+        if (donHang.TrangThai != DonHangStatus.DangGiao)
+            throw new InvalidOperationException("Chỉ có thể xác nhận sau khi đơn hàng ở trạng thái Đang giao");
+
+        var nguoiDung = await _nguoiDungRepo.GetById(maNguoiDung);
+        if (nguoiDung?.MaTaiKhoan is not int maTaiKhoan)
+            throw new InvalidOperationException("Không tìm thấy tài khoản xác nhận đơn hàng");
+
+        if (!await _donHangRepo.ConfirmReceivedByCustomerTransactional(maNguoiDung, maDonHang, maTaiKhoan))
             throw new BusinessConflictException("Đơn hàng đã được xử lý bởi một yêu cầu khác");
         return true;
     }

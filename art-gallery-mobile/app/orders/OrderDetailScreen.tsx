@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { orderService } from '../../services/orderService';
 import { reviewService } from '../../services/reviewService';
-import { Order, OrderItem, ORDER_STATUS_TEXT } from '../../types/order';
+import { Order, OrderItem, ORDER_STATUS, ORDER_STATUS_TEXT } from '../../types/order';
 import { ReviewPermission } from '../../types/review';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
@@ -32,6 +32,7 @@ export default function OrderDetailScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isConfirmingReceipt, setIsConfirmingReceipt] = useState(false);
   const [reviewPermissions, setReviewPermissions] = useState<Record<number, ReviewPermission>>({});
   const [isLoadingReviewPermissions, setIsLoadingReviewPermissions] = useState(false);
   const [selectedReviewItem, setSelectedReviewItem] = useState<OrderItem | null>(null);
@@ -125,6 +126,33 @@ export default function OrderDetailScreen({
     );
   };
 
+  const handleConfirmReceived = () => {
+    if (!order) return;
+
+    Alert.alert(
+      'Xác nhận đã nhận hàng',
+      'Chỉ xác nhận khi bạn đã nhận đủ sản phẩm và hàng không bị hư hỏng. Sau khi xác nhận, đơn sẽ hoàn thành.',
+      [
+        { text: 'Chưa nhận hàng', style: 'cancel' },
+        {
+          text: 'Đã nhận hàng',
+          onPress: async () => {
+            try {
+              setIsConfirmingReceipt(true);
+              const result = await orderService.confirmReceived(order.maDonHang);
+              Alert.alert('Xác nhận thành công', result.message || 'Đơn hàng đã được chuyển sang Hoàn thành.');
+              await loadOrderDetail();
+            } catch (err: any) {
+              Alert.alert('Không thể xác nhận', err.message || 'Vui lòng thử lại sau.');
+            } finally {
+              setIsConfirmingReceipt(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleReviewPress = (item: OrderItem) => {
     if (!reviewPermissions[item.maTacPham]?.canReview) return;
     setSelectedReviewItem(item);
@@ -159,15 +187,46 @@ export default function OrderDetailScreen({
     }
   };
 
+  const getPaymentMethodLabel = (method?: string): string => {
+    switch (method?.trim().toUpperCase()) {
+      case 'COD':
+        return 'Thanh toán khi nhận hàng (COD)';
+      case 'BANKTRANSFER':
+      case 'BANK_TRANSFER':
+      case 'CHUYENKHOAN':
+        return 'Chuyển khoản ngân hàng';
+      default:
+        return method?.trim() || 'Chưa xác định';
+    }
+  };
+
+  const getPaymentStatus = (status?: string): { label: string; color: string; backgroundColor: string } => {
+    switch (status?.trim().toUpperCase()) {
+      case 'DATHANHTOAN':
+        return { label: 'Đã thanh toán', color: '#047857', backgroundColor: '#d1fae5' };
+      case 'CHO THANH TOAN':
+      case 'CHOTHANHTOAN':
+        return { label: 'Chờ xác nhận thanh toán', color: '#b45309', backgroundColor: '#fef3c7' };
+      case 'THATBAI':
+        return { label: 'Thanh toán thất bại', color: '#b91c1c', backgroundColor: '#fee2e2' };
+      case 'CHOHOANTIEN':
+        return { label: 'Chờ hoàn tiền', color: '#1d4ed8', backgroundColor: '#dbeafe' };
+      case 'HOANTIEN':
+        return { label: 'Đã hoàn tiền', color: '#6b21a8', backgroundColor: '#f3e8ff' };
+      default:
+        return { label: 'Chưa cập nhật', color: '#4b5563', backgroundColor: '#f3f4f6' };
+    }
+  };
+
   const canCancelOrder = (status: number): boolean => {
     // Có thể hủy nếu đơn hàng đang ở trạng thái: Pending hoặc Confirmed
-    return status === 0 || status === 1;
+    return status === ORDER_STATUS.PENDING || status === ORDER_STATUS.CONFIRMED;
   };
 
   // Chỉ hiển thị nút hoàn trả khi đơn hàng đã Hoàn thành (status = 3)
   // VÀ trong vòng 7 ngày kể từ ngày hoàn thành
   const canRequestReturn = (status: number, deliveredDate: string): boolean => {
-    if (status !== 3) return false;
+    if (status !== ORDER_STATUS.COMPLETED) return false;
     
     // Tính số ngày từ ngày đặt hàng đến hiện tại
     const orderTime = new Date(deliveredDate).getTime();
@@ -231,6 +290,36 @@ export default function OrderDetailScreen({
           </View>
         </View>
 
+        {/* Payment information is read-only for customers. */}
+        {(() => {
+          const paymentStatus = getPaymentStatus(order.trangThaiThanhToan);
+          const isBankTransfer = order.phuongThucThanhToan?.trim().toUpperCase() === 'BANKTRANSFER';
+          const isPendingPayment = order.trangThaiThanhToan?.trim().toUpperCase() === 'CHOTHANHTOAN';
+
+          return (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Thông tin thanh toán</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Phương thức:</Text>
+                <Text style={styles.infoValue}>{getPaymentMethodLabel(order.phuongThucThanhToan)}</Text>
+              </View>
+              <View style={[styles.infoRow, styles.paymentStatusRow]}>
+                <Text style={styles.infoLabel}>Trạng thái:</Text>
+                <View style={[styles.paymentStatusBadge, { backgroundColor: paymentStatus.backgroundColor }]}>
+                  <Text style={[styles.paymentStatusText, { color: paymentStatus.color }]}>
+                    {paymentStatus.label}
+                  </Text>
+                </View>
+              </View>
+              {isBankTransfer && isPendingPayment && (
+                <Text style={styles.paymentHint}>
+                  Khoản chuyển khoản đang chờ quản trị viên xác nhận. Bạn không cần thực hiện thêm thao tác trên ứng dụng.
+                </Text>
+              )}
+            </View>
+          );
+        })()}
+
         {/* Delivery Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Thông tin giao hàng</Text>
@@ -249,6 +338,43 @@ export default function OrderDetailScreen({
             </Text>
           </View>
         </View>
+
+        {order.trangThai === ORDER_STATUS.SHIPPING && (
+          <View style={styles.receiptActionCard}>
+            <Text style={styles.receiptActionTitle}>Đơn hàng đang được giao đến bạn</Text>
+            <Text style={styles.receiptActionDescription}>
+              Khi đã nhận đủ hàng, hãy xác nhận để hoàn tất đơn và giúp họa sĩ được đối soát doanh thu.
+            </Text>
+            <TouchableOpacity
+              style={[styles.receiptButton, isConfirmingReceipt && styles.receiptButtonDisabled]}
+              onPress={handleConfirmReceived}
+              disabled={isConfirmingReceipt}
+            >
+              {isConfirmingReceipt ? (
+                <View style={styles.receiptButtonLoading}>
+                  <ActivityIndicator size="small" color="#fff" />
+                  <Text style={styles.receiptButtonText}>Đang xác nhận...</Text>
+                </View>
+              ) : (
+                <Text style={styles.receiptButtonText}>✓ Tôi đã nhận được hàng</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {order.trangThai === ORDER_STATUS.COMPLETED && (
+          <View style={styles.receiptCompletedCard}>
+            <Text style={styles.receiptCompletedText}>✓ Đơn hàng đã hoàn thành, bạn không cần xác nhận lại.</Text>
+          </View>
+        )}
+
+        {(order.trangThai === ORDER_STATUS.PENDING || order.trangThai === ORDER_STATUS.CONFIRMED) && (
+          <View style={styles.receiptWaitingCard}>
+            <Text style={styles.receiptWaitingText}>
+              Nút “Tôi đã nhận được hàng” sẽ xuất hiện khi đơn chuyển sang trạng thái “Đang giao hàng”.
+            </Text>
+          </View>
+        )}
 
         {/* Order Items */}
         {(() => {
@@ -285,7 +411,7 @@ export default function OrderDetailScreen({
                     <Text style={styles.itemTotal}>
                       Thành tiền: {formatPrice(item.thanhTien)}
                     </Text>
-                    {order.trangThai === 3 && (
+                    {order.trangThai === ORDER_STATUS.COMPLETED && (
                       isLoadingReviewPermissions ? (
                         <View style={styles.reviewLoading}>
                           <ActivityIndicator size="small" color="#2563eb" />
@@ -317,7 +443,7 @@ export default function OrderDetailScreen({
         })()}
 
         {/* Cancel Reason */}
-        {order.trangThai === 4 && order.lyDoHuy && (
+        {order.trangThai === ORDER_STATUS.CANCEL_REQUESTED && order.lyDoHuy && (
           <View style={styles.cancelNote}>
             <Text style={styles.cancelLabel}>Lý do hủy:</Text>
             <Text style={styles.cancelText}>{order.lyDoHuy}</Text>
@@ -383,7 +509,7 @@ export default function OrderDetailScreen({
       )}
 
       {/* Hiển thị thông báo nếu quá hạn hoàn trả */}
-      {order.trangThai === 3 && !canRequestReturn(order.trangThai, order.ngayGiao ?? order.ngayDat) && (
+      {order.trangThai === ORDER_STATUS.COMPLETED && !canRequestReturn(order.trangThai, order.ngayGiao ?? order.ngayDat) && (
         <View style={styles.expiredFooter}>
           <Text style={styles.expiredText}>
             ⚠️ Đã quá thời hạn 7 ngày để yêu cầu hoàn trả sản phẩm
@@ -469,6 +595,29 @@ const styles = StyleSheet.create({
   addressText: {
     flex: 1,
     textAlign: 'right',
+  },
+  paymentStatusRow: {
+    borderBottomWidth: 0,
+  },
+  paymentStatusBadge: {
+    maxWidth: '65%',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  paymentStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'right',
+  },
+  paymentHint: {
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#fffbeb',
+    color: '#92400e',
+    fontSize: 13,
+    lineHeight: 19,
   },
   orderItem: {
     flexDirection: 'row',
@@ -595,6 +744,76 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 14,
     color: '#7f1d1d',
+  },
+  receiptActionCard: {
+    backgroundColor: '#ecfdf5',
+    margin: 16,
+    marginBottom: 0,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
+  },
+  receiptActionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#065f46',
+    marginBottom: 6,
+  },
+  receiptActionDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#047857',
+    marginBottom: 14,
+  },
+  receiptButton: {
+    backgroundColor: '#059669',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  receiptButtonDisabled: {
+    backgroundColor: '#6ee7b7',
+  },
+  receiptButtonLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  receiptButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  receiptCompletedCard: {
+    backgroundColor: '#ecfdf5',
+    margin: 16,
+    marginBottom: 0,
+    padding: 14,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10b981',
+  },
+  receiptCompletedText: {
+    color: '#047857',
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  receiptWaitingCard: {
+    backgroundColor: '#eff6ff',
+    margin: 16,
+    marginBottom: 0,
+    padding: 14,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3b82f6',
+  },
+  receiptWaitingText: {
+    color: '#1e40af',
+    fontSize: 14,
+    lineHeight: 20,
   },
   noteContainer: {
     backgroundColor: '#eff6ff',

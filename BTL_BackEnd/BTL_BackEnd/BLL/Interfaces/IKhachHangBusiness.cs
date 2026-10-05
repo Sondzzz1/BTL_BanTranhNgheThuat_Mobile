@@ -20,4 +20,9 @@ public interface IKhachHangBusiness
     Task<List<DonHangResponse>> GetDonHangCuaToi(int maNguoiDung);
     Task<DonHangResponse?> GetDonHangById(int maNguoiDung, int maDonHang);
     Task<bool> HuyDonHang(int maNguoiDung, int maDonHang, string? lyDo = null);
+    /// <summary>
+    /// Khách xác nhận đã thực nhận hàng. Đây là bước duy nhất chuyển đơn từ
+    /// Đang giao sang Đã giao, đồng thời hoàn tất thanh toán COD nếu có.
+    /// </summary>
+    Task<bool> XacNhanDaNhanHang(int maNguoiDung, int maDonHang);
 }

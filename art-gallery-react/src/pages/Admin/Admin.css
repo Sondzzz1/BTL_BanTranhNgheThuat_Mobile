@@ -1203,3 +1203,63 @@
     color: #e74c3c;
 }
 
+/* Xác nhận thanh toán chuyển khoản ngay trong chi tiết đơn hàng. */
+.payment-info-section {
+    background: #f8fbff;
+}
+
+.payment-status {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.payment-status-pending {
+    background: #fff3cd;
+    color: #8a5a00;
+}
+
+.payment-status-paid {
+    background: #d1fae5;
+    color: #047857;
+}
+
+.bank-transfer-confirmation {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid #dbeafe;
+}
+
+.bank-transfer-confirmation p {
+    margin: 0 0 10px;
+    color: #475569;
+    line-height: 1.45;
+}
+
+.btn-confirm-bank-transfer {
+    border: 0;
+    border-radius: 7px;
+    padding: 9px 12px;
+    background: #087f5b;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-confirm-bank-transfer:hover:not(:disabled) {
+    background: #056b4d;
+}
+
+.btn-confirm-bank-transfer:disabled {
+    cursor: wait;
+    opacity: .7;
+}
+
+.payment-confirmed-note {
+    margin-top: 14px !important;
+    color: #047857 !important;
+    font-weight: 600;
+}

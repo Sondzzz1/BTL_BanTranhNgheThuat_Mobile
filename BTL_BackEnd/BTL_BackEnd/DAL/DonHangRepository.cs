@@ -331,6 +331,9 @@ public class DonHangRepository : IDonHangRepository
             if (!IsAllowedTransition(current, trangThaiMoi))
                 throw new BusinessConflictException("Chuyển trạng thái đơn hàng không hợp lệ hoặc đơn đã được xử lý");
 
+            if (current == DonHangStatus.DaXacNhan && trangThaiMoi == DonHangStatus.DangGiao)
+                await EnsurePaymentAllowsShippingAsync(connection, transaction, maDonHang);
+
             const string updateOrderSql = @"
                 UPDATE DonHang
                 SET TrangThai=@TrangThaiMoi,
@@ -377,31 +380,9 @@ public class DonHangRepository : IDonHangRepository
             }
 
             if (trangThaiMoi == DonHangStatus.DaGiao)
-            {
-                const string payCodSql = @"
-                    UPDATE ThanhToan
-                    SET TrangThai='DaThanhToan',NgayThanhToan=ISNULL(NgayThanhToan,GETDATE()),NguoiXacNhan=@NguoiXacNhan
-                    WHERE MaDonHang=@MaDonHang AND PhuongThuc='COD' AND TrangThai='ChoThanhToan';";
-                await using var payCod = new SqlCommand(payCodSql, connection, transaction);
-                payCod.Parameters.AddWithValue("@NguoiXacNhan", maTaiKhoan);
-                payCod.Parameters.AddWithValue("@MaDonHang", maDonHang);
-                await payCod.ExecuteNonQueryAsync();
-
-                const string validateCodSql = @"
-                    SELECT CASE WHEN COUNT_BIG(*)=1
-                                     AND SUM(CASE WHEN TrangThai='DaThanhToan' THEN 1 ELSE 0 END)=1
-                                THEN 1 ELSE 0 END
-                    FROM ThanhToan WITH (UPDLOCK,HOLDLOCK)
-                    WHERE MaDonHang=@MaDonHang;";
-                await using var validateCod = new SqlCommand(validateCodSql, connection, transaction);
-                validateCod.Parameters.AddWithValue("@MaDonHang", maDonHang);
-                if (Convert.ToInt32(await validateCod.ExecuteScalarAsync()) != 1)
-                    throw new BusinessConflictException("Chỉ được xác nhận giao hàng khi thanh toán COD hoặc chuyển khoản đã thực sự thành công");
-
-                await IssueExclusiveOwnershipAndCertificates(
+                await FinalizeDeliveredOrderAsync(
                     connection, transaction, maDonHang, maTaiKhoan, _copyrightOptions.CertificateHashKey,
                     _copyrightOptions.EnforcementStartUtc);
-            }
 
             await transaction.CommitAsync();
             return true;
@@ -411,6 +392,124 @@ public class DonHangRepository : IDonHangRepository
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    public async Task<bool> ConfirmReceivedByCustomerTransactional(int maNguoiDung, int maDonHang, int maTaiKhoan)
+    {
+        await using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            const string selectSql = @"
+                SELECT TrangThai
+                FROM DonHang WITH (UPDLOCK,HOLDLOCK)
+                WHERE MaDonHang=@MaDonHang AND MaNguoiDung=@MaNguoiDung;";
+            await using var select = new SqlCommand(selectSql, connection, transaction);
+            select.Parameters.AddWithValue("@MaDonHang", maDonHang);
+            select.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
+            var currentValue = await select.ExecuteScalarAsync();
+            if (currentValue == null || currentValue == DBNull.Value)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            if (Convert.ToByte(currentValue) != DonHangStatus.DangGiao)
+                throw new BusinessConflictException("Đơn hàng không còn ở trạng thái Đang giao để xác nhận nhận hàng");
+
+            const string updateOrderSql = @"
+                UPDATE DonHang
+                SET TrangThai=@DaGiao, NgayGiao=ISNULL(NgayGiao,GETDATE())
+                WHERE MaDonHang=@MaDonHang AND MaNguoiDung=@MaNguoiDung AND TrangThai=@DangGiao;";
+            await using var updateOrder = new SqlCommand(updateOrderSql, connection, transaction);
+            updateOrder.Parameters.AddWithValue("@DaGiao", DonHangStatus.DaGiao);
+            updateOrder.Parameters.AddWithValue("@DangGiao", DonHangStatus.DangGiao);
+            updateOrder.Parameters.AddWithValue("@MaDonHang", maDonHang);
+            updateOrder.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
+            if (await updateOrder.ExecuteNonQueryAsync() != 1)
+                throw new BusinessConflictException("Đơn hàng đã được xử lý bởi một yêu cầu khác");
+
+            await FinalizeDeliveredOrderAsync(
+                connection, transaction, maDonHang, maTaiKhoan, _copyrightOptions.CertificateHashKey,
+                _copyrightOptions.EnforcementStartUtc);
+
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Hoàn tất phần tài chính và quyền sở hữu sau khi khách hàng xác nhận đã nhận hàng.
+    /// COD chỉ được ghi nhận đã thanh toán tại thời điểm này; chuyển khoản phải được Admin
+    /// xác nhận trước đó mới vượt qua bước kiểm tra.
+    /// </summary>
+    private static async Task FinalizeDeliveredOrderAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int maDonHang,
+        int maTaiKhoan,
+        string certificateKey,
+        DateTime enforcementStartUtc)
+    {
+        const string payCodSql = @"
+            UPDATE ThanhToan
+            SET TrangThai='DaThanhToan',NgayThanhToan=ISNULL(NgayThanhToan,GETDATE()),NguoiXacNhan=@NguoiXacNhan
+            WHERE MaDonHang=@MaDonHang AND PhuongThuc='COD' AND TrangThai='ChoThanhToan';";
+        await using var payCod = new SqlCommand(payCodSql, connection, transaction);
+        payCod.Parameters.AddWithValue("@NguoiXacNhan", maTaiKhoan);
+        payCod.Parameters.AddWithValue("@MaDonHang", maDonHang);
+        await payCod.ExecuteNonQueryAsync();
+
+        const string validatePaymentSql = @"
+            SELECT CASE WHEN COUNT_BIG(*)=1
+                             AND SUM(CASE WHEN TrangThai='DaThanhToan' THEN 1 ELSE 0 END)=1
+                        THEN 1 ELSE 0 END
+            FROM ThanhToan WITH (UPDLOCK,HOLDLOCK)
+            WHERE MaDonHang=@MaDonHang;";
+        await using var validatePayment = new SqlCommand(validatePaymentSql, connection, transaction);
+        validatePayment.Parameters.AddWithValue("@MaDonHang", maDonHang);
+        if (Convert.ToInt32(await validatePayment.ExecuteScalarAsync()) != 1)
+            throw new BusinessConflictException("Chỉ được xác nhận nhận hàng khi thanh toán COD hoặc chuyển khoản đã thực sự thành công");
+
+        await IssueExclusiveOwnershipAndCertificates(
+            connection, transaction, maDonHang, maTaiKhoan, certificateKey, enforcementStartUtc);
+    }
+
+    /// <summary>
+    /// COD được giao trước và chỉ được ghi nhận thanh toán khi khách xác nhận nhận hàng.
+    /// Ngược lại, chuyển khoản phải có xác nhận thanh toán trước khi Admin chuyển sang Đang giao.
+    /// </summary>
+    private static async Task EnsurePaymentAllowsShippingAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int maDonHang)
+    {
+        const string paymentSql = @"
+            SELECT PhuongThuc,TrangThai
+            FROM ThanhToan WITH (UPDLOCK,HOLDLOCK)
+            WHERE MaDonHang=@MaDonHang;";
+        await using var command = new SqlCommand(paymentSql, connection, transaction);
+        command.Parameters.AddWithValue("@MaDonHang", maDonHang);
+        string phuongThuc;
+        string trangThai;
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            if (!await reader.ReadAsync())
+                throw new BusinessConflictException("Đơn hàng chưa có thông tin thanh toán");
+
+            phuongThuc = reader.GetString(0);
+            trangThai = reader.GetString(1);
+        }
+
+        if (string.Equals(phuongThuc, "BankTransfer", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(trangThai, "DaThanhToan", StringComparison.OrdinalIgnoreCase))
+            throw new BusinessConflictException("Đơn chuyển khoản chưa được xác nhận thanh toán.");
     }
 
     private static async Task IssueExclusiveOwnershipAndCertificates(

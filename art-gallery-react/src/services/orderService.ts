@@ -20,6 +20,7 @@ interface DonHangResponseDTO {
   diaChiGiao: string;
   trangThai: number;
   trangThaiText: string;
+  phuongThucThanhToan?: string;
   trangThaiThanhToan?: string;
   chiTiet: {
     maTacPham: number;
@@ -57,6 +58,8 @@ const mapDtoToOrder = (dto: DonHangResponseDTO): Order => ({
   address: dto.diaChiGiao || '',
   ngayLap: dto.ngayDat,
   trangThai: mapTrangThai(dto.trangThai),
+  phuongThucThanhToan: dto.phuongThucThanhToan,
+  trangThaiThanhToan: dto.trangThaiThanhToan,
   tongTien: dto.tongTien,
   items: (dto.chiTiet || []).map(ct => ({
     id: ct.maTacPham.toString(),
@@ -127,6 +130,17 @@ export const orderService = {
     } catch (error: any) {
       console.error('Error canceling order:', error);
       throw new Error(error.response?.data?.message || 'Lỗi khi hủy đơn hàng');
+    }
+  },
+
+  // Khách hàng xác nhận hàng đã được nhận: chỉ khả dụng khi đơn đang giao.
+  async confirmReceived(id: number): Promise<string> {
+    try {
+      const response = await apiClient.put(`/don-hang/${id}/xac-nhan-da-nhan`);
+      return response.data.message;
+    } catch (error: any) {
+      console.error('Error confirming received order:', error);
+      throw new Error(error.response?.data?.message || 'Không thể xác nhận đã nhận hàng');
     }
   },
 
