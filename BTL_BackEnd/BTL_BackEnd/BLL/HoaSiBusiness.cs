@@ -617,10 +617,12 @@ public class HoaSiBusiness : IHoaSiBusiness
         var giaTriHoan = revenueLines.Sum(line => line.GiaTriHoan);
         var doanhThuSauHoan = revenueLines.Sum(line => line.DoanhThuSauHoan);
         var doanhThuDuDieuKienChiTra = revenueLines
-            .Where(line => line.DaThanhToanHopLe)
+            .Where(line => line.DaDuDieuKienDoiSoat)
             .Sum(line => line.DoanhThuSauHoan);
         var doanhThuThangNay = revenueLines
-            .Where(line => line.NgayGhiNhan.Year == now.Year && line.NgayGhiNhan.Month == now.Month)
+            .Where(line => line.DaDuDieuKienDoiSoat
+                && line.NgayGhiNhan.Year == now.Year
+                && line.NgayGhiNhan.Month == now.Month)
             .Sum(line => line.DoanhThuSauHoan);
 
         return new DoanhThuTongQuanResponse
@@ -638,11 +640,13 @@ public class HoaSiBusiness : IHoaSiBusiness
             ConChoChiTra = doanhThuDuDieuKienChiTra,
             TongDoanhThu = doanhThuSauHoan,
             SoDonHang = revenueLines
-                .Where(line => line.SoLuongSauHoan > 0)
+                .Where(line => line.DaDuDieuKienDoiSoat)
                 .Select(line => line.DonHang.MaDonHang)
                 .Distinct()
                 .Count(),
-            SoTacPhamDaBan = revenueLines.Sum(line => line.SoLuongSauHoan),
+            SoTacPhamDaBan = revenueLines
+                .Where(line => line.DaDuDieuKienDoiSoat)
+                .Sum(line => line.SoLuongSauHoan),
             DoanhThuThangNay = doanhThuThangNay
         };
     }
@@ -660,6 +664,8 @@ public class HoaSiBusiness : IHoaSiBusiness
             var giaTriHoan = group.Sum(line => line.GiaTriHoan);
             var doanhThuSauHoan = group.Sum(line => line.DoanhThuSauHoan);
             var daThanhToanHopLe = group.All(line => line.DaThanhToanHopLe);
+            var daHoanTien = group.All(line => line.DaHoanTien);
+            var daDuDieuKienDoiSoat = group.Any(line => line.DaDuDieuKienDoiSoat);
 
             result.Add(new DoanhThuChiTietResponse
             {
@@ -670,14 +676,18 @@ public class HoaSiBusiness : IHoaSiBusiness
                 DoanhThuGop = doanhThuGop,
                 GiaTriHoan = giaTriHoan,
                 DoanhThuSauHoan = doanhThuSauHoan,
-                DoanhThuDuDieuKienChiTra = daThanhToanHopLe ? doanhThuSauHoan : 0,
+                DoanhThuDuDieuKienChiTra = daDuDieuKienDoiSoat ? doanhThuSauHoan : 0,
                 DaThanhToanHopLe = daThanhToanHopLe,
+                DaHoanTien = daHoanTien,
+                DaDuDieuKienDoiSoat = daDuDieuKienDoiSoat,
                 // Trường tương thích ngược: chỉ là phần doanh thu của họa sĩ sau hoàn,
                 // tuyệt đối không phải tổng tiền toàn bộ đơn hàng.
                 TongTien = doanhThuSauHoan,
-                TrangThai = daThanhToanHopLe
-                    ? "Đã giao · thanh toán hợp lệ"
-                    : "Đã giao · chờ xác nhận thanh toán"
+                TrangThai = GetTrangThaiDoanhThu(
+                    daThanhToanHopLe,
+                    daHoanTien,
+                    giaTriHoan,
+                    doanhThuSauHoan)
             });
         }
 
@@ -702,9 +712,11 @@ public class HoaSiBusiness : IHoaSiBusiness
             {
                 Nam = nam,
                 Thang = thang,
-                TongDoanhThu = donHangThang.Sum(line => line.DoanhThuSauHoan),
+                TongDoanhThu = donHangThang
+                    .Where(line => line.DaDuDieuKienDoiSoat)
+                    .Sum(line => line.DoanhThuSauHoan),
                 SoDonHang = donHangThang
-                    .Where(line => line.SoLuongSauHoan > 0)
+                    .Where(line => line.DaDuDieuKienDoiSoat)
                     .Select(line => line.DonHang.MaDonHang)
                     .Distinct()
                     .Count()
@@ -727,8 +739,12 @@ public class HoaSiBusiness : IHoaSiBusiness
                 {
                     MaTacPham = tacPham.MaTacPham,
                     TenTacPham = tacPham.TenTacPham,
-                    SoLuongBan = lines.Sum(line => line.SoLuongSauHoan),
-                    DoanhThu = lines.Sum(line => line.DoanhThuSauHoan)
+                    SoLuongBan = lines
+                        .Where(line => line.DaDuDieuKienDoiSoat)
+                        .Sum(line => line.SoLuongSauHoan),
+                    DoanhThu = lines
+                        .Where(line => line.DaDuDieuKienDoiSoat)
+                        .Sum(line => line.DoanhThuSauHoan)
                 };
             })
             .OrderByDescending(item => item.DoanhThu)
@@ -755,9 +771,11 @@ public class HoaSiBusiness : IHoaSiBusiness
                 DiaChiGiao = donHang.DiaChiGiao ?? "",
                 TrangThai = donHang.TrangThai,
                 TrangThaiText = GetTrangThaiDonHangText(donHang.TrangThai),
-                TrangThaiThanhToan = group.All(line => line.DaThanhToanHopLe)
-                    ? "Đã thanh toán"
-                    : "Chờ xác nhận thanh toán",
+                TrangThaiThanhToan = group.All(line => line.DaHoanTien)
+                    ? "Đã hoàn tiền"
+                    : group.All(line => line.DaThanhToanHopLe)
+                        ? "Đã thanh toán"
+                        : "Chờ xác nhận thanh toán",
                 SoSanPham = group.Sum(line => line.SoLuongSauHoan),
                 ChiTiet = group.Select(line => new ChiTietDonHangResponse
                 {
@@ -804,14 +822,26 @@ public class HoaSiBusiness : IHoaSiBusiness
         foreach (var donHang in deliveredOrders)
         {
             var chiTiet = await _donHangRepo.GetChiTiet(donHang.MaDonHang);
-            var daThanhToanHopLe = paymentsByOrder.TryGetValue(donHang.MaDonHang, out var payments)
+            var payment = paymentsByOrder.TryGetValue(donHang.MaDonHang, out var payments)
                 && payments.Count == 1
-                && payments[0].TrangThai.Equals("DaThanhToan", StringComparison.OrdinalIgnoreCase);
+                ? payments[0]
+                : null;
+            var daThanhToan = payment?.TrangThai.Equals("DaThanhToan", StringComparison.OrdinalIgnoreCase) == true;
+            var daHoanTien = payment?.TrangThai.Equals("HoanTien", StringComparison.OrdinalIgnoreCase) == true;
 
-            // Doanh thu chỉ được ghi nhận sau khi đơn đã giao và thanh toán hợp lệ.
-            // Đơn chuyển khoản chưa được Admin xác nhận không được làm tăng bất kỳ tổng,
-            // số đơn, doanh thu tháng hay doanh thu theo tác phẩm nào của họa sĩ.
-            if (!daThanhToanHopLe) continue;
+            // Chỉ nhận dữ liệu của đơn đã giao và đã có một khoản thanh toán được chốt.
+            // "HoanTien" được giữ lại như một chứng từ lịch sử để họa sĩ thấy đơn hoàn,
+            // nhưng không được phép làm phát sinh doanh thu có thể đối soát.
+            if (!daThanhToan && !daHoanTien) continue;
+
+            // Hoàn tiền toàn bộ phải đi kèm dữ liệu hoàn tất ở các dòng hàng. Điều này
+            // vừa loại trừ bản ghi cũ/bất thường, vừa bảo đảm đơn hoàn toàn bộ có doanh
+            // thu sau hoàn bằng 0 thay vì vô tình ghi nhận lại doanh thu ban đầu.
+            var daHoanToanBoTheoDong = daHoanTien
+                && chiTiet.Count > 0
+                && chiTiet.All(item => item.SoLuong > 0
+                    && Math.Clamp(item.SoLuongDaHoan, 0, item.SoLuong) == item.SoLuong);
+            if (daHoanTien && !daHoanToanBoTheoDong) continue;
 
             foreach (var ct in chiTiet.Where(item => artworksById.ContainsKey(item.MaTacPham)))
             {
@@ -825,7 +855,8 @@ public class HoaSiBusiness : IHoaSiBusiness
                     ct.SoLuong - soLuongDaHoan,
                     ct.SoLuong * ct.DonGia,
                     soLuongDaHoan * ct.DonGia,
-                    daThanhToanHopLe));
+                    daThanhToan || daHoanTien,
+                    daHoanTien));
             }
         }
 
@@ -839,10 +870,27 @@ public class HoaSiBusiness : IHoaSiBusiness
         int SoLuongSauHoan,
         decimal DoanhThuGop,
         decimal GiaTriHoan,
-        bool DaThanhToanHopLe)
+        bool DaThanhToanHopLe,
+        bool DaHoanTien)
     {
         public decimal DoanhThuSauHoan => DoanhThuGop - GiaTriHoan;
+        public bool DaDuDieuKienDoiSoat =>
+            DaThanhToanHopLe && !DaHoanTien && SoLuongSauHoan > 0 && DoanhThuSauHoan > 0;
         public DateTime NgayGhiNhan => DonHang.NgayGiao ?? DonHang.NgayDat;
+    }
+
+    private static string GetTrangThaiDoanhThu(
+        bool daThanhToanHopLe,
+        bool daHoanTien,
+        decimal giaTriHoan,
+        decimal doanhThuSauHoan)
+    {
+        if (daHoanTien) return "Đã hoàn tiền toàn bộ";
+        if (giaTriHoan > 0 && doanhThuSauHoan <= 0) return "Đã hoàn toàn bộ";
+        if (giaTriHoan > 0) return "Đã giao · hoàn một phần";
+        return daThanhToanHopLe
+            ? "Đã giao · thanh toán hợp lệ"
+            : "Đã giao · chờ xác nhận thanh toán";
     }
 
     private string GetTrangThaiTacPhamText(byte trangThai)
@@ -893,16 +941,18 @@ public class HoaSiBusiness : IHoaSiBusiness
             .Where(line => line.ChiTiet.MaTacPham == maTacPham)
             .ToList();
         var now = DateTime.UtcNow;
-        var revenueLinesThisMonth = revenueLines
+        var revenueLinesDuDieuKien = revenueLines
+            .Where(line => line.DaDuDieuKienDoiSoat)
+            .ToList();
+        var revenueLinesThisMonth = revenueLinesDuDieuKien
             .Where(line => line.NgayGhiNhan.Year == now.Year && line.NgayGhiNhan.Month == now.Month)
             .ToList();
 
         return new TacPhamThongKeResponse
         {
-            TongSoLuongBan = revenueLines.Sum(line => line.SoLuongSauHoan),
-            TongDoanhThu = revenueLines.Sum(line => line.DoanhThuSauHoan),
-            SoDonHang = revenueLines
-                .Where(line => line.SoLuongSauHoan > 0)
+            TongSoLuongBan = revenueLinesDuDieuKien.Sum(line => line.SoLuongSauHoan),
+            TongDoanhThu = revenueLinesDuDieuKien.Sum(line => line.DoanhThuSauHoan),
+            SoDonHang = revenueLinesDuDieuKien
                 .Select(line => line.DonHang.MaDonHang)
                 .Distinct()
                 .Count(),
@@ -936,10 +986,14 @@ public class HoaSiBusiness : IHoaSiBusiness
                 SoLuong = line.SoLuongSauHoan,
                 DonGia = line.ChiTiet.DonGia,
                 ThanhTien = line.DoanhThuSauHoan,
-                TrangThai = line.DaThanhToanHopLe
-                    ? "Đã giao · thanh toán hợp lệ"
-                    : "Đã giao · chờ xác nhận thanh toán",
-                TrangThaiClass = line.DaThanhToanHopLe ? "success" : "pending"
+                TrangThai = GetTrangThaiDoanhThu(
+                    line.DaThanhToanHopLe,
+                    line.DaHoanTien,
+                    line.GiaTriHoan,
+                    line.DoanhThuSauHoan),
+                TrangThaiClass = line.GiaTriHoan > 0
+                    ? "danger"
+                    : line.DaDuDieuKienDoiSoat ? "success" : "pending"
             });
         }
 
@@ -962,7 +1016,8 @@ public class HoaSiBusiness : IHoaSiBusiness
         for (int thang = 1; thang <= 12; thang++)
         {
             var revenueLinesThisMonth = revenueLines
-                .Where(line => line.NgayGhiNhan.Month == thang)
+                .Where(line => line.DaDuDieuKienDoiSoat
+                    && line.NgayGhiNhan.Month == thang)
                 .ToList();
 
             result.Add(new TacPhamDoanhThuTheoThangResponse

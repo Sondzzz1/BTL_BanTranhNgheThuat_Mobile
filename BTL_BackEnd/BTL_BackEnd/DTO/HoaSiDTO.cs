@@ -94,7 +94,18 @@ public class DoanhThuChiTietResponse
     public decimal GiaTriHoan { get; set; }
     public decimal DoanhThuSauHoan { get; set; }
     public decimal DoanhThuDuDieuKienChiTra { get; set; }
+    /// <summary>
+    /// Khoản thanh toán của đơn đã được chốt hợp lệ trong lịch sử. Giá trị này vẫn đúng
+    /// với đơn đã hoàn tiền, vì đơn đó từng được thanh toán trước khi hoàn trả.
+    /// </summary>
     public bool DaThanhToanHopLe { get; set; }
+    /// <summary>Toàn bộ khoản thanh toán của đơn đã được hoàn lại cho khách hàng.</summary>
+    public bool DaHoanTien { get; set; }
+    /// <summary>
+    /// Phần doanh thu còn lại của họa sĩ có thể đưa vào đối soát. Đơn hoàn toàn bộ
+    /// vẫn xuất hiện trong lịch sử nhưng không đủ điều kiện đối soát.
+    /// </summary>
+    public bool DaDuDieuKienDoiSoat { get; set; }
     public decimal TongTien { get; set; }
     public string TrangThai { get; set; } = null!;
 }

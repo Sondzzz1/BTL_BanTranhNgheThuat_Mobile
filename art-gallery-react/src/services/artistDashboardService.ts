@@ -170,6 +170,13 @@ export interface DoanhThuChiTietResponse {
     doanhThuSauHoan: number;
     doanhThuDuDieuKienChiTra: number;
     daThanhToanHopLe: boolean;
+    /**
+     * Đơn đã có khoản hoàn tiền. Trường này giúp giao diện giữ lại đơn hoàn
+     * trong lịch sử doanh thu thay vì hiểu nhầm là đơn chưa thanh toán.
+     */
+    daHoanTien?: boolean;
+    /** Giá trị sau hoàn còn được dùng để đối soát với họa sĩ. */
+    daDuDieuKienDoiSoat?: boolean;
     // Tương thích với API cũ; giá trị này chỉ là doanh thu của họa sĩ sau hoàn.
     tongTien: number;
     trangThai: string;
