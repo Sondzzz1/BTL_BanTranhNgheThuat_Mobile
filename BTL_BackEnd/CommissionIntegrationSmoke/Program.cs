@@ -34,7 +34,7 @@ var accounts = new TaiKhoanRepository(configuration);
 var edits = new TacPhamChinhSuaRepository(configuration);
 var admin = new AdminBusiness(new AdminRepository(configuration), artworks, artists, users, orders, posts,
     categories, payments, content, accounts, edits);
-var artistBusiness = new HoaSiBusiness(artists, artworks, posts, orders, categories, users, edits);
+var artistBusiness = new HoaSiBusiness(artists, artworks, posts, orders, categories, users, edits, payments);
 var customerBusiness = new KhachHangBusiness(users, carts, orders, artworks, payments, artists, accounts);
 
 var artistId = await ScalarInt(connection, "SELECT TOP (1) MaHoaSi FROM HoaSi ORDER BY MaHoaSi");

@@ -52,6 +52,31 @@ public class CapNhatHoSoHoaSiRequest
 // Doanh thu
 public class DoanhThuTongQuanResponse
 {
+    /// <summary>Doanh thu của các dòng tranh thuộc họa sĩ trước khi trừ hoàn trả.</summary>
+    public decimal DoanhThuGop { get; set; }
+    /// <summary>Phần giá trị bị trừ do số lượng đã hoàn trên từng dòng đơn hàng.</summary>
+    public decimal GiaTriHoan { get; set; }
+    /// <summary>Doanh thu của họa sĩ sau khi trừ phần đã hoàn.</summary>
+    public decimal DoanhThuSauHoan { get; set; }
+    /// <summary>
+    /// Doanh thu của đơn đã giao và có thanh toán hợp lệ. Đây là số tiền đủ điều kiện
+    /// để đối soát với họa sĩ, không phải xác nhận đã chuyển tiền.
+    /// </summary>
+    public decimal DoanhThuDuDieuKienChiTra { get; set; }
+    /// <summary>Phí nền tảng hiện áp dụng. Hệ thống mặc định 0 cho đến khi có chính sách phí.</summary>
+    public decimal PhiNenTang { get; set; }
+    /// <summary>Phí thanh toán hiện áp dụng. Hệ thống mặc định 0 cho đến khi có chính sách phí.</summary>
+    public decimal PhiThanhToan { get; set; }
+    /// <summary>Thuế khấu trừ hiện áp dụng. Hệ thống mặc định 0 cho đến khi có chính sách thuế.</summary>
+    public decimal ThueKhauTru { get; set; }
+    /// <summary>Số tiền dự kiến nhận sau phí và thuế; chưa đồng nghĩa đã chi trả.</summary>
+    public decimal ThucNhanDuKien { get; set; }
+    /// <summary>Hệ thống chưa có sổ chi trả cho họa sĩ nên luôn là 0.</summary>
+    public decimal DaChiTra { get; set; }
+    public decimal ConChoChiTra { get; set; }
+
+    // Giữ lại các trường cũ để không làm hỏng các màn hình/API client đang sử dụng.
+    // TongDoanhThu có cùng ý nghĩa với DoanhThuSauHoan.
     public decimal TongDoanhThu { get; set; }
     public int SoDonHang { get; set; }
     public int SoTacPhamDaBan { get; set; }
@@ -62,7 +87,14 @@ public class DoanhThuChiTietResponse
 {
     public int MaDonHang { get; set; }
     public DateTime NgayDat { get; set; }
+    public DateTime? NgayGiao { get; set; }
     public string TenKhachHang { get; set; } = null!;
+    /// <summary>Chỉ gồm giá trị các tác phẩm của họa sĩ trong đơn.</summary>
+    public decimal DoanhThuGop { get; set; }
+    public decimal GiaTriHoan { get; set; }
+    public decimal DoanhThuSauHoan { get; set; }
+    public decimal DoanhThuDuDieuKienChiTra { get; set; }
+    public bool DaThanhToanHopLe { get; set; }
     public decimal TongTien { get; set; }
     public string TrangThai { get; set; } = null!;
 }

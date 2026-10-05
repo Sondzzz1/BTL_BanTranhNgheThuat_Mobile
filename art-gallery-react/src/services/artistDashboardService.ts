@@ -144,6 +144,16 @@ export interface CapNhatBaiVietRequest {
 export interface DanhMucBaiVietResponse { maDanhMucBaiViet:number;tenDanhMuc:string;slug:string; }
 
 export interface DoanhThuTongQuanResponse {
+    doanhThuGop: number;
+    giaTriHoan: number;
+    doanhThuSauHoan: number;
+    doanhThuDuDieuKienChiTra: number;
+    phiNenTang: number;
+    phiThanhToan: number;
+    thueKhauTru: number;
+    thucNhanDuKien: number;
+    daChiTra: number;
+    conChoChiTra: number;
     tongDoanhThu: number;
     soDonHang: number;
     soTacPhamDaBan: number;
@@ -153,7 +163,14 @@ export interface DoanhThuTongQuanResponse {
 export interface DoanhThuChiTietResponse {
     maDonHang: number;
     ngayDat: string;
+    ngayGiao?: string | null;
     tenKhachHang: string;
+    doanhThuGop: number;
+    giaTriHoan: number;
+    doanhThuSauHoan: number;
+    doanhThuDuDieuKienChiTra: number;
+    daThanhToanHopLe: boolean;
+    // Tương thích với API cũ; giá trị này chỉ là doanh thu của họa sĩ sau hoàn.
     tongTien: number;
     trangThai: string;
 }

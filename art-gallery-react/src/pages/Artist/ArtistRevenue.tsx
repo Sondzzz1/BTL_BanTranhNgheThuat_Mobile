@@ -1,11 +1,11 @@
 // Artist Revenue - Quản lý doanh thu của họa sĩ
 import React, { useState, useEffect } from 'react';
-import { artistDashboardService, DoanhThuTongQuanResponse, DonHangResponse } from '../../services/artistDashboardService';
+import { artistDashboardService, DoanhThuTongQuanResponse, DoanhThuChiTietResponse } from '../../services/artistDashboardService';
 import { formatVnd } from '../../utils/currency';
 
 const ArtistRevenue: React.FC = () => {
   const [tongQuan, setTongQuan] = useState<DoanhThuTongQuanResponse | null>(null);
-  const [donHang, setDonHang] = useState<DonHangResponse[]>([]);
+  const [donHang, setDonHang] = useState<DoanhThuChiTietResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,7 +17,7 @@ const ArtistRevenue: React.FC = () => {
       setLoading(true);
       const [tqData, dhData] = await Promise.all([
         artistDashboardService.getDoanhThuTongQuan(),
-        artistDashboardService.getDonHangCuaToi()
+        artistDashboardService.getDoanhThuChiTiet()
       ]);
       setTongQuan(tqData);
       setDonHang(dhData);
@@ -35,67 +35,78 @@ const ArtistRevenue: React.FC = () => {
   return (
     <div id="revenue" className="page">
       <div className="page-header">
-        <h4><i className="ti-money"></i> Doanh Thu</h4>
+        <h4><i className="ti-money"></i> Doanh thu và đối soát</h4>
       </div>
 
       <div className="dashboard" style={{ marginBottom: '30px' }}>
         <div className="card bg-success">
           <i className="ti-money" style={{ fontSize: '2rem' }}></i>
-          <h3>{formatCurrency(tongQuan?.tongDoanhThu || 0)}</h3>
-          <p>Tổng Doanh Thu</p>
-        </div>
-
-        <div className="card bg-warning">
-          <i className="ti-stats-up" style={{ fontSize: '2rem' }}></i>
-          <h3>{formatCurrency(tongQuan?.doanhThuThangNay || 0)}</h3>
-          <p>Doanh Thu Tháng Này</p>
-        </div>
-
-        <div className="card bg-primary">
-          <i className="ti-image" style={{ fontSize: '2rem' }}></i>
-          <h3>{tongQuan?.soTacPhamDaBan || 0}</h3>
-          <p>Tác Phẩm Đã Bán</p>
+          <h3>{formatCurrency(tongQuan?.doanhThuGop || 0)}</h3>
+          <p>Doanh thu gộp</p>
         </div>
 
         <div className="card bg-danger">
-          <i className="ti-shopping-cart" style={{ fontSize: '2rem' }}></i>
-          <h3>{tongQuan?.soDonHang || 0}</h3>
-          <p>Tổng Đơn Hàng</p>
+          <i className="ti-back-left" style={{ fontSize: '2rem' }}></i>
+          <h3>{formatCurrency(tongQuan?.giaTriHoan || 0)}</h3>
+          <p>Giá trị đã hoàn</p>
+        </div>
+
+        <div className="card bg-warning">
+          <i className="ti-clipboard" style={{ fontSize: '2rem' }}></i>
+          <h3>{formatCurrency(tongQuan?.doanhThuDuDieuKienChiTra || 0)}</h3>
+          <p>Đủ điều kiện đối soát</p>
+        </div>
+
+        <div className="card bg-primary">
+          <i className="ti-wallet" style={{ fontSize: '2rem' }}></i>
+          <h3>{formatCurrency(tongQuan?.thucNhanDuKien || 0)}</h3>
+          <p>Thực nhận dự kiến</p>
+        </div>
+      </div>
+
+      <div className="block" style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', alignItems: 'center' }}>
+          <span><strong>Doanh thu sau hoàn:</strong> {formatCurrency(tongQuan?.doanhThuSauHoan || 0)}</span>
+          <span><strong>Tháng này:</strong> {formatCurrency(tongQuan?.doanhThuThangNay || 0)}</span>
+          <span><strong>Đã bán:</strong> {tongQuan?.soTacPhamDaBan || 0} tác phẩm</span>
+          <span><strong>Đơn có doanh thu:</strong> {tongQuan?.soDonHang || 0}</span>
         </div>
       </div>
 
       <div className="block">
-        <h4>Danh Sách Đơn Hàng</h4>
+        <h4>Chi tiết doanh thu theo đơn hàng</h4>
         <div className="table-container">
           <table className="styled-table">
             <thead>
               <tr>
                 <th>Mã Đơn Hàng</th>
-                <th>Ngày Đặt</th>
+                <th>Ngày giao</th>
                 <th>Khách Hàng</th>
-                <th>Tổng Tiền</th>
-                <th>Trạng thái</th>
+                <th>Doanh thu gộp</th>
+                <th>Đã hoàn</th>
+                <th>Sau hoàn</th>
+                <th>Đối soát</th>
               </tr>
             </thead>
             <tbody>
               {donHang.map((dh) => (
                 <tr key={dh.maDonHang}>
                   <td>#{dh.maDonHang}</td>
-                  <td>{new Date(dh.ngayDat).toLocaleDateString('vi-VN')}</td>
+                  <td>{new Date(dh.ngayGiao || dh.ngayDat).toLocaleDateString('vi-VN')}</td>
                   <td><strong>{dh.tenKhachHang}</strong></td>
-                  <td style={{ color: '#28a745', fontWeight: 'bold' }}>
-                    {formatCurrency(dh.tongTien)}
-                  </td>
+                  <td>{formatCurrency(dh.doanhThuGop)}</td>
+                  <td style={{ color: dh.giaTriHoan > 0 ? '#dc3545' : undefined }}>{formatCurrency(dh.giaTriHoan)}</td>
+                  <td style={{ color: '#28a745', fontWeight: 'bold' }}>{formatCurrency(dh.doanhThuSauHoan)}</td>
                   <td>
-                    <span className={`status ${dh.trangThai === 'Đã giao' ? 'success' : 'pending'}`}>
-                      {dh.trangThai}
+                    <span className={`status ${dh.daThanhToanHopLe ? 'success' : 'pending'}`}>
+                      {dh.daThanhToanHopLe ? 'Đủ điều kiện' : 'Chờ thanh toán'}
                     </span>
                   </td>
                 </tr>
               ))}
               {donHang.length === 0 && (
                 <tr>
-                   <td colSpan={5} style={{ textAlign: 'center' }}>Chưa có đơn hàng nào.</td>
+                   <td colSpan={7} style={{ textAlign: 'center' }}>Chưa có đơn đã giao chứa tác phẩm của bạn.</td>
                 </tr>
               )}
             </tbody>
@@ -111,7 +122,7 @@ const ArtistRevenue: React.FC = () => {
         marginTop: '20px' 
       }}>
         <p style={{ margin: 0, color: '#856404' }}>
-          <i className="ti-info-alt"></i> <strong>Lưu ý:</strong> Doanh thu trên đây là doanh thu bán tác phẩm trực tiếp. Tùy theo hợp đồng, có thể sẽ trừ một khoản hoa hồng khi quyết toán cuối tháng.
+          <i className="ti-info-alt"></i> <strong>Cách tính:</strong> mỗi dòng chỉ tính tiền của tác phẩm do bạn bán, không lấy tổng tiền cả đơn hàng. Giá trị đã hoàn được trừ khỏi doanh thu. “Đủ điều kiện đối soát” chỉ gồm đơn đã giao và thanh toán hợp lệ; đây chưa phải xác nhận tiền đã được chuyển cho bạn. Phí nền tảng, phí thanh toán và thuế hiện chưa được cấu hình nên đang là 0.
         </p>
       </div>
     </div>

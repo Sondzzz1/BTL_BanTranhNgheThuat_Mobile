@@ -15,6 +15,7 @@ public class HoaSiBusiness : IHoaSiBusiness
     private readonly IDanhMucRepository _danhMucRepo;
     private readonly INguoiDungRepository _nguoiDungRepo;
     private readonly ITacPhamChinhSuaRepository _tacPhamChinhSuaRepo;
+    private readonly IThanhToanRepository _thanhToanRepo;
 
     public HoaSiBusiness(
         IHoaSiRepository hoaSiRepo,
@@ -23,7 +24,8 @@ public class HoaSiBusiness : IHoaSiBusiness
         IDonHangRepository donHangRepo,
         IDanhMucRepository danhMucRepo,
         INguoiDungRepository nguoiDungRepo,
-        ITacPhamChinhSuaRepository tacPhamChinhSuaRepo)
+        ITacPhamChinhSuaRepository tacPhamChinhSuaRepo,
+        IThanhToanRepository thanhToanRepo)
     {
         _hoaSiRepo = hoaSiRepo;
         _tacPhamRepo = tacPhamRepo;
@@ -32,6 +34,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         _danhMucRepo = danhMucRepo;
         _nguoiDungRepo = nguoiDungRepo;
         _tacPhamChinhSuaRepo = tacPhamChinhSuaRepo;
+        _thanhToanRepo = thanhToanRepo;
     }
 
     // Hồ sơ
@@ -608,69 +611,103 @@ public class HoaSiBusiness : IHoaSiBusiness
     // Doanh thu
     public async Task<DoanhThuTongQuanResponse> GetDoanhThuTongQuan(int maHoaSi)
     {
-        var allDonHang = await GetDonHangCoTacPhamCuaHoaSi(maHoaSi);
-        var donHangDaGiao = allDonHang.Where(dh => dh.TrangThai == DonHangStatus.DaGiao).ToList();
-
-        var tongDoanhThu = await TinhTongDoanhThu(maHoaSi);
-
+        var revenueLines = await GetArtistRevenueLines(maHoaSi);
         var now = DateTime.UtcNow;
-        var doanhThuThangNay = donHangDaGiao
-            .Where(dh => dh.NgayDat.Year == now.Year && dh.NgayDat.Month == now.Month)
-            .Sum(dh => dh.TongTien);
-
-        var soTacPhamDaBan = await TinhSoTacPhamDaBan(maHoaSi);
+        var doanhThuGop = revenueLines.Sum(line => line.DoanhThuGop);
+        var giaTriHoan = revenueLines.Sum(line => line.GiaTriHoan);
+        var doanhThuSauHoan = revenueLines.Sum(line => line.DoanhThuSauHoan);
+        var doanhThuDuDieuKienChiTra = revenueLines
+            .Where(line => line.DaThanhToanHopLe)
+            .Sum(line => line.DoanhThuSauHoan);
+        var doanhThuThangNay = revenueLines
+            .Where(line => line.NgayGhiNhan.Year == now.Year && line.NgayGhiNhan.Month == now.Month)
+            .Sum(line => line.DoanhThuSauHoan);
 
         return new DoanhThuTongQuanResponse
         {
-            TongDoanhThu = tongDoanhThu,
-            SoDonHang = donHangDaGiao.Count,
-            SoTacPhamDaBan = soTacPhamDaBan,
+            DoanhThuGop = doanhThuGop,
+            GiaTriHoan = giaTriHoan,
+            DoanhThuSauHoan = doanhThuSauHoan,
+            DoanhThuDuDieuKienChiTra = doanhThuDuDieuKienChiTra,
+            // Chưa có bảng chính sách phí/thuế, vì vậy không được âm thầm trừ tiền của họa sĩ.
+            PhiNenTang = 0,
+            PhiThanhToan = 0,
+            ThueKhauTru = 0,
+            ThucNhanDuKien = doanhThuDuDieuKienChiTra,
+            DaChiTra = 0,
+            ConChoChiTra = doanhThuDuDieuKienChiTra,
+            TongDoanhThu = doanhThuSauHoan,
+            SoDonHang = revenueLines
+                .Where(line => line.SoLuongSauHoan > 0)
+                .Select(line => line.DonHang.MaDonHang)
+                .Distinct()
+                .Count(),
+            SoTacPhamDaBan = revenueLines.Sum(line => line.SoLuongSauHoan),
             DoanhThuThangNay = doanhThuThangNay
         };
     }
 
     public async Task<List<DoanhThuChiTietResponse>> GetDoanhThuChiTiet(int maHoaSi)
     {
-        var donHangList = (await GetDonHangCoTacPhamCuaHoaSi(maHoaSi))
-            .Where(dh => dh.TrangThai == DonHangStatus.DaGiao)
-            .ToList();
+        var revenueLines = await GetArtistRevenueLines(maHoaSi);
         var result = new List<DoanhThuChiTietResponse>();
 
-        foreach (var donHang in donHangList)
+        foreach (var group in revenueLines.GroupBy(line => line.DonHang.MaDonHang))
         {
+            var donHang = group.First().DonHang;
             var nd = await _nguoiDungRepo.GetById(donHang.MaNguoiDung);
+            var doanhThuGop = group.Sum(line => line.DoanhThuGop);
+            var giaTriHoan = group.Sum(line => line.GiaTriHoan);
+            var doanhThuSauHoan = group.Sum(line => line.DoanhThuSauHoan);
+            var daThanhToanHopLe = group.All(line => line.DaThanhToanHopLe);
+
             result.Add(new DoanhThuChiTietResponse
             {
                 MaDonHang = donHang.MaDonHang,
                 NgayDat = donHang.NgayDat,
+                NgayGiao = donHang.NgayGiao,
                 TenKhachHang = donHang.TenNguoiNhan ?? nd?.Ten ?? "Khách hàng",
-                TongTien = donHang.TongTien,
-                TrangThai = DonHangStatus.GetText(donHang.TrangThai)
+                DoanhThuGop = doanhThuGop,
+                GiaTriHoan = giaTriHoan,
+                DoanhThuSauHoan = doanhThuSauHoan,
+                DoanhThuDuDieuKienChiTra = daThanhToanHopLe ? doanhThuSauHoan : 0,
+                DaThanhToanHopLe = daThanhToanHopLe,
+                // Trường tương thích ngược: chỉ là phần doanh thu của họa sĩ sau hoàn,
+                // tuyệt đối không phải tổng tiền toàn bộ đơn hàng.
+                TongTien = doanhThuSauHoan,
+                TrangThai = daThanhToanHopLe
+                    ? "Đã giao · thanh toán hợp lệ"
+                    : "Đã giao · chờ xác nhận thanh toán"
             });
         }
 
-        return result;
+        return result
+            .OrderByDescending(item => item.NgayGiao ?? item.NgayDat)
+            .ThenByDescending(item => item.MaDonHang)
+            .ToList();
     }
 
     public async Task<List<DoanhThuTheoThang>> GetDoanhThuTheoThang(int maHoaSi, int nam)
     {
-        var donHangList = (await GetDonHangCoTacPhamCuaHoaSi(maHoaSi))
-            .Where(dh => dh.TrangThai == DonHangStatus.DaGiao)
-            .ToList();
+        var revenueLines = await GetArtistRevenueLines(maHoaSi);
         var result = new List<DoanhThuTheoThang>();
 
         for (int thang = 1; thang <= 12; thang++)
         {
-            var donHangThang = donHangList
-                .Where(dh => dh.NgayDat.Year == nam && dh.NgayDat.Month == thang)
+            var donHangThang = revenueLines
+                .Where(line => line.NgayGhiNhan.Year == nam && line.NgayGhiNhan.Month == thang)
                 .ToList();
 
             result.Add(new DoanhThuTheoThang
             {
                 Nam = nam,
                 Thang = thang,
-                TongDoanhThu = donHangThang.Sum(dh => dh.TongTien),
-                SoDonHang = donHangThang.Count
+                TongDoanhThu = donHangThang.Sum(line => line.DoanhThuSauHoan),
+                SoDonHang = donHangThang
+                    .Where(line => line.SoLuongSauHoan > 0)
+                    .Select(line => line.DonHang.MaDonHang)
+                    .Distinct()
+                    .Count()
             });
         }
 
@@ -679,125 +716,128 @@ public class HoaSiBusiness : IHoaSiBusiness
 
     public async Task<List<DoanhThuTheoTacPhamResponse>> GetDoanhThuTheoTacPham(int maHoaSi)
     {
-        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
-        var result = new List<DoanhThuTheoTacPhamResponse>();
+        var revenueLines = await GetArtistRevenueLines(maHoaSi);
+        var artworks = await GetManagedArtworksForArtist(maHoaSi);
 
-        foreach (var tacPham in tacPhamList)
-        {
-            var (soLuongBan, doanhThu) = await TinhDoanhThuTacPham(tacPham.MaTacPham);
-
-            result.Add(new DoanhThuTheoTacPhamResponse
+        return artworks
+            .Select(tacPham =>
             {
-                MaTacPham = tacPham.MaTacPham,
-                TenTacPham = tacPham.TenTacPham,
-                SoLuongBan = soLuongBan,
-                DoanhThu = doanhThu
-            });
-        }
-
-        return result.OrderByDescending(x => x.DoanhThu).ToList();
+                var lines = revenueLines.Where(line => line.ChiTiet.MaTacPham == tacPham.MaTacPham);
+                return new DoanhThuTheoTacPhamResponse
+                {
+                    MaTacPham = tacPham.MaTacPham,
+                    TenTacPham = tacPham.TenTacPham,
+                    SoLuongBan = lines.Sum(line => line.SoLuongSauHoan),
+                    DoanhThu = lines.Sum(line => line.DoanhThuSauHoan)
+                };
+            })
+            .OrderByDescending(item => item.DoanhThu)
+            .ToList();
     }
 
     public async Task<List<DonHangResponse>> GetDonHangCuaToi(int maHoaSi)
     {
-        var donHangList = await GetDonHangCoTacPhamCuaHoaSi(maHoaSi);
+        var revenueLines = await GetArtistRevenueLines(maHoaSi);
+        var tenHoaSi = (await _hoaSiRepo.GetById(maHoaSi))?.TenHoaSi ?? "Họa sĩ";
         var result = new List<DonHangResponse>();
 
-        foreach (var donHang in donHangList)
+        foreach (var group in revenueLines.GroupBy(line => line.DonHang.MaDonHang))
         {
+            var donHang = group.First().DonHang;
             result.Add(new DonHangResponse
             {
                 MaDonHang = donHang.MaDonHang,
                 NgayDat = donHang.NgayDat,
-                TongTien = donHang.TongTien,
+                NgayGiao = donHang.NgayGiao,
+                TongTien = group.Sum(line => line.DoanhThuSauHoan),
                 TenNguoiNhan = donHang.TenNguoiNhan ?? "",
                 SoDienThoai = donHang.SoDienThoai ?? "",
                 DiaChiGiao = donHang.DiaChiGiao ?? "",
                 TrangThai = donHang.TrangThai,
                 TrangThaiText = GetTrangThaiDonHangText(donHang.TrangThai),
-                ChiTiet = new List<ChiTietDonHangResponse>()
+                TrangThaiThanhToan = group.All(line => line.DaThanhToanHopLe)
+                    ? "Đã thanh toán"
+                    : "Chờ xác nhận thanh toán",
+                SoSanPham = group.Sum(line => line.SoLuongSauHoan),
+                ChiTiet = group.Select(line => new ChiTietDonHangResponse
+                {
+                    MaChiTietDH = line.ChiTiet.MaChiTietDH,
+                    MaTacPham = line.ChiTiet.MaTacPham,
+                    TenTacPham = line.TacPham.TenTacPham,
+                    TenHoaSi = tenHoaSi,
+                    SoLuong = line.SoLuongSauHoan,
+                    DonGia = line.ChiTiet.DonGia,
+                    ThanhTien = line.DoanhThuSauHoan,
+                    HinhAnh = line.TacPham.HinhAnh
+                }).ToList()
             });
         }
 
-        return result;
+        return result.OrderByDescending(item => item.NgayGiao ?? item.NgayDat).ToList();
     }
 
     // Helper methods
     private async Task<decimal> TinhTongDoanhThu(int maHoaSi)
     {
-        var donHangList = (await GetDonHangCoTacPhamCuaHoaSi(maHoaSi))
+        return (await GetArtistRevenueLines(maHoaSi)).Sum(line => line.DoanhThuSauHoan);
+    }
+
+    private async Task<List<ArtistRevenueLine>> GetArtistRevenueLines(int maHoaSi)
+    {
+        // Dùng danh sách quản lý thay vì marketplace để doanh thu lịch sử không bị mất
+        // khi một tranh đã bị ẩn, từ chối hoặc ngừng bán sau khi giao hàng.
+        var artworks = await GetManagedArtworksForArtist(maHoaSi);
+        var artworksById = artworks.ToDictionary(item => item.MaTacPham);
+        if (artworksById.Count == 0) return new List<ArtistRevenueLine>();
+
+        var deliveredOrders = (await _donHangRepo.GetAll())
             .Where(dh => dh.TrangThai == DonHangStatus.DaGiao)
             .ToList();
 
-        // Doanh thu của họa sĩ chỉ tính phần các tác phẩm của họ trong đơn
-        var tacPhamCuaHoaSi = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
-        var maTacPhamSet = tacPhamCuaHoaSi.Select(tp => tp.MaTacPham).ToHashSet();
+        var deliveredOrderIds = deliveredOrders.Select(order => order.MaDonHang).ToHashSet();
+        var paymentsByOrder = (await _thanhToanRepo.GetAll())
+            .Where(payment => deliveredOrderIds.Contains(payment.MaDonHang))
+            .GroupBy(payment => payment.MaDonHang)
+            .ToDictionary(group => group.Key, group => group.ToList());
+        var result = new List<ArtistRevenueLine>();
 
-        decimal tong = 0;
-        foreach (var dh in donHangList)
-        {
-            var chiTiet = await _donHangRepo.GetChiTiet(dh.MaDonHang);
-            tong += chiTiet
-                .Where(ct => maTacPhamSet.Contains(ct.MaTacPham))
-                .Sum(ct => ct.SoLuong * ct.DonGia);
-        }
-        return tong;
-    }
-
-    private async Task<int> TinhSoTacPhamDaBan(int maHoaSi)
-    {
-        var tacPhamList = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
-        int tongSoLuong = 0;
-
-        foreach (var tacPham in tacPhamList)
-        {
-            var (soLuongBan, _) = await TinhDoanhThuTacPham(tacPham.MaTacPham);
-            tongSoLuong += soLuongBan;
-        }
-
-        return tongSoLuong;
-    }
-
-    private async Task<List<DonHang>> GetDonHangCoTacPhamCuaHoaSi(int maHoaSi)
-    {
-        var allDonHang = await _donHangRepo.GetAll();
-        var tacPhamCuaHoaSi = await _tacPhamRepo.GetMarketplaceByArtist(maHoaSi);
-        var maTacPhamList = tacPhamCuaHoaSi.Select(tp => tp.MaTacPham).ToList();
-
-        var result = new List<DonHang>();
-        foreach (var donHang in allDonHang)
+        foreach (var donHang in deliveredOrders)
         {
             var chiTiet = await _donHangRepo.GetChiTiet(donHang.MaDonHang);
-            if (chiTiet.Any(ct => maTacPhamList.Contains(ct.MaTacPham)))
+            var daThanhToanHopLe = paymentsByOrder.TryGetValue(donHang.MaDonHang, out var payments)
+                && payments.Count == 1
+                && payments[0].TrangThai.Equals("DaThanhToan", StringComparison.OrdinalIgnoreCase);
+
+            foreach (var ct in chiTiet.Where(item => artworksById.ContainsKey(item.MaTacPham)))
             {
-                result.Add(donHang);
+                // Chỉ trừ khoản hoàn đã được ghi nhận ở dòng đơn; yêu cầu hoàn đang chờ
+                // không được trừ trước vì chưa phải khoản hoàn cuối cùng.
+                var soLuongDaHoan = Math.Clamp(ct.SoLuongDaHoan, 0, ct.SoLuong);
+                result.Add(new ArtistRevenueLine(
+                    donHang,
+                    ct,
+                    artworksById[ct.MaTacPham],
+                    ct.SoLuong - soLuongDaHoan,
+                    ct.SoLuong * ct.DonGia,
+                    soLuongDaHoan * ct.DonGia,
+                    daThanhToanHopLe));
             }
         }
 
         return result;
     }
 
-    private async Task<(int soLuongBan, decimal doanhThu)> TinhDoanhThuTacPham(int maTacPham)
+    private sealed record ArtistRevenueLine(
+        DonHang DonHang,
+        ChiTietDonHang ChiTiet,
+        TacPham TacPham,
+        int SoLuongSauHoan,
+        decimal DoanhThuGop,
+        decimal GiaTriHoan,
+        bool DaThanhToanHopLe)
     {
-        var allDonHang = (await _donHangRepo.GetAll())
-            .Where(dh => dh.TrangThai == DonHangStatus.DaGiao)
-            .ToList();
-        int soLuongBan = 0;
-        decimal doanhThu = 0;
-
-        foreach (var donHang in allDonHang)
-        {
-            var chiTiet = await _donHangRepo.GetChiTiet(donHang.MaDonHang);
-            var chiTietTacPham = chiTiet.Where(ct => ct.MaTacPham == maTacPham);
-            
-            foreach (var ct in chiTietTacPham)
-            {
-                soLuongBan += ct.SoLuong;
-                doanhThu += ct.SoLuong * ct.DonGia;
-            }
-        }
-
-        return (soLuongBan, doanhThu);
+        public decimal DoanhThuSauHoan => DoanhThuGop - GiaTriHoan;
+        public DateTime NgayGhiNhan => DonHang.NgayGiao ?? DonHang.NgayDat;
     }
 
     private string GetTrangThaiTacPhamText(byte trangThai)
@@ -844,47 +884,26 @@ public class HoaSiBusiness : IHoaSiBusiness
         var tacPham = await GetManagedArtworkForArtistRead(maTacPham);
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi) return null;
 
-        var allDonHang = (await _donHangRepo.GetAll())
-            .Where(dh => dh.TrangThai == DonHangStatus.DaGiao)
+        var revenueLines = (await GetArtistRevenueLines(maHoaSi))
+            .Where(line => line.ChiTiet.MaTacPham == maTacPham)
             .ToList();
-
-        int tongSoLuongBan = 0;
-        decimal tongDoanhThu = 0;
-        int soDonHang = 0;
-        decimal doanhThuThangNay = 0;
-        int soLuongBanThangNay = 0;
         var now = DateTime.UtcNow;
-
-        foreach (var donHang in allDonHang)
-        {
-            var chiTiet = await _donHangRepo.GetChiTiet(donHang.MaDonHang);
-            var chiTietTacPham = chiTiet.Where(ct => ct.MaTacPham == maTacPham).ToList();
-
-            if (chiTietTacPham.Count > 0)
-            {
-                soDonHang++;
-                foreach (var ct in chiTietTacPham)
-                {
-                    tongSoLuongBan += ct.SoLuong;
-                    tongDoanhThu += ct.SoLuong * ct.DonGia;
-
-                    if (donHang.NgayDat.Year == now.Year && donHang.NgayDat.Month == now.Month)
-                    {
-                        soLuongBanThangNay += ct.SoLuong;
-                        doanhThuThangNay += ct.SoLuong * ct.DonGia;
-                    }
-                }
-            }
-        }
+        var revenueLinesThisMonth = revenueLines
+            .Where(line => line.NgayGhiNhan.Year == now.Year && line.NgayGhiNhan.Month == now.Month)
+            .ToList();
 
         return new TacPhamThongKeResponse
         {
-            TongSoLuongBan = tongSoLuongBan,
-            TongDoanhThu = tongDoanhThu,
-            SoDonHang = soDonHang,
+            TongSoLuongBan = revenueLines.Sum(line => line.SoLuongSauHoan),
+            TongDoanhThu = revenueLines.Sum(line => line.DoanhThuSauHoan),
+            SoDonHang = revenueLines
+                .Where(line => line.SoLuongSauHoan > 0)
+                .Select(line => line.DonHang.MaDonHang)
+                .Distinct()
+                .Count(),
             SoLuongConLai = tacPham.SoLuong,
-            DoanhThuThangNay = doanhThuThangNay,
-            SoLuongBanThangNay = soLuongBanThangNay
+            DoanhThuThangNay = revenueLinesThisMonth.Sum(line => line.DoanhThuSauHoan),
+            SoLuongBanThangNay = revenueLinesThisMonth.Sum(line => line.SoLuongSauHoan)
         };
     }
 
@@ -895,35 +914,28 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi)
             return new List<TacPhamDonHangResponse>();
 
-        var allDonHang = await _donHangRepo.GetAll();
+        var revenueLines = (await GetArtistRevenueLines(maHoaSi))
+            .Where(line => line.ChiTiet.MaTacPham == maTacPham)
+            .ToList();
         var result = new List<TacPhamDonHangResponse>();
 
-        foreach (var donHang in allDonHang)
+        foreach (var line in revenueLines)
         {
-            var chiTiet = await _donHangRepo.GetChiTiet(donHang.MaDonHang);
-            var chiTietTacPham = chiTiet.Where(ct => ct.MaTacPham == maTacPham).ToList();
-
-            if (chiTietTacPham.Count > 0)
+            var nd = await _nguoiDungRepo.GetById(line.DonHang.MaNguoiDung);
+            result.Add(new TacPhamDonHangResponse
             {
-                var nd = await _nguoiDungRepo.GetById(donHang.MaNguoiDung);
-                string tenKhachHang = donHang.TenNguoiNhan ?? nd?.Ten ?? "Khách hàng";
-
-                foreach (var ct in chiTietTacPham)
-                {
-                    result.Add(new TacPhamDonHangResponse
-                    {
-                        MaDonHang = donHang.MaDonHang,
-                        MaHD = "DH" + donHang.MaDonHang.ToString("D6"),
-                        NgayDat = donHang.NgayDat,
-                        TenKhachHang = tenKhachHang,
-                        SoLuong = ct.SoLuong,
-                        DonGia = ct.DonGia,
-                        ThanhTien = ct.SoLuong * ct.DonGia,
-                        TrangThai = DonHangStatus.GetText(donHang.TrangThai),
-                        TrangThaiClass = GetTrangThaiClass(donHang.TrangThai)
-                    });
-                }
-            }
+                MaDonHang = line.DonHang.MaDonHang,
+                MaHD = "DH" + line.DonHang.MaDonHang.ToString("D6"),
+                NgayDat = line.DonHang.NgayDat,
+                TenKhachHang = line.DonHang.TenNguoiNhan ?? nd?.Ten ?? "Khách hàng",
+                SoLuong = line.SoLuongSauHoan,
+                DonGia = line.ChiTiet.DonGia,
+                ThanhTien = line.DoanhThuSauHoan,
+                TrangThai = line.DaThanhToanHopLe
+                    ? "Đã giao · thanh toán hợp lệ"
+                    : "Đã giao · chờ xác nhận thanh toán",
+                TrangThaiClass = line.DaThanhToanHopLe ? "success" : "pending"
+            });
         }
 
         return result.OrderByDescending(x => x.NgayDat).ToList();
@@ -936,48 +948,27 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (tacPham == null || tacPham.MaHoaSi != maHoaSi)
             return new List<TacPhamDoanhThuTheoThangResponse>();
 
-        var allDonHang = (await _donHangRepo.GetAll())
-            .Where(dh => dh.TrangThai == DonHangStatus.DaGiao && dh.NgayDat.Year == nam)
+        var revenueLines = (await GetArtistRevenueLines(maHoaSi))
+            .Where(line => line.ChiTiet.MaTacPham == maTacPham && line.NgayGhiNhan.Year == nam)
             .ToList();
 
         var result = new List<TacPhamDoanhThuTheoThangResponse>();
 
         for (int thang = 1; thang <= 12; thang++)
         {
-            decimal doanhThu = 0;
-            int soLuong = 0;
-
-            var donHangThang = allDonHang.Where(dh => dh.NgayDat.Month == thang).ToList();
-            foreach (var dh in donHangThang)
-            {
-                var chiTiet = await _donHangRepo.GetChiTiet(dh.MaDonHang);
-                var chiTietTacPham = chiTiet.Where(ct => ct.MaTacPham == maTacPham);
-                foreach (var ct in chiTietTacPham)
-                {
-                    doanhThu += ct.SoLuong * ct.DonGia;
-                    soLuong += ct.SoLuong;
-                }
-            }
+            var revenueLinesThisMonth = revenueLines
+                .Where(line => line.NgayGhiNhan.Month == thang)
+                .ToList();
 
             result.Add(new TacPhamDoanhThuTheoThangResponse
             {
                 Thang = "Tháng " + thang,
-                DoanhThu = doanhThu,
-                SoLuong = soLuong
+                DoanhThu = revenueLinesThisMonth.Sum(line => line.DoanhThuSauHoan),
+                SoLuong = revenueLinesThisMonth.Sum(line => line.SoLuongSauHoan)
             });
         }
 
         return result;
     }
 
-    private string GetTrangThaiClass(byte trangThai) => trangThai switch
-    {
-        0 => "pending",
-        1 => "confirmed",
-        2 => "shipping",
-        3 => "success",
-        4 => "canceling",
-        5 => "canceled",
-        _ => "unknown"
-    };
 }
