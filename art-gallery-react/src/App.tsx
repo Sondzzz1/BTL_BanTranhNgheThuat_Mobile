@@ -49,7 +49,6 @@ import ArtistArtworks from './pages/Artist/ArtistArtworks';
 import ArtistDeletedArtworks from './pages/Artist/ArtistDeletedArtworks';
 import ArtworkDetailManagement from './pages/Artist/ArtworkDetailManagement';
 import ArtworkDetailContent from './pages/Artist/ArtworkDetailContent';
-import ArtistArticles from './pages/Artist/ArtistArticles';
 import ArtistRevenue from './pages/Artist/ArtistRevenue';
 import ArtistCustomArt from './pages/Artist/ArtistCustomArt';
 import ArtistCopyright from './pages/Artist/ArtistCopyright';
@@ -126,7 +125,6 @@ function App() {
               <Route path="artworks/:id/content" element={<ArtworkDetailContent />} />
               <Route path="artworks/:id/copyright" element={<ArtistCopyright />} />
               <Route path="notifications" element={<ArtistNotifications />} />
-              <Route path="articles" element={<ArtistArticles />} />
               <Route path="revenue" element={<ArtistRevenue />} />
               <Route path="custom-art" element={<ArtistCustomArt />} />
               <Route path="sales" element={<PlaceholderPage title="Báo Cáo Bán Hàng" />} />

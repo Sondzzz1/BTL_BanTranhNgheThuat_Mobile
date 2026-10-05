@@ -9,6 +9,26 @@
   font-weight: 600;
 }
 
+/* Ghi đè quy tắc chung `.styled-table button`, vốn làm nền trong suốt nhưng
+   vẫn giữ chữ trắng của nút chi tiết khiến nút trông như bị rỗng. */
+.styled-table .artwork-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #1d4ed8;
+  background: #2563eb;
+  color: #fff;
+  padding: 7px 10px;
+}
+
+.styled-table .artwork-detail-btn:hover {
+  background: #1d4ed8;
+}
+
+.styled-table .artwork-detail-btn i {
+  margin: 0;
+}
+
 .review-first-hint {
   display: block;
   max-width: 125px;

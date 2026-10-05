@@ -380,8 +380,9 @@ const AdminArt: React.FC = () => {
                     className="artwork-detail-btn"
                     onClick={() => openArtworkDetail(artwork)}
                     title={artwork.trangThai === 0 ? 'Xem đầy đủ trước khi duyệt' : 'Xem chi tiết tác phẩm'}
+                    style={{ backgroundColor: '#1d4ed8', border: '1px solid #1d4ed8', color: '#ffffff' }}
                 >
-                    <i className="ti-eye"></i> {artwork.trangThai === 0 ? 'Xem & duyệt' : 'Chi tiết'}
+                    <i className="ti-eye"></i> {artwork.trangThai === 0 ? 'Xem & duyệt' : 'Xem chi tiết'}
                 </button>
                 {artwork.trangThai === 0 && (
                     <span className="review-first-hint">Xem chi tiết trước khi xử lý</span>

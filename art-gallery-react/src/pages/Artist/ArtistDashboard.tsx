@@ -13,7 +13,6 @@ const ArtistDashboard: React.FC = () => {
   const { user } = useAuth();
   const [myArtworks, setMyArtworks] = useState<TacPhamHoaSiResponse[]>([]);
   const [tongQuan, setTongQuan] = useState<DoanhThuTongQuanResponse | null>(null);
-  const [articleCount, setArticleCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,14 +22,12 @@ const ArtistDashboard: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [artworks, doanhThu, articles] = await Promise.all([
+      const [artworks, doanhThu] = await Promise.all([
         artistDashboardService.getTacPhamCuaToi(),
         artistDashboardService.getDoanhThuTongQuan(),
-        artistDashboardService.getBaiVietCuaToi().catch(() => []),
       ]);
       setMyArtworks(artworks);
       setTongQuan(doanhThu);
-      setArticleCount(articles.length);
     } catch (error) {
       console.error('Lỗi khi tải dashboard tác giả:', error);
     } finally {
@@ -62,12 +59,6 @@ const ArtistDashboard: React.FC = () => {
           <i className="ti-check" style={{ fontSize: '2.5rem' }}></i>
           <h3>{publishedArtworks}</h3>
           <p>Đang Bán</p>
-        </div>
-
-        <div className="card bg-warning">
-          <i className="ti-write" style={{ fontSize: '2.5rem' }}></i>
-          <h3>{articleCount}</h3>
-          <p>Bài Viết</p>
         </div>
 
         <div className="card bg-success">
@@ -139,7 +130,6 @@ const ArtistDashboard: React.FC = () => {
           <h4><i className="ti-bolt"></i> Thao Tác Nhanh</h4>
           <div className="activity">
             <div><Link to="/artist/artworks" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-plus"></i> Thêm Tác Phẩm</Link></div>
-            <div><Link to="/artist/articles" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-write"></i> Viết Bài Mới</Link></div>
             <div><Link to="/artist/revenue" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-bar-chart"></i> Xem Doanh Thu</Link></div>
             <div><Link to="/artist/profile" style={{ textDecoration: 'none', color: 'inherit' }}><i className="ti-settings"></i> Cập Nhật Hồ Sơ</Link></div>
           </div>
