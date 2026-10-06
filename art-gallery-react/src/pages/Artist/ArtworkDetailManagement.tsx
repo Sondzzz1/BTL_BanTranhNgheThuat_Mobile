@@ -163,7 +163,7 @@ const ArtworkDetailManagement: React.FC = () => {
     try {
       const payload = {
         tenTacPham: formData.tenTacPham,
-        gia: parseFloat(formData.gia),
+        gia: parseFloat(formData.gia.toString().replace(/\D/g, '')),
         maDanhMuc: formData.maDanhMuc ? parseInt(formData.maDanhMuc) : undefined,
         soLuong: parseInt(formData.soLuong),
         hinhAnh: formData.anhTranh,
@@ -494,10 +494,31 @@ const ArtworkDetailManagement: React.FC = () => {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       value={formData.gia}
                       onChange={(e) => setFormData({ ...formData, gia: e.target.value })}
+                      placeholder="Ví dụ: 1000000"
                       required
                     />
+                    <div style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      color: '#475569',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 6,
+                      padding: '6px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      <span>Hiển thị:</span>
+                      <strong style={{ color: '#059669', fontSize: 14 }}>
+                        {formData.gia && Number(formData.gia) > 0
+                          ? `${Number(formData.gia).toLocaleString('vi-VN')} VNĐ`
+                          : '1.000.000 VNĐ'}
+                      </strong>
+                    </div>
                   </div>
 
                   <div className="form-group">

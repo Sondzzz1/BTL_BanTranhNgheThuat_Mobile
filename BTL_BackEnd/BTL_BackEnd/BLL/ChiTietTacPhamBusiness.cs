@@ -162,7 +162,9 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             YNghiaNghiThuat = chiTiet.YNghiaNghiThuat,
             KyThuatThucHien = chiTiet.KyThuatThucHien,
             CamHungSangTao = chiTiet.CamHungSangTao,
-            ThongTinBosung = chiTiet.ThongTinBosung,
+            // Các bản ghi cũ từng tự sao chép MoTa của tác phẩm vào đây khi tạo tranh.
+            // MoTa là thông tin hồ sơ tác phẩm, không phải nội dung chi tiết để xét duyệt.
+            ThongTinBosung = GetThongTinBoSungRieng(chiTiet.ThongTinBosung, tacPham.MoTa),
             KichThuoc = tacPham.KichThuoc,
             ChatLieu = tacPham.ChatLieu,
             ChatLieuKhung = tacPham.ChatLieuKhung,
@@ -295,7 +297,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             YNghiaNghiThuat = chiTiet.YNghiaNghiThuat,
             KyThuatThucHien = chiTiet.KyThuatThucHien,
             CamHungSangTao = chiTiet.CamHungSangTao,
-            ThongTinBosung = chiTiet.ThongTinBosung,
+            ThongTinBosung = GetThongTinBoSungRieng(chiTiet.ThongTinBosung, tacPham.MoTa),
             KichThuoc = tacPham.KichThuoc,
             ChatLieu = tacPham.ChatLieu,
             ChatLieuKhung = tacPham.ChatLieuKhung,
@@ -320,6 +322,17 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             2 => "Từ chối",
             _ => "Không xác định"
         };
+    }
+
+    private static string? GetThongTinBoSungRieng(string? thongTinBosung, string? moTaTacPham)
+    {
+        var detail = string.IsNullOrWhiteSpace(thongTinBosung) ? null : thongTinBosung.Trim();
+        var basicDescription = string.IsNullOrWhiteSpace(moTaTacPham) ? null : moTaTacPham.Trim();
+
+        // Không xóa dữ liệu lịch sử; chỉ không trả về bản sao mô tả cơ bản như nội dung chi tiết.
+        return detail != null && string.Equals(detail, basicDescription, StringComparison.Ordinal)
+            ? null
+            : detail;
     }
 
     /// <summary>

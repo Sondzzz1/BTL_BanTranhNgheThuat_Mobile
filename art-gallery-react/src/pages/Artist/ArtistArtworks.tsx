@@ -227,10 +227,9 @@ const ArtistArtworks: React.FC = () => {
     yNghiaNghiThuat: loadedDetail?.yNghiaNghiThuat || null,
     kyThuatThucHien: loadedDetail?.kyThuatThucHien || null,
     camHungSangTao: loadedDetail?.camHungSangTao || null,
-    thongTinBosung: loadedDetail?.thongTinBosung || formData.moTa.trim() || null,
-    kichThuoc: formData.kichThuoc.trim() || loadedDetail?.kichThuoc || null,
-    chatLieu: formData.chatLieu.trim() || loadedDetail?.chatLieu || null,
-    chatLieuKhung: formData.chatLieuKhung.trim() || loadedDetail?.chatLieuKhung || null,
+    // Mô tả trong form thêm tác phẩm thuộc hồ sơ tác phẩm, không phải nội dung chi tiết.
+    // Chỉ giữ nội dung mà họa sĩ đã khai báo riêng ở trang “Nội dung chi tiết”.
+    thongTinBosung: loadedDetail?.thongTinBosung || null,
     namSangTac: loadedDetail?.namSangTac || null,
     diaDiemSangTac: loadedDetail?.diaDiemSangTac || null,
     hinhAnh1: urls[1] || null,
@@ -238,6 +237,36 @@ const ArtistArtworks: React.FC = () => {
     hinhAnh3: urls[3] || null,
     hinhAnh4: urls[4] || null,
   });
+
+  const normalizeDetailValue = (value?: string | null) => value?.trim() || null;
+
+  const hasDetailContent = (detail: ChiTietTacPhamPayload) => Boolean(
+    normalizeDetailValue(detail.cauChuyenSangTac)
+    || normalizeDetailValue(detail.yNghiaNghiThuat)
+    || normalizeDetailValue(detail.kyThuatThucHien)
+    || normalizeDetailValue(detail.camHungSangTao)
+    || normalizeDetailValue(detail.thongTinBosung)
+    || detail.namSangTac
+    || normalizeDetailValue(detail.diaDiemSangTac)
+    || normalizeDetailValue(detail.hinhAnh1)
+    || normalizeDetailValue(detail.hinhAnh2)
+    || normalizeDetailValue(detail.hinhAnh3)
+    || normalizeDetailValue(detail.hinhAnh4)
+  );
+
+  const isSameDetailContent = (detail: ChiTietTacPhamPayload, current: ChiTietTacPhamResponse) => (
+    normalizeDetailValue(detail.cauChuyenSangTac) === normalizeDetailValue(current.cauChuyenSangTac)
+    && normalizeDetailValue(detail.yNghiaNghiThuat) === normalizeDetailValue(current.yNghiaNghiThuat)
+    && normalizeDetailValue(detail.kyThuatThucHien) === normalizeDetailValue(current.kyThuatThucHien)
+    && normalizeDetailValue(detail.camHungSangTao) === normalizeDetailValue(current.camHungSangTao)
+    && normalizeDetailValue(detail.thongTinBosung) === normalizeDetailValue(current.thongTinBosung)
+    && (detail.namSangTac || null) === (current.namSangTac || null)
+    && normalizeDetailValue(detail.diaDiemSangTac) === normalizeDetailValue(current.diaDiemSangTac)
+    && normalizeDetailValue(detail.hinhAnh1) === normalizeDetailValue(current.hinhAnh1)
+    && normalizeDetailValue(detail.hinhAnh2) === normalizeDetailValue(current.hinhAnh2)
+    && normalizeDetailValue(detail.hinhAnh3) === normalizeDetailValue(current.hinhAnh3)
+    && normalizeDetailValue(detail.hinhAnh4) === normalizeDetailValue(current.hinhAnh4)
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -249,9 +278,16 @@ const ArtistArtworks: React.FC = () => {
         return;
       }
 
+      const rawGia = formData.gia.toString().replace(/\D/g, '');
+      const parsedGia = parseFloat(rawGia);
+      if (!rawGia || isNaN(parsedGia) || parsedGia <= 0) {
+        alert('Vui lòng nhập giá bán hợp lệ.');
+        return;
+      }
+
       const artworkPayload = {
         tenTacPham: formData.tenTacPham,
-        gia: parseFloat(formData.gia),
+        gia: parsedGia,
         maDanhMuc: formData.maDanhMuc ? parseInt(formData.maDanhMuc) : undefined,
         // Editing changes remaining stock only; never revive a sold-out exclusive work.
         soLuong: editingArtwork ? parseInt(formData.soLuong, 10)
@@ -356,26 +392,33 @@ const ArtistArtworks: React.FC = () => {
         }
       }
 
+      let detailWasSubmitted = false;
       try {
         const detailPayload = buildDetailPayload(urls);
-        if (loadedDetail) {
+        if (loadedDetail && !isSameDetailContent(detailPayload, loadedDetail)) {
           await artistDashboardService.capNhatChiTietTacPham(artworkId, detailPayload);
-        } else {
+          detailWasSubmitted = true;
+        } else if (!loadedDetail && hasDetailContent(detailPayload)) {
           await artistDashboardService.taoChiTietTacPham(artworkId, detailPayload);
+          detailWasSubmitted = true;
         }
       } catch (detailError: any) {
         setIsModalOpen(false);
         await loadData();
         alert(
           `${editingArtwork ? 'Tác phẩm đã được cập nhật' : 'Tác phẩm đã được tạo'}, ` +
-          `nhưng chưa lưu được thư viện ảnh chi tiết: ${detailError?.response?.data?.message || detailError.message || 'Lỗi không xác định'}`
+          `nhưng chưa lưu được nội dung chi tiết/ảnh bổ sung: ${detailError?.response?.data?.message || detailError.message || 'Lỗi không xác định'}`
         );
         return;
       }
 
       alert(editingArtwork
-        ? 'Cập nhật tác phẩm và thư viện ảnh thành công! Nội dung sẽ được admin duyệt lại.'
-        : 'Thêm tác phẩm và thư viện ảnh thành công! Tác phẩm đang chờ admin duyệt.');
+        ? detailWasSubmitted
+          ? 'Cập nhật tác phẩm thành công! Nội dung chi tiết hoặc ảnh bổ sung đã được gửi duyệt lại.'
+          : 'Cập nhật tác phẩm thành công! Nội dung chi tiết hiện có không bị gửi duyệt lại.'
+        : detailWasSubmitted
+          ? 'Thêm tác phẩm thành công! Nội dung chi tiết hoặc ảnh bổ sung được duyệt riêng.'
+          : 'Thêm tác phẩm thành công! Tác phẩm đang chờ admin duyệt.');
       setIsModalOpen(false);
       await loadData();
     } catch (error: any) {
@@ -669,11 +712,31 @@ const ArtistArtworks: React.FC = () => {
                     <label>Giá bán (VNĐ): <span style={{ color: 'red' }}>*</span></label>
                     <input 
                       type="number" 
+                      min="0"
                       value={formData.gia}
                       onChange={(e) => setFormData({ ...formData, gia: e.target.value })}
-                      placeholder="4500000" 
-                      required 
+                      placeholder="Ví dụ: 1000000"
+                      required
                     />
+                    <div style={{
+                      marginTop: 6,
+                      fontSize: 13,
+                      color: '#475569',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 6,
+                      padding: '6px 10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      <span>Hiển thị:</span>
+                      <strong style={{ color: '#059669', fontSize: 14 }}>
+                        {formData.gia && Number(formData.gia) > 0
+                          ? `${Number(formData.gia).toLocaleString('vi-VN')} VNĐ`
+                          : '1.000.000 VNĐ'}
+                      </strong>
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -859,7 +922,7 @@ const ArtistArtworks: React.FC = () => {
                 <div className="image-url-heading">
                   <div>
                     <label>URL hình ảnh tác phẩm</label>
-                    <p>Ảnh đầu tiên là ảnh đại diện. Bạn có thể thêm tối đa 5 URL (1 ảnh đại diện và 4 ảnh bổ sung).</p>
+                    <p>Ảnh đầu tiên là ảnh đại diện của hồ sơ tác phẩm. Bạn có thể thêm tối đa 4 ảnh bổ sung; các ảnh bổ sung được gửi duyệt riêng cùng nội dung chi tiết.</p>
                   </div>
                   {imageUrls.length < 5 && (
                     <button type="button" className="btn-add-image-url" onClick={addImageUrl}>

@@ -188,7 +188,12 @@ const AdminArtworkDetails: React.FC = () => {
     <div id="admin-artwork-details" className="page">
       {/* Header */}
       <div className="art-header">
-        <h4><i className="ti-write"></i> Duyệt Chi Tiết Tác Phẩm</h4>
+        <div>
+          <h4><i className="ti-write"></i> Duyệt Nội Dung Chi Tiết Tác Phẩm</h4>
+          <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: 13 }}>
+            Chỉ duyệt câu chuyện, ý nghĩa, kỹ thuật, cảm hứng, thông tin bổ sung và ảnh bổ sung. Mô tả cơ bản được duyệt cùng tác phẩm ở mục “Tác phẩm”.
+          </p>
+        </div>
         <button className="btn-refresh" onClick={loadDanhSach}>
           <i className="ti-reload"></i> Làm mới
         </button>
@@ -343,9 +348,9 @@ const AdminArtworkDetails: React.FC = () => {
                 </div>
               </div>
 
-              {/* Nội dung nghệ thuật */}
+              {/* Nội dung nghệ thuật riêng, không bao gồm Mô tả của hồ sơ tác phẩm. */}
               <div className="content-section">
-                <h4><i className="ti-book"></i> Nội Dung Nghệ Thuật</h4>
+                <h4><i className="ti-book"></i> Nội Dung Nghệ Thuật Do Họa Sĩ Gửi</h4>
                 
                 {selectedDetail.cauChuyenSangTac && (
                   <div className="content-item">
@@ -381,6 +386,16 @@ const AdminArtworkDetails: React.FC = () => {
                     <p>{selectedDetail.thongTinBosung}</p>
                   </div>
                 )}
+
+                {!selectedDetail.cauChuyenSangTac
+                  && !selectedDetail.yNghiaNghiThuat
+                  && !selectedDetail.kyThuatThucHien
+                  && !selectedDetail.camHungSangTao
+                  && !selectedDetail.thongTinBosung && (
+                    <p style={{ color: '#64748b', fontStyle: 'italic' }}>
+                      Họa sĩ chưa gửi nội dung thuyết minh riêng. Mô tả lúc thêm tác phẩm không thuộc mục duyệt này.
+                    </p>
+                  )}
               </div>
 
               {/* Hình ảnh */}

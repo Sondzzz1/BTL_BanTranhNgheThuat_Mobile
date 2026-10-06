@@ -70,31 +70,6 @@ interface TacPhamChinhSuaResponse {
     lyDo?: string;
 }
 
-interface ArtworkDetailResponse {
-    maChiTiet: number;
-    maTacPham: number;
-    tenTacPham: string;
-    maHoaSi: number;
-    tenHoaSi: string;
-    cauChuyenSangTac?: string;
-    yNghiaNghiThuat?: string;
-    kyThuatThucHien?: string;
-    camHungSangTao?: string;
-    thongTinBosung?: string;
-    kichThuoc?: string;
-    chatLieu?: string;
-    chatLieuKhung?: string;
-    namSangTac?: number;
-    diaDiemSangTac?: string;
-    hinhAnh1?: string;
-    hinhAnh2?: string;
-    hinhAnh3?: string;
-    hinhAnh4?: string;
-    trangThai: number;
-    trangThaiText: string;
-    lyDoTuChoi?: string;
-}
-
 const AdminArt: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'artworks' | 'edits'>('artworks');
     const [artworks, setArtworks] = useState<TacPhamHoaSiResponse[]>([]);
@@ -106,9 +81,6 @@ const AdminArt: React.FC = () => {
     const [pageInfo, setPageInfo] = useState({ page: 1, pageSize: PAGE_SIZE, totalItems: 0, totalPages: 0 });
     const [groupByArtist, setGroupByArtist] = useState(false);
     const [selectedArtwork, setSelectedArtwork] = useState<TacPhamHoaSiResponse | null>(null);
-    const [selectedArtworkDetail, setSelectedArtworkDetail] = useState<ArtworkDetailResponse | null>(null);
-    const [detailLoading, setDetailLoading] = useState(false);
-    const [detailMessage, setDetailMessage] = useState('');
     const [originalArtwork, setOriginalArtwork] = useState<OriginalArtworkReview | null>(null);
     const [originalMessage, setOriginalMessage] = useState('');
     const [copyrightSummary, setCopyrightSummary] = useState<ArtworkCopyrightSummary | null>(null);
@@ -205,7 +177,6 @@ const AdminArt: React.FC = () => {
             await adminService.approveArtwork(id, true);
             detailRequestId.current += 1;
             setSelectedArtwork(null);
-            setSelectedArtworkDetail(null);
             await refreshArtworkList();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Có lỗi xảy ra khi duyệt tác phẩm.');
@@ -220,23 +191,19 @@ const AdminArt: React.FC = () => {
             await adminService.duyetTacPham(id, { pheDuyet: false, lyDo });
             detailRequestId.current += 1;
             setSelectedArtwork(null);
-            setSelectedArtworkDetail(null);
             await refreshArtworkList();
         } catch (error: any) {
             alert(error?.response?.data?.message || 'Có lỗi xảy ra khi từ chối tác phẩm.');
         }
     };
 
-    const openArtworkDetail = async (artwork: TacPhamHoaSiResponse) => {
+    const openArtworkDetail = (artwork: TacPhamHoaSiResponse) => {
         const requestId = ++detailRequestId.current;
         setSelectedArtwork(artwork);
-        setSelectedArtworkDetail(null);
         setOriginalArtwork(null);
         setOriginalMessage('');
         setCopyrightSummary(null);
         setOriginalPreviewOpen(false);
-        setDetailMessage('');
-        setDetailLoading(true);
         void adminService.getCopyrightByArtworkId(artwork.maTacPham)
             .then(value => { if (requestId === detailRequestId.current) setCopyrightSummary(value); })
             .catch(() => { if (requestId === detailRequestId.current) setCopyrightSummary(null); });
@@ -245,67 +212,14 @@ const AdminArt: React.FC = () => {
                 .then(value => { if (requestId === detailRequestId.current) setOriginalArtwork(value); })
                 .catch(() => { if (requestId === detailRequestId.current) setOriginalMessage('Không thể tải tác phẩm gốc đã liên kết. Hãy kiểm tra trước khi duyệt.'); });
         }
-        try {
-            const response = await apiClient.get<ArtworkDetailResponse>(`/admin/chi-tiet-tac-pham/${artwork.maTacPham}`);
-            if (requestId === detailRequestId.current) setSelectedArtworkDetail(response.data);
-        } catch (error: any) {
-            if (requestId !== detailRequestId.current) return;
-            if (error?.response?.status === 404) {
-                setDetailMessage('Họa sĩ chưa cung cấp nội dung chi tiết riêng cho tác phẩm này.');
-            } else {
-                setDetailMessage(error?.response?.data?.message || 'Không thể tải nội dung chi tiết tác phẩm.');
-            }
-        } finally {
-            if (requestId === detailRequestId.current) setDetailLoading(false);
-        }
     };
 
     const closeArtworkDetail = () => {
         detailRequestId.current += 1;
         setSelectedArtwork(null);
-        setSelectedArtworkDetail(null);
         setOriginalArtwork(null);
         setCopyrightSummary(null);
         setOriginalPreviewOpen(false);
-        setDetailMessage('');
-    };
-
-    const refreshSelectedDetail = async () => {
-        if (!selectedArtwork) return;
-        const response = await apiClient.get<ArtworkDetailResponse>(`/admin/chi-tiet-tac-pham/${selectedArtwork.maTacPham}`);
-        setSelectedArtworkDetail(response.data);
-    };
-
-    const handleApproveDetailContent = async () => {
-        if (!selectedArtworkDetail || !window.confirm('Phê duyệt nội dung chi tiết và thư viện ảnh này?')) return;
-        try {
-            await apiClient.put(`/admin/chi-tiet-tac-pham/${selectedArtworkDetail.maTacPham}/duyet`, {
-                pheDuyet: true,
-                lyDoTuChoi: null,
-            });
-            await refreshSelectedDetail();
-        } catch (error: any) {
-            alert(error?.response?.data?.message || 'Không thể duyệt nội dung chi tiết.');
-        }
-    };
-
-    const handleRejectDetailContent = async () => {
-        if (!selectedArtworkDetail) return;
-        const reason = window.prompt('Nhập lý do từ chối nội dung chi tiết:');
-        if (reason === null) return;
-        if (!reason.trim()) {
-            alert('Vui lòng nhập lý do từ chối nội dung chi tiết.');
-            return;
-        }
-        try {
-            await apiClient.put(`/admin/chi-tiet-tac-pham/${selectedArtworkDetail.maTacPham}/duyet`, {
-                pheDuyet: false,
-                lyDoTuChoi: reason.trim(),
-            });
-            await refreshSelectedDetail();
-        } catch (error: any) {
-            alert(error?.response?.data?.message || 'Không thể từ chối nội dung chi tiết.');
-        }
     };
 
     const handleHide = async (id: number) => {
@@ -466,16 +380,9 @@ const AdminArt: React.FC = () => {
     const approvedEdits = edits.filter(e => e.trangThai === 1);
     const rejectedEdits = edits.filter(e => e.trangThai === 2);
     const selectedImages = selectedArtwork
-        ? [
-            selectedArtwork.hinhAnh,
-            selectedArtworkDetail?.hinhAnh1,
-            selectedArtworkDetail?.hinhAnh2,
-            selectedArtworkDetail?.hinhAnh3,
-            selectedArtworkDetail?.hinhAnh4,
-        ]
+        ? [selectedArtwork.hinhAnh]
             .map((value) => value?.trim())
             .filter((value): value is string => Boolean(value))
-            .filter((value, index, values) => values.indexOf(value) === index)
         : [];
 
     return (
@@ -882,9 +789,9 @@ const AdminArt: React.FC = () => {
                                     <div><span>Loại phát hành</span><strong>{selectedArtwork.laTacPhamDocBan ? 'Độc bản' : 'Nhiều bản'}</strong></div>
                                     <div><span>Số lượng ban đầu</span><strong>{selectedArtwork.soLuongBanDau ?? 'Chưa đối soát'}</strong></div>
                                     <div><span>Tồn kho hiện tại</span><strong>{selectedArtwork.soLuong}</strong></div>
-                                    <div><span>Kích thước</span><strong>{selectedArtwork.kichThuoc || selectedArtworkDetail?.kichThuoc || 'Chưa cập nhật'}</strong></div>
-                                    <div><span>Chất liệu</span><strong>{selectedArtwork.chatLieu || selectedArtworkDetail?.chatLieu || 'Chưa cập nhật'}</strong></div>
-                                    <div><span>Chất liệu khung</span><strong>{selectedArtwork.chatLieuKhung || selectedArtworkDetail?.chatLieuKhung || 'Chưa cập nhật'}</strong></div>
+                                    <div><span>Kích thước</span><strong>{selectedArtwork.kichThuoc || 'Chưa cập nhật'}</strong></div>
+                                    <div><span>Chất liệu</span><strong>{selectedArtwork.chatLieu || 'Chưa cập nhật'}</strong></div>
+                                    <div><span>Chất liệu khung</span><strong>{selectedArtwork.chatLieuKhung || 'Chưa cập nhật'}</strong></div>
                                 </div>
                                 <div className="artwork-review-description">
                                     <span>Mô tả của họa sĩ</span>
@@ -917,7 +824,7 @@ const AdminArt: React.FC = () => {
                             </section>
 
                             <section className="artwork-review-section">
-                                <h4><i className="ti-gallery"></i> Thư viện hình ảnh ({selectedImages.length})</h4>
+                                <h4><i className="ti-gallery"></i> Ảnh đại diện tác phẩm</h4>
                                 {selectedImages.length > 0 ? (
                                     <div className="artwork-review-images">
                                         {selectedImages.map((url, index) => (
@@ -929,7 +836,7 @@ const AdminArt: React.FC = () => {
                                                         event.currentTarget.src = '/assets/images/no-image.svg';
                                                     }}
                                                 />
-                                                <span>{index === 0 ? 'Ảnh đại diện' : `Ảnh bổ sung ${index}`}</span>
+                                                <span>Ảnh đại diện</span>
                                             </a>
                                         ))}
                                     </div>
@@ -939,43 +846,11 @@ const AdminArt: React.FC = () => {
                             </section>
 
                             <section className="artwork-review-section">
-                                <div className="artwork-review-section-title-row">
-                                    <h4><i className="ti-write"></i> Nội dung chi tiết của họa sĩ</h4>
-                                    {selectedArtworkDetail && (
-                                        <span className={`detail-review-status detail-status-${selectedArtworkDetail.trangThai}`}>
-                                            {selectedArtworkDetail.trangThaiText}
-                                        </span>
-                                    )}
+                                <h4><i className="ti-write"></i> Nội dung chi tiết &amp; ảnh bổ sung</h4>
+                                <div className="artwork-review-empty">
+                                    Phần này được xét duyệt riêng tại mục “Chi Tiết Tác Phẩm”.
+                                    Mô tả ở phần “Thông tin tác phẩm” phía trên thuộc hồ sơ đăng bán và được duyệt cùng tác phẩm.
                                 </div>
-
-                                {detailLoading ? (
-                                    <div className="artwork-review-empty">Đang tải nội dung chi tiết...</div>
-                                ) : selectedArtworkDetail ? (
-                                    <div className="artwork-review-content-list">
-                                        <DetailContent label="Câu chuyện sáng tác" value={selectedArtworkDetail.cauChuyenSangTac} />
-                                        <DetailContent label="Ý nghĩa nghệ thuật" value={selectedArtworkDetail.yNghiaNghiThuat} />
-                                        <DetailContent label="Kỹ thuật thực hiện" value={selectedArtworkDetail.kyThuatThucHien} />
-                                        <DetailContent label="Cảm hứng sáng tạo" value={selectedArtworkDetail.camHungSangTao} />
-                                        <DetailContent label="Thông tin bổ sung" value={selectedArtworkDetail.thongTinBosung} />
-                                        {selectedArtworkDetail.lyDoTuChoi && (
-                                            <div className="artwork-detail-reject-reason">
-                                                <strong>Lý do từ chối nội dung:</strong> {selectedArtworkDetail.lyDoTuChoi}
-                                            </div>
-                                        )}
-                                        {selectedArtworkDetail.trangThai === 0 && (
-                                            <div className="artwork-detail-actions">
-                                                <button type="button" className="approve-btn" onClick={handleApproveDetailContent}>
-                                                    <i className="ti-check"></i> Duyệt nội dung chi tiết
-                                                </button>
-                                                <button type="button" className="reject-btn" onClick={handleRejectDetailContent}>
-                                                    <i className="ti-close"></i> Từ chối nội dung
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="artwork-review-empty">{detailMessage || 'Chưa có nội dung chi tiết.'}</div>
-                                )}
                             </section>
                         </div>
 
@@ -1003,12 +878,5 @@ const AdminArt: React.FC = () => {
         </div>
     );
 };
-
-const DetailContent: React.FC<{ label: string; value?: string }> = ({ label, value }) => (
-    <div className="artwork-review-content-item">
-        <span>{label}</span>
-        <p>{value || 'Chưa cập nhật'}</p>
-    </div>
-);
 
 export default AdminArt;
