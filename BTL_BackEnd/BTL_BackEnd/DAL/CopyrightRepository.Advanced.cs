@@ -234,7 +234,8 @@ public partial class CopyrightRepository
                        t.SoLuongBanDau,t.LoaiTacPham,t.TacGiaGoc,t.MaTacPhamGoc,t.MoTaNguonGoc,
                        t.MaYeuCauVeTranh,
                        (SELECT COUNT_BIG(*) FROM BangChungBanQuyen e WHERE e.MaBanQuyen=b.MaBanQuyen),
-                       t.TenTacPham,h.MaTaiKhoan,b.NgayCapNhat
+                       t.TenTacPham,h.MaTaiKhoan,b.NgayCapNhat,
+                       t.TenTacPhamGoc,t.KhongXacDinhTacGiaGoc,t.NguonThamKhao
                 FROM BanQuyen b WITH (UPDLOCK,HOLDLOCK)
                 INNER JOIN TacPham t WITH (UPDLOCK,HOLDLOCK) ON t.MaTacPham=b.MaTacPham
                 INNER JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi
@@ -249,12 +250,17 @@ public partial class CopyrightRepository
             var exclusive = reader.GetBoolean(4);
             int? initialQuantity = reader.IsDBNull(5) ? null : reader.GetInt32(5);
             var artworkType = reader.GetByte(6);
-            var hasOrigin = !reader.IsDBNull(7) || !reader.IsDBNull(8) || !reader.IsDBNull(9);
+            var hasLinkedOrigin = !reader.IsDBNull(8);
+            var originalAuthor = reader.IsDBNull(7) ? null : reader.GetString(7);
+            var originDescription = reader.IsDBNull(9) ? null : reader.GetString(9);
             int? customArtRequestId = reader.IsDBNull(10) ? null : reader.GetInt32(10);
             var evidenceCount = reader.GetInt64(11);
             var artworkName = reader.GetString(12);
             var artistAccountId = reader.GetInt32(13);
             var reviewRevision = reader.GetDateTime(14);
+            var originalName = reader.IsDBNull(15) ? null : reader.GetString(15);
+            var unknownOriginalAuthor = reader.GetBoolean(16);
+            var sourceReference = reader.IsDBNull(17) ? null : reader.GetString(17);
             await reader.CloseAsync();
             if (oldStatus != CopyrightStatuses.Pending) return false;
 
@@ -264,8 +270,13 @@ public partial class CopyrightRepository
                     throw new InvalidOperationException("Chỉ xác minh hồ sơ có từ 2 đến 10 bằng chứng");
                 if (!CopyrightUsageBases.IsValid(usageBasis) || usageBasis == CopyrightUsageBases.Insufficient)
                     throw new InvalidOperationException("Căn cứ sử dụng chưa hợp lệ để xác minh nguồn gốc");
-                if (artworkType == 2 && !hasOrigin)
-                    throw new InvalidOperationException("Phiên bản vẽ lại phải có tác giả gốc, tác phẩm gốc hoặc mô tả nguồn gốc");
+                if (artworkType == 2 && !hasLinkedOrigin
+                    && (string.IsNullOrWhiteSpace(originalName)
+                        || (string.IsNullOrWhiteSpace(originalAuthor) && !unknownOriginalAuthor)))
+                    throw new InvalidOperationException("Phiên bản vẽ lại cần tên tác phẩm gốc và tác giả, hoặc đánh dấu không xác định tác giả");
+                if (artworkType == 4 && (string.IsNullOrWhiteSpace(sourceReference)
+                    || string.IsNullOrWhiteSpace(originDescription)))
+                    throw new InvalidOperationException("Tác phẩm dựa trên tư liệu tham khảo cần nguồn và mô tả cách sử dụng nguồn");
                 if (exclusive && initialQuantity != 1)
                     throw new InvalidOperationException("Không thể xác minh độc bản khi số lượng ban đầu chưa được đối soát bằng 1");
             }
@@ -419,7 +430,8 @@ public partial class CopyrightRepository
         await connection.OpenAsync();
         await using var command = new SqlCommand(@"
             SELECT b.TacGia,b.NgaySangTac,b.NguonGoc,b.MoTa,b.TrangThai,
-                   t.LoaiTacPham,t.TacGiaGoc,h.TenHoaSi,t.MoTaNguonGoc,t.LaTacPhamDocBan,t.SoLuongBanDau
+                   t.LoaiTacPham,t.TacGiaGoc,h.TenHoaSi,t.MoTaNguonGoc,t.LaTacPhamDocBan,t.SoLuongBanDau,
+                   b.CanCuSuDung
             FROM BanQuyen b INNER JOIN TacPham t ON t.MaTacPham=b.MaTacPham
             INNER JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi WHERE b.MaTacPham=@ArtworkId;", connection);
         command.Parameters.AddWithValue("@ArtworkId", maTacPham);
@@ -439,6 +451,8 @@ public partial class CopyrightRepository
             TacGiaGoc = verified && !reader.IsDBNull(6) ? reader.GetString(6) : null,
             HoaSiThucHien = verified ? reader.GetString(7) : null,
             MoTaNguonGoc = verified && !reader.IsDBNull(8) ? reader.GetString(8) : null,
+            CanCuSuDung = verified && !reader.IsDBNull(11)
+                ? CopyrightUsageBases.ToCode(reader.GetByte(11)) : null,
             LaTacPhamDocBan = verified && reader.GetBoolean(9),
             SoLuongBanDau = verified && !reader.IsDBNull(10) ? reader.GetInt32(10) : null
         };
@@ -728,6 +742,8 @@ public partial class CopyrightRepository
             LoaiTacPham = type, LoaiTacPhamText = ArtworkTypeNames.Get(type),
             TacGiaGoc = reader["TacGiaGoc"] as string,
             MaTacPhamGoc = reader["MaTacPhamGoc"] == DBNull.Value ? null : Convert.ToInt32(reader["MaTacPhamGoc"]),
+            TenTacPhamGoc = reader["TenTacPhamGoc"] as string,
+            KhongXacDinhTacGiaGoc = Convert.ToBoolean(reader["KhongXacDinhTacGiaGoc"]),
             MoTaNguonGoc = reader["MoTaNguonGoc"] as string, CanCuSuDungSo = usageBasis,
             CanCuSuDung = CopyrightUsageBases.ToCode(usageBasis), NguonThamKhao = reader["NguonThamKhao"] as string,
             SoDangKy = reader["SoDangKy"] as string, LaDuLieuCu = Convert.ToBoolean(reader["LaDuLieuCu"]),

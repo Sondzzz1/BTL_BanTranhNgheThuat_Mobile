@@ -1,13 +1,14 @@
 import React, { FormEvent, useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CopyrightRecord, copyrightService } from '../../services/copyrightService';
-import { artistDashboardService } from '../../services/artistDashboardService';
+import { artistDashboardService, OriginalArtworkOption } from '../../services/artistDashboardService';
 import './ArtistCopyright.css';
 import './ArtistCopyrightOverrides.css';
 
 const emptyForm = {
   tacGia: '', ngaySangTac: '', nguonGoc: '', moTaBanQuyen: '', ghiChu: '', laTacPhamDocBan: false,
-  loaiTacPham: 0, tacGiaGoc: '', maTacPhamGoc: '', moTaNguonGoc: '', canCuSuDung: 1,
+  loaiTacPham: 0, tacGiaGoc: '', maTacPhamGoc: '', tenTacPhamGoc: '', khongXacDinhTacGiaGoc: false,
+  moTaNguonGoc: '', canCuSuDung: 1,
   nguonThamKhao: '', soDangKy: '',
 };
 
@@ -24,34 +25,53 @@ export default function ArtistCopyright() {
   const [file, setFile] = useState<File | null>(null);
   const [evidenceNote, setEvidenceNote] = useState('');
   const [evidencePreviewUrls, setEvidencePreviewUrls] = useState<Record<number, string>>({});
+  const [originMethod, setOriginMethod] = useState<'catalog' | 'external'>('catalog');
+  const [originSearch, setOriginSearch] = useState('');
+  const [originResults, setOriginResults] = useState<OriginalArtworkOption[]>([]);
+  const [selectedOriginal, setSelectedOriginal] = useState<OriginalArtworkOption | null>(null);
+  const [initialQuantity, setInitialQuantity] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const value = await copyrightService.artistGet(artworkId);
       setRecord(value);
+      setInitialQuantity(value.soLuongBanDau ?? null);
       setForm({
         tacGia: value.tacGia || '', ngaySangTac: value.ngaySangTac?.slice(0, 10) || '',
         nguonGoc: value.nguonGoc || '', moTaBanQuyen: value.moTaBanQuyen || '', ghiChu: value.ghiChu || '',
         laTacPhamDocBan: value.laTacPhamDocBan, loaiTacPham: value.loaiTacPham,
         tacGiaGoc: value.tacGiaGoc || '', maTacPhamGoc: value.maTacPhamGoc?.toString() || '',
+        tenTacPhamGoc: value.tenTacPhamGoc || '', khongXacDinhTacGiaGoc: value.khongXacDinhTacGiaGoc || false,
         moTaNguonGoc: value.moTaNguonGoc || '', canCuSuDung: value.canCuSuDungSo || 1,
         nguonThamKhao: value.nguonThamKhao || '', soDangKy: value.soDangKy || '',
       });
+      setOriginMethod(value.maTacPhamGoc || !value.tenTacPhamGoc ? 'catalog' : 'external');
+      setSelectedOriginal(value.maTacPhamGoc
+        ? await artistDashboardService.getPublicOriginalArtwork(value.maTacPhamGoc).catch(() => null)
+        : null);
     } catch (error: any) {
       if (error?.response?.status !== 404) alert(error?.response?.data?.message || 'Không thể tải hồ sơ nguồn gốc');
       setRecord(null);
       if (error?.response?.status === 404) {
         try {
           const artwork = await artistDashboardService.getTacPhamById(artworkId);
+          setInitialQuantity(artwork.soLuongBanDau ?? null);
           setForm({
             ...emptyForm,
             laTacPhamDocBan: artwork.laTacPhamDocBan,
-            loaiTacPham: artwork.loaiTacPham === 2 ? 2 : 0,
+            loaiTacPham: artwork.loaiTacPham === 2 || artwork.loaiTacPham === 4 ? artwork.loaiTacPham : 0,
             tacGiaGoc: artwork.tacGiaGoc || '',
             maTacPhamGoc: artwork.maTacPhamGoc?.toString() || '',
+            tenTacPhamGoc: artwork.tenTacPhamGoc || '',
+            khongXacDinhTacGiaGoc: artwork.khongXacDinhTacGiaGoc || false,
+            nguonThamKhao: artwork.nguonThamKhao || '',
             moTaNguonGoc: artwork.moTaNguonGoc || '',
           });
+          setOriginMethod(artwork.maTacPhamGoc || !artwork.tenTacPhamGoc ? 'catalog' : 'external');
+          setSelectedOriginal(artwork.maTacPhamGoc
+            ? await artistDashboardService.getPublicOriginalArtwork(artwork.maTacPhamGoc).catch(() => null)
+            : null);
         } catch (artworkError: any) {
           alert(artworkError?.response?.data?.message || 'Không thể tải khai báo phát hành của tác phẩm');
         }
@@ -60,6 +80,19 @@ export default function ArtistCopyright() {
   }, [artworkId]);
 
   useEffect(() => { if (Number.isInteger(artworkId) && artworkId > 0) void load(); }, [artworkId, load]);
+  useEffect(() => {
+    if (form.loaiTacPham !== 2 || originMethod !== 'catalog' || originSearch.trim().length < 2) {
+      setOriginResults([]);
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      void artistDashboardService.searchOriginalArtworks(originSearch.trim())
+        .then(items => { if (active) setOriginResults(items.filter(item => item.maTacPham !== artworkId).slice(0, 10)); })
+        .catch(() => { if (active) setOriginResults([]); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [form.loaiTacPham, originMethod, originSearch, artworkId]);
   useEffect(() => {
     let cancelled = false;
     const objectUrls: string[] = [];
@@ -91,7 +124,9 @@ export default function ArtistCopyright() {
     tacGia: form.tacGia, ngaySangTac: form.ngaySangTac || null, nguonGoc: form.nguonGoc,
     moTaBanQuyen: form.moTaBanQuyen || null, ghiChu: form.ghiChu || null,
     loaiTacPham: Number(form.loaiTacPham), tacGiaGoc: form.tacGiaGoc || null,
-    maTacPhamGoc: form.maTacPhamGoc ? Number(form.maTacPhamGoc) : null,
+    maTacPhamGoc: form.loaiTacPham === 2 && originMethod === 'catalog' ? selectedOriginal?.maTacPham || null : null,
+    tenTacPhamGoc: form.loaiTacPham === 2 && originMethod === 'external' ? form.tenTacPhamGoc || null : null,
+    khongXacDinhTacGiaGoc: form.loaiTacPham === 2 && originMethod === 'external' && form.khongXacDinhTacGiaGoc,
     moTaNguonGoc: form.moTaNguonGoc || null, canCuSuDung: Number(form.canCuSuDung),
     nguonThamKhao: form.nguonThamKhao || null, soDangKy: form.soDangKy || null,
   });
@@ -99,10 +134,17 @@ export default function ArtistCopyright() {
   const save = async (event: FormEvent) => {
     event.preventDefault(); setSaving(true);
     try {
+      if (form.loaiTacPham === 2 && originMethod === 'catalog' && !selectedOriginal)
+        throw new Error('Vui lòng chọn tác phẩm gốc trong kết quả tìm kiếm.');
+      if (form.loaiTacPham === 2 && originMethod === 'external'
+        && (!form.tenTacPhamGoc.trim() || (!form.tacGiaGoc.trim() && !form.khongXacDinhTacGiaGoc)))
+        throw new Error('Vui lòng nhập tên tác phẩm gốc và tác giả, hoặc đánh dấu không xác định tác giả.');
+      if (form.loaiTacPham === 4 && (!form.nguonThamKhao.trim() || !form.moTaNguonGoc.trim()))
+        throw new Error('Vui lòng nhập nguồn tham khảo và mô tả cách sử dụng nguồn.');
       if (record) await copyrightService.artistUpdate(record.maBanQuyen, payload());
       else await copyrightService.artistCreate(payload());
       await load(); alert('Đã lưu hồ sơ. Admin sẽ kiểm tra bằng chứng trước khi xác minh.');
-    } catch (error: any) { alert(error?.response?.data?.message || 'Không thể lưu hồ sơ'); }
+    } catch (error: any) { alert(error?.response?.data?.message || error?.message || 'Không thể lưu hồ sơ'); }
     finally { setSaving(false); }
   };
 
@@ -138,12 +180,27 @@ export default function ArtistCopyright() {
     <form onSubmit={save} className="artist-copyright-form">
       <label>Tác giả khai báo<input required value={form.tacGia} onChange={e => setForm({...form, tacGia:e.target.value})}/></label>
       <label>Ngày sáng tác<input type="date" value={form.ngaySangTac} onChange={e => setForm({...form, ngaySangTac:e.target.value})}/></label>
-      <label>Loại tác phẩm<select value={form.loaiTacPham} onChange={e => setForm({...form, loaiTacPham:Number(e.target.value)})}><option value={0}>Tự sáng tác</option><option value={2}>Phiên bản vẽ lại</option></select></label>
+      <label>Loại tác phẩm<select value={form.loaiTacPham} onChange={e => { setForm({...form, loaiTacPham:Number(e.target.value)}); setSelectedOriginal(null); }}><option value={0}>Tự sáng tác</option><option value={2}>Phiên bản vẽ lại / phái sinh</option><option value={4}>Dựa trên tư liệu tham khảo</option></select></label>
       <label>Căn cứ sử dụng<select value={form.canCuSuDung} onChange={e => setForm({...form, canCuSuDung:Number(e.target.value)})}><option value={1}>Tác giả / chủ thể quyền</option><option value={2}>Phạm vi công cộng đã được xem xét</option><option value={3}>Có văn bản cho phép</option><option value={4}>Căn cứ hợp pháp khác</option><option value={5}>Chưa đủ căn cứ</option></select></label>
       <label className="wide">Mô tả nguồn gốc<input required value={form.nguonGoc} onChange={e => setForm({...form, nguonGoc:e.target.value})}/></label>
-      <label>Định danh tác phẩm<select disabled value={form.laTacPhamDocBan ? 'exclusive' : 'multiple'}><option value="multiple">Nhiều bản</option><option value="exclusive">Độc bản (số lượng ban đầu là 1)</option></select><small>Loại phát hành được khai báo khi tạo tác phẩm và không thể đổi tại hồ sơ nguồn gốc.</small></label>
+      <label>Loại phát hành<select disabled value={form.laTacPhamDocBan ? 'exclusive' : 'multiple'}><option value="multiple">Nhiều bản</option><option value="exclusive">Độc bản</option></select><small>Số lượng ban đầu: {initialQuantity ?? 'chưa đối soát'} bản. Loại phát hành không đổi khi sửa nguồn gốc; tồn kho hiện tại không quyết định độc bản hay nhiều bản.</small></label>
       <label>Số đăng ký (nếu có)<input value={form.soDangKy} onChange={e => setForm({...form, soDangKy:e.target.value})}/></label>
-      {form.loaiTacPham === 2 && <><label>Tác giả gốc<input value={form.tacGiaGoc} onChange={e => setForm({...form, tacGiaGoc:e.target.value})}/></label><label>Mã tác phẩm gốc trong hệ thống<input type="number" min="1" value={form.maTacPhamGoc} onChange={e => setForm({...form, maTacPhamGoc:e.target.value})}/></label><label className="wide">Nguồn tham khảo<input value={form.nguonThamKhao} onChange={e => setForm({...form, nguonThamKhao:e.target.value})}/></label><label className="wide">Mô tả nguồn gốc tác phẩm gốc<textarea rows={3} value={form.moTaNguonGoc} onChange={e => setForm({...form, moTaNguonGoc:e.target.value})}/></label></>}
+      {form.loaiTacPham === 2 && <div className="wide">
+        <p>Chọn một tác phẩm gốc trên hệ thống hoặc khai báo tác phẩm ngoài hệ thống.</p>
+        <label><input type="radio" checked={originMethod === 'catalog'} onChange={() => { setOriginMethod('catalog'); setSelectedOriginal(null); }} /> Trên hệ thống</label>{' '}
+        <label><input type="radio" checked={originMethod === 'external'} onChange={() => { setOriginMethod('external'); setSelectedOriginal(null); }} /> Ngoài hệ thống</label>
+        {originMethod === 'catalog' ? <div>
+          {selectedOriginal ? <p><strong>{selectedOriginal.tenTacPham}</strong> — {selectedOriginal.tenHoaSi} <button type="button" onClick={() => setSelectedOriginal(null)}>Đổi</button></p> : <>
+            <label>Tìm tác phẩm gốc theo tên tranh hoặc họa sĩ<input type="search" value={originSearch} onChange={e => setOriginSearch(e.target.value)} placeholder="Nhập ít nhất 2 ký tự" /></label>
+            {originResults.map(item => <button type="button" key={item.maTacPham} onClick={() => { setSelectedOriginal(item); setOriginSearch(''); }} style={{display:'block',width:'100%',textAlign:'left',padding:8}}>{item.hinhAnh && <img src={item.hinhAnh} alt="" style={{width:36,height:36,objectFit:'cover',verticalAlign:'middle',marginRight:8}} />}{item.tenTacPham} — {item.tenHoaSi}</button>)}
+          </>}
+        </div> : <div>
+          <label>Tên tác phẩm gốc<input required value={form.tenTacPhamGoc} onChange={e => setForm({...form, tenTacPhamGoc:e.target.value})} /></label>
+          <label>Tác giả gốc<input value={form.tacGiaGoc} disabled={form.khongXacDinhTacGiaGoc} onChange={e => setForm({...form, tacGiaGoc:e.target.value})} /></label>
+          <label><input type="checkbox" checked={form.khongXacDinhTacGiaGoc} onChange={e => setForm({...form, khongXacDinhTacGiaGoc:e.target.checked, tacGiaGoc:e.target.checked ? '' : form.tacGiaGoc})} /> Không xác định được tác giả gốc</label>
+        </div>}
+      </div>}
+      {form.loaiTacPham !== 0 && <><label className="wide">Nguồn tham khảo<input required={form.loaiTacPham === 4} value={form.nguonThamKhao} onChange={e => setForm({...form, nguonThamKhao:e.target.value})}/></label><label className="wide">Mô tả nguồn gốc / cách sử dụng nguồn<textarea required={form.loaiTacPham === 4} rows={3} value={form.moTaNguonGoc} onChange={e => setForm({...form, moTaNguonGoc:e.target.value})}/></label></>}
       <label className="wide">Mô tả quyền và phạm vi sử dụng<textarea rows={3} value={form.moTaBanQuyen} onChange={e => setForm({...form, moTaBanQuyen:e.target.value})}/></label>
       <label className="wide">Ghi chú<textarea rows={2} value={form.ghiChu} onChange={e => setForm({...form, ghiChu:e.target.value})}/></label>
       <div className="wide form-actions"><button disabled={saving}>{saving ? 'Đang lưu...' : record ? 'Cập nhật và gửi lại kiểm tra' : 'Tạo hồ sơ chờ kiểm tra'}</button></div>

@@ -14,6 +14,7 @@ public interface ICopyrightBusiness
     Task<BangChungBanQuyen> DeleteEvidence(int maBanQuyen, int maBangChung, int maHoaSi, int maTaiKhoan);
     Task<List<BanQuyenResponse>> GetForAdmin(string? status, string? keyword);
     Task<BanQuyenResponse> GetForAdminById(int maBanQuyen);
+    Task<BanQuyenResponse?> GetForAdminByArtworkId(int maTacPham);
     Task VerifyInitialQuantity(int maTacPham, int maTaiKhoan, XacMinhSoLuongBanDauRequest request);
     Task CorrectPublicationDeclaration(int maTacPham, int maTaiKhoan, DieuChinhPhatHanhRequest request);
     Task Review(int maBanQuyen, int maTaiKhoan, byte status, string? note);

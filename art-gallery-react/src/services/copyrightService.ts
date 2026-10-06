@@ -32,6 +32,8 @@ export interface CopyrightRecord {
   loaiTacPham: number;
   tacGiaGoc?: string;
   maTacPhamGoc?: number;
+  tenTacPhamGoc?: string;
+  khongXacDinhTacGiaGoc?: boolean;
   moTaNguonGoc?: string;
   canCuSuDung: string;
   canCuSuDungSo?: number;

@@ -34,6 +34,7 @@ public interface IAdminBusiness
     Task<List<TacPhamHoaSiResponse>> GetAllTacPham(byte? trangThai = null);
     Task<TacPhamAdminPageResponse> GetTacPhamQuanLy(AdminArtworkQuery query);
     Task<AdminArtworkFilterOptionsResponse> GetBoLocQuanLyTacPham();
+    Task<TacPhamGocTomTatResponse?> GetTacPhamGocChoKiemDuyet(int id);
     Task<bool> DuyetTacPham(int id, DuyetTacPhamRequest request);
     Task<bool> HideTacPham(int id);
     Task<bool> ShowTacPham(int id);

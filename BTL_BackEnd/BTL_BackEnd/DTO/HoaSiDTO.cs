@@ -145,11 +145,14 @@ public class TacPhamHoaSiResponse
         2 => "Phiên bản vẽ lại / phái sinh",
         1 => "Tác phẩm đặt vẽ gốc",
         3 => "Đặt vẽ từ tác phẩm có sẵn",
-        4 => "Đặt vẽ theo tư liệu cá nhân",
+        4 => "Dựa trên tư liệu tham khảo",
         _ => "Tự sáng tác"
     };
     public string? TacGiaGoc { get; set; }
     public int? MaTacPhamGoc { get; set; }
+    public string? TenTacPhamGoc { get; set; }
+    public bool KhongXacDinhTacGiaGoc { get; set; }
+    public string? NguonThamKhao { get; set; }
     public string? MoTaNguonGoc { get; set; }
 }
 
@@ -176,12 +179,16 @@ public class TaoTacPhamRequest
     public string? ChatLieu { get; set; }
     public string? ChatLieuKhung { get; set; }
     /// <summary>
-    /// Khai báo nguồn gốc của tác phẩm đăng bán trực tiếp: 0=tự sáng tác, 2=phiên bản vẽ lại/phái sinh.
-    /// Các loại đặt vẽ được tạo duy nhất bởi luồng yêu cầu vẽ tranh.
+    /// Khai báo nguồn gốc tác phẩm đăng bán trực tiếp: 0=tự sáng tác,
+    /// 2=vẽ lại/phái sinh, 4=dựa trên ảnh hoặc tư liệu tham khảo.
+    /// 1 và 3 chỉ được tạo bởi luồng yêu cầu đặt vẽ.
     /// </summary>
     public byte LoaiTacPham { get; set; }
     public string? TacGiaGoc { get; set; }
     public int? MaTacPhamGoc { get; set; }
+    public string? TenTacPhamGoc { get; set; }
+    public bool KhongXacDinhTacGiaGoc { get; set; }
+    public string? NguonThamKhao { get; set; }
     public string? MoTaNguonGoc { get; set; }
 }
 
@@ -196,6 +203,14 @@ public class CapNhatTacPhamRequest
     public string? KichThuoc { get; set; }
     public string? ChatLieu { get; set; }
     public string? ChatLieuKhung { get; set; }
+    /// <summary>Chỉ cho sửa khi tác phẩm còn chờ duyệt hoặc đã bị từ chối.</summary>
+    public byte? LoaiTacPham { get; set; }
+    public string? TacGiaGoc { get; set; }
+    public int? MaTacPhamGoc { get; set; }
+    public string? TenTacPhamGoc { get; set; }
+    public bool KhongXacDinhTacGiaGoc { get; set; }
+    public string? NguonThamKhao { get; set; }
+    public string? MoTaNguonGoc { get; set; }
 }
 
 public class CapNhatTrangThaiTacPhamRequest

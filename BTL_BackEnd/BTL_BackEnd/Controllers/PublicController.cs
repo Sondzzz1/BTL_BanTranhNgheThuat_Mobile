@@ -70,11 +70,7 @@ public class PublicController : ControllerBase
                     KichThuoc = x.TacPham.KichThuoc,
                     ChatLieu = x.TacPham.ChatLieu,
                     ChatLieuKhung = x.TacPham.ChatLieuKhung,
-                    LoaiTacPham = x.TacPham.LoaiTacPham,
-                    TacGiaGoc = x.TacPham.TacGiaGoc,
-                    MaTacPhamGoc = x.TacPham.MaTacPhamGoc,
-                    MaYeuCauVeTranh = x.TacPham.MaYeuCauVeTranh,
-                    MoTaNguonGoc = x.TacPham.MoTaNguonGoc
+                    NguonGocSangTao = MapOrigin(x.TacPham)
                 })
                 .ToList();
 
@@ -110,11 +106,7 @@ public class PublicController : ControllerBase
                 KichThuoc = tp.KichThuoc,
                 ChatLieu = tp.ChatLieu,
                 ChatLieuKhung = tp.ChatLieuKhung,
-                LoaiTacPham = tp.LoaiTacPham,
-                TacGiaGoc = tp.TacGiaGoc,
-                MaTacPhamGoc = tp.MaTacPhamGoc,
-                MaYeuCauVeTranh = tp.MaYeuCauVeTranh,
-                MoTaNguonGoc = tp.MoTaNguonGoc
+                NguonGocSangTao = MapOrigin(tp)
             }).ToList();
 
             return Ok(result);
@@ -159,12 +151,24 @@ public class PublicController : ControllerBase
                 KichThuoc = tacPham.KichThuoc,
                 ChatLieu = tacPham.ChatLieu,
                 ChatLieuKhung = tacPham.ChatLieuKhung,
-                LoaiTacPham = tacPham.LoaiTacPham,
-                TacGiaGoc = tacPham.TacGiaGoc,
-                MaTacPhamGoc = tacPham.MaTacPhamGoc,
-                MaYeuCauVeTranh = tacPham.MaYeuCauVeTranh,
-                MoTaNguonGoc = tacPham.MoTaNguonGoc
+                NguonGocSangTao = MapOrigin(tacPham)
             };
+
+            if (tacPham.MaTacPhamGoc.HasValue && result.NguonGocSangTao != null)
+            {
+                var original = await _tacPhamRepo.GetMarketplaceById(tacPham.MaTacPhamGoc.Value);
+                if (original != null)
+                {
+                    result.NguonGocSangTao.TacPhamGoc = new TacPhamGocTomTatResponse
+                    {
+                        MaTacPham = original.MaTacPham,
+                        TenTacPham = original.TenTacPham,
+                        TenHoaSi = (await _hoaSiRepo.GetById(original.MaHoaSi))?.TenHoaSi ?? string.Empty,
+                        HinhAnh = original.HinhAnh,
+                        CoTheXemCongKhai = true
+                    };
+                }
+            }
 
             return Ok(result);
         }
@@ -218,11 +222,7 @@ public class PublicController : ControllerBase
                     KichThuoc = x.TacPham.KichThuoc,
                     ChatLieu = x.TacPham.ChatLieu,
                     ChatLieuKhung = x.TacPham.ChatLieuKhung,
-                    LoaiTacPham = x.TacPham.LoaiTacPham,
-                    TacGiaGoc = x.TacPham.TacGiaGoc,
-                    MaTacPhamGoc = x.TacPham.MaTacPhamGoc,
-                    MaYeuCauVeTranh = x.TacPham.MaYeuCauVeTranh,
-                    MoTaNguonGoc = x.TacPham.MoTaNguonGoc
+                    NguonGocSangTao = MapOrigin(x.TacPham)
                 })
                 .ToList();
 
@@ -235,6 +235,29 @@ public class PublicController : ControllerBase
     }
 
     // Hàm tính điểm gợi ý
+    private static NguonGocSangTaoResponse MapOrigin(TacPham artwork) => new()
+    {
+        Loai = artwork.LoaiTacPham switch
+        {
+            2 => "DERIVATIVE",
+            4 => "REFERENCE",
+            _ => "ORIGINAL"
+        },
+        TenLoai = artwork.LoaiTacPham switch
+        {
+            2 => "Phiên bản vẽ lại / phái sinh",
+            4 => "Dựa trên tư liệu tham khảo",
+            _ => "Tác phẩm gốc"
+        },
+        TenTacPhamGocNgoaiHeThong = artwork.LoaiTacPham == 2 && !artwork.MaTacPhamGoc.HasValue
+            ? artwork.TenTacPhamGoc : null,
+        TacGiaGoc = artwork.LoaiTacPham == 2 && !artwork.MaTacPhamGoc.HasValue
+            ? artwork.TacGiaGoc : null,
+        KhongXacDinhTacGiaGoc = artwork.LoaiTacPham == 2 && artwork.KhongXacDinhTacGiaGoc,
+        NguonThamKhao = artwork.LoaiTacPham is 2 or 4 ? artwork.NguonThamKhao : null,
+        MoTaNguonGoc = artwork.LoaiTacPham is 2 or 4 ? artwork.MoTaNguonGoc : null
+    };
+
     private int CalculateRecommendationScore(TacPham current, TacPham candidate)
     {
         int score = 0;
@@ -450,10 +473,18 @@ public class TacPhamResponse
     public string? KichThuoc { get; set; }
     public string? ChatLieu { get; set; }
     public string? ChatLieuKhung { get; set; }
-    public byte LoaiTacPham { get; set; }
+    public NguonGocSangTaoResponse? NguonGocSangTao { get; set; }
+}
+
+public class NguonGocSangTaoResponse
+{
+    public string Loai { get; set; } = string.Empty;
+    public string TenLoai { get; set; } = string.Empty;
+    public TacPhamGocTomTatResponse? TacPhamGoc { get; set; }
+    public string? TenTacPhamGocNgoaiHeThong { get; set; }
     public string? TacGiaGoc { get; set; }
-    public int? MaTacPhamGoc { get; set; }
-    public int? MaYeuCauVeTranh { get; set; }
+    public bool KhongXacDinhTacGiaGoc { get; set; }
+    public string? NguonThamKhao { get; set; }
     public string? MoTaNguonGoc { get; set; }
 }
 

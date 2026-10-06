@@ -222,8 +222,8 @@ public class TacPhamRepository : ITacPhamRepository
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
 
-        var query = @"INSERT INTO TacPham (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, SoLuongBanDau, MoTa, HinhAnh, ChatLieu, ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo,LaTacPhamDocBan,LoaiTacPham,TacGiaGoc,MaTacPhamGoc,MoTaNguonGoc)
-                      VALUES (@TenTacPham, @MaHoaSi, @MaDanhMuc, @Gia, @SoLuong, @SoLuongBanDau, @MoTa, @HinhAnh, @ChatLieu, @ChatLieuKhung, @KichThuoc, @TrangThai, @NgayTao, @LyDo,@LaTacPhamDocBan,@LoaiTacPham,@TacGiaGoc,@MaTacPhamGoc,@MoTaNguonGoc);
+        var query = @"INSERT INTO TacPham (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, SoLuongBanDau, MoTa, HinhAnh, ChatLieu, ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo,LaTacPhamDocBan,LoaiTacPham,TacGiaGoc,MaTacPhamGoc,TenTacPhamGoc,KhongXacDinhTacGiaGoc,NguonThamKhao,MoTaNguonGoc)
+                      VALUES (@TenTacPham, @MaHoaSi, @MaDanhMuc, @Gia, @SoLuong, @SoLuongBanDau, @MoTa, @HinhAnh, @ChatLieu, @ChatLieuKhung, @KichThuoc, @TrangThai, @NgayTao, @LyDo,@LaTacPhamDocBan,@LoaiTacPham,@TacGiaGoc,@MaTacPhamGoc,@TenTacPhamGoc,@KhongXacDinhTacGiaGoc,@NguonThamKhao,@MoTaNguonGoc);
                       SELECT CAST(SCOPE_IDENTITY() as int);";
 
         using var command = new SqlCommand(query, connection);
@@ -245,6 +245,9 @@ public class TacPhamRepository : ITacPhamRepository
         command.Parameters.AddWithValue("@LoaiTacPham", tacPham.LoaiTacPham);
         command.Parameters.AddWithValue("@TacGiaGoc", (object?)tacPham.TacGiaGoc ?? DBNull.Value);
         command.Parameters.AddWithValue("@MaTacPhamGoc", (object?)tacPham.MaTacPhamGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@TenTacPhamGoc", (object?)tacPham.TenTacPhamGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@KhongXacDinhTacGiaGoc", tacPham.KhongXacDinhTacGiaGoc);
+        command.Parameters.AddWithValue("@NguonThamKhao", (object?)tacPham.NguonThamKhao ?? DBNull.Value);
         command.Parameters.AddWithValue("@MoTaNguonGoc", (object?)tacPham.MoTaNguonGoc ?? DBNull.Value);
 
         var result = await command.ExecuteScalarAsync();
@@ -266,6 +269,13 @@ public class TacPhamRepository : ITacPhamRepository
                           ChatLieu = @ChatLieu,
                           ChatLieuKhung = @ChatLieuKhung,
                           KichThuoc = @KichThuoc,
+                          LoaiTacPham = @LoaiTacPham,
+                          TacGiaGoc = @TacGiaGoc,
+                          MaTacPhamGoc = @MaTacPhamGoc,
+                          TenTacPhamGoc = @TenTacPhamGoc,
+                          KhongXacDinhTacGiaGoc = @KhongXacDinhTacGiaGoc,
+                          NguonThamKhao = @NguonThamKhao,
+                          MoTaNguonGoc = @MoTaNguonGoc,
                           TrangThai = @TrangThai,
                           LyDo = @LyDo
                       WHERE MaTacPham = @MaTacPham";
@@ -283,6 +293,14 @@ public class TacPhamRepository : ITacPhamRepository
         command.Parameters.AddWithValue("@KichThuoc", (object?)tacPham.KichThuoc ?? DBNull.Value);
         command.Parameters.AddWithValue("@TrangThai", tacPham.TrangThai);
         command.Parameters.AddWithValue("@LyDo", (object?)tacPham.LyDo ?? DBNull.Value);
+
+        command.Parameters.AddWithValue("@LoaiTacPham", tacPham.LoaiTacPham);
+        command.Parameters.AddWithValue("@TacGiaGoc", (object?)tacPham.TacGiaGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@MaTacPhamGoc", (object?)tacPham.MaTacPhamGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@TenTacPhamGoc", (object?)tacPham.TenTacPhamGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@KhongXacDinhTacGiaGoc", tacPham.KhongXacDinhTacGiaGoc);
+        command.Parameters.AddWithValue("@NguonThamKhao", (object?)tacPham.NguonThamKhao ?? DBNull.Value);
+        command.Parameters.AddWithValue("@MoTaNguonGoc", (object?)tacPham.MoTaNguonGoc ?? DBNull.Value);
 
         var rowsAffected = await command.ExecuteNonQueryAsync();
         return rowsAffected > 0;
@@ -383,6 +401,13 @@ public class TacPhamRepository : ITacPhamRepository
         command.Parameters.AddWithValue("@ChatLieu", (object?)tacPham.ChatLieu ?? DBNull.Value);
         command.Parameters.AddWithValue("@ChatLieuKhung", (object?)tacPham.ChatLieuKhung ?? DBNull.Value);
         command.Parameters.AddWithValue("@KichThuoc", (object?)tacPham.KichThuoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@LoaiTacPham", tacPham.LoaiTacPham);
+        command.Parameters.AddWithValue("@TacGiaGoc", (object?)tacPham.TacGiaGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@MaTacPhamGoc", (object?)tacPham.MaTacPhamGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@TenTacPhamGoc", (object?)tacPham.TenTacPhamGoc ?? DBNull.Value);
+        command.Parameters.AddWithValue("@KhongXacDinhTacGiaGoc", tacPham.KhongXacDinhTacGiaGoc);
+        command.Parameters.AddWithValue("@NguonThamKhao", (object?)tacPham.NguonThamKhao ?? DBNull.Value);
+        command.Parameters.AddWithValue("@MoTaNguonGoc", (object?)tacPham.MoTaNguonGoc ?? DBNull.Value);
         command.Parameters.AddWithValue("@TrangThai", tacPham.TrangThai);
         command.Parameters.AddWithValue("@LyDo", (object?)tacPham.LyDo ?? DBNull.Value);
     }
@@ -442,6 +467,13 @@ public class TacPhamRepository : ITacPhamRepository
             MaTacPhamGoc = HasColumn(reader, "MaTacPhamGoc") && !reader.IsDBNull(reader.GetOrdinal("MaTacPhamGoc"))
                 ? reader.GetInt32(reader.GetOrdinal("MaTacPhamGoc"))
                 : null,
+            TenTacPhamGoc = HasColumn(reader, "TenTacPhamGoc") && !reader.IsDBNull(reader.GetOrdinal("TenTacPhamGoc"))
+                ? reader.GetString(reader.GetOrdinal("TenTacPhamGoc")) : null,
+            KhongXacDinhTacGiaGoc = HasColumn(reader, "KhongXacDinhTacGiaGoc")
+                && !reader.IsDBNull(reader.GetOrdinal("KhongXacDinhTacGiaGoc"))
+                && reader.GetBoolean(reader.GetOrdinal("KhongXacDinhTacGiaGoc")),
+            NguonThamKhao = HasColumn(reader, "NguonThamKhao") && !reader.IsDBNull(reader.GetOrdinal("NguonThamKhao"))
+                ? reader.GetString(reader.GetOrdinal("NguonThamKhao")) : null,
             MaYeuCauVeTranh = HasColumn(reader, "MaYeuCauVeTranh") && !reader.IsDBNull(reader.GetOrdinal("MaYeuCauVeTranh"))
                 ? reader.GetInt32(reader.GetOrdinal("MaYeuCauVeTranh"))
                 : null,

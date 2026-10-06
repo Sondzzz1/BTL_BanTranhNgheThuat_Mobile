@@ -120,6 +120,23 @@ public class AdminBusiness : IAdminBusiness
         };
     }
 
+    public async Task<TacPhamGocTomTatResponse?> GetTacPhamGocChoKiemDuyet(int id)
+    {
+        var artwork = await _tacPhamRepo.GetById(id);
+        if (artwork == null) return null;
+        if (!artwork.MaTacPhamGoc.HasValue) return null;
+        var original = await _tacPhamRepo.GetById(artwork.MaTacPhamGoc.Value);
+        if (original == null) return null;
+        return new TacPhamGocTomTatResponse
+        {
+            MaTacPham = original.MaTacPham,
+            TenTacPham = original.TenTacPham,
+            TenHoaSi = (await _hoaSiRepo.GetById(original.MaHoaSi))?.TenHoaSi ?? string.Empty,
+            HinhAnh = original.HinhAnh,
+            CoTheXemCongKhai = await _tacPhamRepo.GetMarketplaceById(original.MaTacPham) != null
+        };
+    }
+
     private static List<TacPhamHoaSiResponse> MapTacPhamHoaSiResponses(
         IEnumerable<TacPham> list,
         IEnumerable<HoaSi> hoaSis,
@@ -150,7 +167,14 @@ public class AdminBusiness : IAdminBusiness
             HinhAnh = x.HinhAnh,
             TenHoaSi = hoaSis.FirstOrDefault(h => h.MaHoaSi == x.MaHoaSi)?.TenHoaSi ?? "N/A",
             TenDanhMuc = danhMucs.FirstOrDefault(d => d.MaDanhMuc == x.MaDanhMuc)?.TenDanhMuc ?? "N/A",
-            LyDo = x.LyDo
+            LyDo = x.LyDo,
+            LoaiTacPham = x.LoaiTacPham,
+            TacGiaGoc = x.TacGiaGoc,
+            MaTacPhamGoc = x.MaTacPhamGoc,
+            TenTacPhamGoc = x.TenTacPhamGoc,
+            KhongXacDinhTacGiaGoc = x.KhongXacDinhTacGiaGoc,
+            NguonThamKhao = x.NguonThamKhao,
+            MoTaNguonGoc = x.MoTaNguonGoc
         }).ToList();
     }
 
@@ -172,6 +196,8 @@ public class AdminBusiness : IAdminBusiness
             // Nếu có bản chỉnh sửa, áp dụng nội dung mới vào tác phẩm
             if (chinhSua != null)
             {
+                ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(
+                    tacPham.LaTacPhamDocBan, tacPham.SoLuongBanDau, chinhSua.SoLuong, tacPham.SoLuong);
                 tacPham.TenTacPham = chinhSua.TenTacPham;
                 tacPham.MaDanhMuc = chinhSua.MaDanhMuc;
                 tacPham.Gia = chinhSua.Gia;
@@ -1056,6 +1082,8 @@ public class AdminBusiness : IAdminBusiness
         
         if (request.PheDuyet)
         {
+            ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(
+                tacPham.LaTacPhamDocBan, tacPham.SoLuongBanDau, chinhSua.SoLuong, tacPham.SoLuong);
             // Áp dụng thay đổi vào tác phẩm gốc
             tacPham.TenTacPham = chinhSua.TenTacPham;
             tacPham.MaDanhMuc = chinhSua.MaDanhMuc;

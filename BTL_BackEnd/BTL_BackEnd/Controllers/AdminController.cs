@@ -591,6 +591,14 @@ public class AdminController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
@@ -740,6 +748,13 @@ public class AdminController : ControllerBase
         {
             return StatusCode(500, new { message = "Lỗi server", error = ex.Message });
         }
+    }
+
+    [HttpGet("tac-pham/{id:int}/tac-pham-goc")]
+    public async Task<ActionResult<TacPhamGocTomTatResponse>> GetTacPhamGocChoKiemDuyet(int id)
+    {
+        var result = await _adminBusiness.GetTacPhamGocChoKiemDuyet(id);
+        return result == null ? NotFound() : Ok(result);
     }
 
     [HttpGet("bai-viet/danh-muc")]
@@ -1437,6 +1452,14 @@ public class AdminController : ControllerBase
                 return BadRequest(new { message = "Duyệt thất bại" });
             
             return Ok(new { message = request.PheDuyet ? "Đã phê duyệt chỉnh sửa" : "Đã từ chối chỉnh sửa" });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {

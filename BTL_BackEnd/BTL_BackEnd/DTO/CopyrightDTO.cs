@@ -12,6 +12,8 @@ public class TaoBanQuyenRequest
     public byte LoaiTacPham { get; set; }
     public string? TacGiaGoc { get; set; }
     public int? MaTacPhamGoc { get; set; }
+    public string? TenTacPhamGoc { get; set; }
+    public bool KhongXacDinhTacGiaGoc { get; set; }
     public string? MoTaNguonGoc { get; set; }
     public byte? CanCuSuDung { get; set; }
     public string? NguonThamKhao { get; set; }
@@ -28,6 +30,8 @@ public class CapNhatBanQuyenRequest
     public byte LoaiTacPham { get; set; }
     public string? TacGiaGoc { get; set; }
     public int? MaTacPhamGoc { get; set; }
+    public string? TenTacPhamGoc { get; set; }
+    public bool KhongXacDinhTacGiaGoc { get; set; }
     public string? MoTaNguonGoc { get; set; }
     public byte? CanCuSuDung { get; set; }
     public string? NguonThamKhao { get; set; }
@@ -98,6 +102,8 @@ public class BanQuyenResponse
     public string LoaiTacPhamText { get; set; } = string.Empty;
     public string? TacGiaGoc { get; set; }
     public int? MaTacPhamGoc { get; set; }
+    public string? TenTacPhamGoc { get; set; }
+    public bool KhongXacDinhTacGiaGoc { get; set; }
     public string? MoTaNguonGoc { get; set; }
     public byte? CanCuSuDungSo { get; set; }
     public string CanCuSuDung { get; set; } = string.Empty;
@@ -125,6 +131,7 @@ public class BanQuyenCongKhaiResponse
     public string? TacGiaGoc { get; set; }
     public string? HoaSiThucHien { get; set; }
     public string? MoTaNguonGoc { get; set; }
+    public string? CanCuSuDung { get; set; }
     public bool LaTacPhamDocBan { get; set; }
     /// <summary>Only returned after VERIFIED. NULL means legacy quantity was never verified.</summary>
     public int? SoLuongBanDau { get; set; }

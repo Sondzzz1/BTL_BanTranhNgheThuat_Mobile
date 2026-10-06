@@ -79,9 +79,23 @@ public static class ExclusiveArtworkPolicy
             EnsureDeclarationAllowed(true, initialQuantity);
     }
 
-    public static void EnsureStockUpdateAllowed(bool exclusive, int? initialQuantity, int proposedStock)
+    public static void EnsureStockUpdateAllowed(bool exclusive, int? initialQuantity, int proposedStock,
+        int? currentStock = null)
     {
+        if (proposedStock < 0)
+            throw new ArgumentException("Tồn kho không được âm");
+
+        // SoLuongBanDau is the declared edition size, not the current stock.
+        // A multi-edition may legitimately have 1 or 0 copies left, but neither
+        // kind may silently grow beyond its recorded initial release.
+        if (initialQuantity.HasValue && proposedStock > initialQuantity.Value)
+            throw new InvalidOperationException("Tồn kho không được vượt số lượng phát hành ban đầu đã ghi nhận");
+
         if (!exclusive) return;
+
+        if (currentStock == 0 && proposedStock > 0)
+            throw new InvalidOperationException(
+                "Không thể tự tăng tồn kho tranh độc bản đã hết hàng; cần đối soát giao dịch hoặc hoàn trả qua quy trình Admin");
 
         if (!HasVerifiedSingleInitialCopy(exclusive, initialQuantity))
             throw new InvalidOperationException(
@@ -106,5 +120,9 @@ public static class ExclusiveArtworkPolicy
         if (exclusive && proposedInitialQuantity != 1)
             throw new InvalidOperationException(
                 "Tác phẩm đang đánh dấu độc bản chỉ có thể được đối soát với số lượng ban đầu bằng 1");
+
+        if (!exclusive && proposedInitialQuantity < 2)
+            throw new InvalidOperationException(
+                "Tác phẩm nhiều bản phải được đối soát với số lượng ban đầu từ 2 trở lên");
     }
 }

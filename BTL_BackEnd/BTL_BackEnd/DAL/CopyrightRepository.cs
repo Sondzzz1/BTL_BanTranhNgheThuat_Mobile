@@ -20,7 +20,8 @@ public partial class CopyrightRepository : ICopyrightRepository
                b.NgayThuHoiXacMinh,b.LyDoThuHoiXacMinh,
                t.TenTacPham,t.MaHoaSi,t.LaTacPhamDocBan,t.SoLuongBanDau,t.SoLuong,
                (SELECT COUNT(DISTINCT c.MaDonHang) FROM ChiTietDonHang c WHERE c.MaTacPham=t.MaTacPham) AS SoDonHang,
-               t.LoaiTacPham,t.TacGiaGoc,t.MaTacPhamGoc,t.MoTaNguonGoc,h.TenHoaSi
+                t.LoaiTacPham,t.TacGiaGoc,t.MaTacPhamGoc,t.TenTacPhamGoc,
+                t.KhongXacDinhTacGiaGoc,t.MoTaNguonGoc,h.TenHoaSi
         FROM BanQuyen b
         INNER JOIN TacPham t ON t.MaTacPham=b.MaTacPham
         INNER JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi";
@@ -65,11 +66,18 @@ public partial class CopyrightRepository : ICopyrightRepository
             if (Convert.ToInt64(await duplicate.ExecuteScalarAsync()) > 0)
                 throw new InvalidOperationException("Tác phẩm đã có khai báo bản quyền");
 
+            await EnsureOriginLinkAllowed(connection, transaction, request.MaTacPham,
+                request.MaTacPhamGoc, request.LoaiTacPham);
+
             await using var updateArtwork = new SqlCommand(@"
                 UPDATE TacPham SET LoaiTacPham=@LoaiTacPham,
-                    TacGiaGoc=@TacGiaGoc,MaTacPhamGoc=@MaTacPhamGoc,MoTaNguonGoc=@MoTaNguonGoc
+                    TacGiaGoc=@TacGiaGoc,MaTacPhamGoc=@MaTacPhamGoc,
+                    TenTacPhamGoc=@TenTacPhamGoc,KhongXacDinhTacGiaGoc=@KhongXacDinhTacGiaGoc,
+                    NguonThamKhao=@NguonThamKhao,MoTaNguonGoc=@MoTaNguonGoc
                 WHERE MaTacPham=@MaTacPham AND MaHoaSi=@MaHoaSi;", connection, transaction);
-            AddOriginParameters(updateArtwork, request.LoaiTacPham, request.TacGiaGoc, request.MaTacPhamGoc, request.MoTaNguonGoc);
+            AddOriginParameters(updateArtwork, request.LoaiTacPham, request.TacGiaGoc,
+                request.MaTacPhamGoc, request.TenTacPhamGoc, request.KhongXacDinhTacGiaGoc,
+                request.NguonThamKhao, request.MoTaNguonGoc);
             updateArtwork.Parameters.AddWithValue("@MaTacPham", request.MaTacPham);
             updateArtwork.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
             await updateArtwork.ExecuteNonQueryAsync();
@@ -112,6 +120,10 @@ public partial class CopyrightRepository : ICopyrightRepository
             command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
         });
 
+    public Task<BanQuyenResponse?> GetForAdminByArtworkId(int maTacPham) =>
+        QueryOne(CopyrightSelect + " WHERE b.MaTacPham=@MaTacPham", command =>
+            command.Parameters.AddWithValue("@MaTacPham", maTacPham));
+
     public async Task<bool> Update(int maBanQuyen, int maHoaSi, int maTaiKhoan, CapNhatBanQuyenRequest request)
     {
         await using var connection = new SqlConnection(_connectionString);
@@ -133,11 +145,19 @@ public partial class CopyrightRepository : ICopyrightRepository
             if (status is not (CopyrightStatuses.Pending or CopyrightStatuses.NeedInfo or CopyrightStatuses.Rejected or CopyrightStatuses.Legacy))
                 throw new InvalidOperationException("Khai báo đã xác minh, đang tranh chấp hoặc đã thu hồi không thể tự sửa");
 
+            await EnsureOriginLinkAllowed(connection, transaction, artworkId,
+                request.MaTacPhamGoc, request.LoaiTacPham);
+
             await using var updateArtwork = new SqlCommand(@"
                 UPDATE TacPham SET LoaiTacPham=@LoaiTacPham,TacGiaGoc=@TacGiaGoc,
-                    MaTacPhamGoc=@MaTacPhamGoc,MoTaNguonGoc=@MoTaNguonGoc WHERE MaTacPham=@ArtworkId;",
+                    MaTacPhamGoc=@MaTacPhamGoc,TenTacPhamGoc=@TenTacPhamGoc,
+                    KhongXacDinhTacGiaGoc=@KhongXacDinhTacGiaGoc,
+                    NguonThamKhao=@NguonThamKhao,MoTaNguonGoc=@MoTaNguonGoc
+                WHERE MaTacPham=@ArtworkId;",
                 connection, transaction);
-            AddOriginParameters(updateArtwork, request.LoaiTacPham, request.TacGiaGoc, request.MaTacPhamGoc, request.MoTaNguonGoc);
+            AddOriginParameters(updateArtwork, request.LoaiTacPham, request.TacGiaGoc,
+                request.MaTacPhamGoc, request.TenTacPhamGoc, request.KhongXacDinhTacGiaGoc,
+                request.NguonThamKhao, request.MoTaNguonGoc);
             updateArtwork.Parameters.AddWithValue("@ArtworkId", artworkId);
             await updateArtwork.ExecuteNonQueryAsync();
 
@@ -305,12 +325,44 @@ public partial class CopyrightRepository : ICopyrightRepository
     }
 
     private static void AddOriginParameters(SqlCommand command, byte artworkType, string? originalAuthor,
-        int? originalArtworkId, string? originDescription)
+        int? originalArtworkId, string? originalArtworkName, bool unknownAuthor,
+        string? sourceReference, string? originDescription)
     {
         command.Parameters.AddWithValue("@LoaiTacPham", artworkType);
         command.Parameters.AddWithValue("@TacGiaGoc", Db(originalAuthor));
         command.Parameters.AddWithValue("@MaTacPhamGoc", Db(originalArtworkId));
+        command.Parameters.AddWithValue("@TenTacPhamGoc", Db(originalArtworkName));
+        command.Parameters.AddWithValue("@KhongXacDinhTacGiaGoc", unknownAuthor);
+        command.Parameters.AddWithValue("@NguonThamKhao", Db(sourceReference));
         command.Parameters.AddWithValue("@MoTaNguonGoc", Db(originDescription));
+    }
+
+    private static async Task EnsureOriginLinkAllowed(SqlConnection connection, SqlTransaction transaction,
+        int currentArtworkId, int? originalArtworkId, byte artworkType)
+    {
+        if (!originalArtworkId.HasValue) return;
+        var seen = new HashSet<int>();
+        var nextId = originalArtworkId;
+        while (nextId.HasValue)
+        {
+            if (nextId.Value == currentArtworkId || !seen.Add(nextId.Value))
+                throw new ArgumentException("Quan hệ tác phẩm gốc không được tự trỏ hoặc tạo vòng lặp");
+            await using var command = new SqlCommand(@"
+                SELECT MaTacPhamGoc,TrangThai,MaYeuCauVeTranh
+                FROM TacPham WITH (UPDLOCK,HOLDLOCK) WHERE MaTacPham=@Id;", connection, transaction);
+            command.Parameters.AddWithValue("@Id", nextId.Value);
+            await using var reader = await command.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+                throw new ArgumentException("Không tìm thấy tác phẩm gốc trong hệ thống");
+            var ancestorId = reader.IsDBNull(0) ? (int?)null : reader.GetInt32(0);
+            var status = reader.GetByte(1);
+            var commission = !reader.IsDBNull(2);
+            await reader.CloseAsync();
+            if (seen.Count == 1 && artworkType == 2
+                && (status != TacPhamStatus.OnSale || commission))
+                throw new ArgumentException("Tác phẩm gốc được chọn không còn công khai trên hệ thống");
+            nextId = ancestorId;
+        }
     }
 
     private static object Db(object? value) => value ?? DBNull.Value;

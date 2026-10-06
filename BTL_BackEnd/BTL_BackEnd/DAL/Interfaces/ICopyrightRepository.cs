@@ -13,6 +13,7 @@ public interface ICopyrightRepository
     Task<BangChungBanQuyen?> DeleteEvidence(int maBanQuyen, int maBangChung, int maHoaSi, int maTaiKhoan);
     Task<List<BanQuyenResponse>> GetForAdmin(string? status, string? keyword);
     Task<BanQuyenResponse?> GetForAdminById(int maBanQuyen);
+    Task<BanQuyenResponse?> GetForAdminByArtworkId(int maTacPham);
     Task<bool> VerifyInitialQuantity(
         int maTacPham,
         int maTaiKhoan,

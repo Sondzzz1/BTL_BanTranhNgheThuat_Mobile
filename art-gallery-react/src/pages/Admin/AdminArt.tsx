@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import apiClient from '../../services/api';
 import {
     adminService,
     AdminArtworkFilterOption,
+    OriginalArtworkReview,
+    ArtworkCopyrightSummary,
     TacPhamHoaSiResponse,
 } from '../../services/adminService';
 import { formatVnd } from '../../utils/currency';
@@ -25,6 +27,14 @@ const STATUS_CLASS: Record<number, string> = {
 };
 
 const PAGE_SIZE = 20;
+const USAGE_BASIS_TEXT: Record<string, string> = {
+    AUTHOR_OR_RIGHTS_OWNER: 'Tác giả / chủ thể quyền',
+    REVIEWED_PUBLIC_DOMAIN: 'Phạm vi công cộng đã được xem xét',
+    PERMISSION_GRANTED: 'Có văn bản cho phép',
+    OTHER_LAWFUL_BASIS: 'Căn cứ hợp pháp khác',
+    INSUFFICIENT: 'Chưa đủ căn cứ',
+    UNDECLARED: 'Chưa khai báo',
+};
 
 type ArtworkFilters = {
     keyword: string;
@@ -99,6 +109,11 @@ const AdminArt: React.FC = () => {
     const [selectedArtworkDetail, setSelectedArtworkDetail] = useState<ArtworkDetailResponse | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [detailMessage, setDetailMessage] = useState('');
+    const [originalArtwork, setOriginalArtwork] = useState<OriginalArtworkReview | null>(null);
+    const [originalMessage, setOriginalMessage] = useState('');
+    const [copyrightSummary, setCopyrightSummary] = useState<ArtworkCopyrightSummary | null>(null);
+    const [originalPreviewOpen, setOriginalPreviewOpen] = useState(false);
+    const detailRequestId = useRef(0);
 
     useEffect(() => {
         if (activeTab === 'artworks') {
@@ -188,6 +203,7 @@ const AdminArt: React.FC = () => {
         if (!window.confirm('Phê duyệt tác phẩm này?')) return;
         try {
             await adminService.approveArtwork(id, true);
+            detailRequestId.current += 1;
             setSelectedArtwork(null);
             setSelectedArtworkDetail(null);
             await refreshArtworkList();
@@ -202,6 +218,7 @@ const AdminArt: React.FC = () => {
         const lyDo = input.trim() || undefined;
         try {
             await adminService.duyetTacPham(id, { pheDuyet: false, lyDo });
+            detailRequestId.current += 1;
             setSelectedArtwork(null);
             setSelectedArtworkDetail(null);
             await refreshArtworkList();
@@ -211,27 +228,45 @@ const AdminArt: React.FC = () => {
     };
 
     const openArtworkDetail = async (artwork: TacPhamHoaSiResponse) => {
+        const requestId = ++detailRequestId.current;
         setSelectedArtwork(artwork);
         setSelectedArtworkDetail(null);
+        setOriginalArtwork(null);
+        setOriginalMessage('');
+        setCopyrightSummary(null);
+        setOriginalPreviewOpen(false);
         setDetailMessage('');
         setDetailLoading(true);
+        void adminService.getCopyrightByArtworkId(artwork.maTacPham)
+            .then(value => { if (requestId === detailRequestId.current) setCopyrightSummary(value); })
+            .catch(() => { if (requestId === detailRequestId.current) setCopyrightSummary(null); });
+        if (artwork.maTacPhamGoc) {
+            void adminService.getTacPhamGocChoKiemDuyet(artwork.maTacPham)
+                .then(value => { if (requestId === detailRequestId.current) setOriginalArtwork(value); })
+                .catch(() => { if (requestId === detailRequestId.current) setOriginalMessage('Không thể tải tác phẩm gốc đã liên kết. Hãy kiểm tra trước khi duyệt.'); });
+        }
         try {
             const response = await apiClient.get<ArtworkDetailResponse>(`/admin/chi-tiet-tac-pham/${artwork.maTacPham}`);
-            setSelectedArtworkDetail(response.data);
+            if (requestId === detailRequestId.current) setSelectedArtworkDetail(response.data);
         } catch (error: any) {
+            if (requestId !== detailRequestId.current) return;
             if (error?.response?.status === 404) {
                 setDetailMessage('Họa sĩ chưa cung cấp nội dung chi tiết riêng cho tác phẩm này.');
             } else {
                 setDetailMessage(error?.response?.data?.message || 'Không thể tải nội dung chi tiết tác phẩm.');
             }
         } finally {
-            setDetailLoading(false);
+            if (requestId === detailRequestId.current) setDetailLoading(false);
         }
     };
 
     const closeArtworkDetail = () => {
+        detailRequestId.current += 1;
         setSelectedArtwork(null);
         setSelectedArtworkDetail(null);
+        setOriginalArtwork(null);
+        setCopyrightSummary(null);
+        setOriginalPreviewOpen(false);
         setDetailMessage('');
     };
 
@@ -844,7 +879,9 @@ const AdminArt: React.FC = () => {
                                 <div className="artwork-review-info-grid">
                                     <div><span>Danh mục</span><strong>{selectedArtwork.tenDanhMuc || 'Chưa cập nhật'}</strong></div>
                                     <div><span>Giá bán</span><strong>{formatPrice(selectedArtwork.gia)}</strong></div>
-                                    <div><span>Số lượng</span><strong>{selectedArtwork.soLuong}</strong></div>
+                                    <div><span>Loại phát hành</span><strong>{selectedArtwork.laTacPhamDocBan ? 'Độc bản' : 'Nhiều bản'}</strong></div>
+                                    <div><span>Số lượng ban đầu</span><strong>{selectedArtwork.soLuongBanDau ?? 'Chưa đối soát'}</strong></div>
+                                    <div><span>Tồn kho hiện tại</span><strong>{selectedArtwork.soLuong}</strong></div>
                                     <div><span>Kích thước</span><strong>{selectedArtwork.kichThuoc || selectedArtworkDetail?.kichThuoc || 'Chưa cập nhật'}</strong></div>
                                     <div><span>Chất liệu</span><strong>{selectedArtwork.chatLieu || selectedArtworkDetail?.chatLieu || 'Chưa cập nhật'}</strong></div>
                                     <div><span>Chất liệu khung</span><strong>{selectedArtwork.chatLieuKhung || selectedArtworkDetail?.chatLieuKhung || 'Chưa cập nhật'}</strong></div>
@@ -853,6 +890,30 @@ const AdminArt: React.FC = () => {
                                     <span>Mô tả của họa sĩ</span>
                                     <p>{selectedArtwork.moTa || 'Họa sĩ chưa nhập mô tả.'}</p>
                                 </div>
+                            </section>
+
+                            <section className="artwork-review-section">
+                                <h4><i className="ti-bookmark"></i> Nguồn gốc &amp; quyền sử dụng</h4>
+                                <div className="artwork-review-info-grid">
+                                    <div><span>Phân loại</span><strong>{selectedArtwork.loaiTacPhamText || (selectedArtwork.loaiTacPham === 2 ? 'Vẽ lại / phái sinh' : selectedArtwork.loaiTacPham === 4 ? 'Dựa trên tư liệu tham khảo' : 'Tự sáng tác')}</strong></div>
+                                    {selectedArtwork.loaiTacPham === 2 && <div><span>Tác giả gốc</span><strong>{selectedArtwork.khongXacDinhTacGiaGoc ? 'Chưa xác định' : selectedArtwork.tacGiaGoc || 'Chưa khai báo'}</strong></div>}
+                                </div>
+                                {selectedArtwork.loaiTacPham === 2 && selectedArtwork.maTacPhamGoc && <div className="artwork-review-description">
+                                    <span>Tác phẩm gốc trong hệ thống</span>
+                                    {originalArtwork ? <p>
+                                        {originalArtwork.hinhAnh && <img src={originalArtwork.hinhAnh} alt={originalArtwork.tenTacPham} style={{width: 72, height: 72, objectFit: 'cover', marginRight: 12, verticalAlign: 'middle'}} />}
+                                        <strong>{originalArtwork.tenTacPham}</strong> — {originalArtwork.tenHoaSi}
+                                        <small>{originalArtwork.coTheXemCongKhai ? ' · Đang hiển thị công khai' : ' · Không hiển thị công khai'}</small>
+                                        <button type="button" onClick={() => setOriginalPreviewOpen(true)} style={{marginLeft:12}}>Xem tác phẩm gốc</button>
+                                    </p> : <p>{originalMessage || 'Đang tải tác phẩm gốc...'}</p>}
+                                </div>}
+                                {selectedArtwork.loaiTacPham === 2 && !selectedArtwork.maTacPhamGoc && <div className="artwork-review-description"><span>Tác phẩm gốc ngoài hệ thống</span><p>{selectedArtwork.tenTacPhamGoc || 'Chưa khai báo tên'}</p></div>}
+                                {selectedArtwork.nguonThamKhao && <div className="artwork-review-description"><span>Nguồn tham khảo</span><p>{selectedArtwork.nguonThamKhao}</p></div>}
+                                {selectedArtwork.moTaNguonGoc && <div className="artwork-review-description"><span>Mô tả nguồn gốc</span><p>{selectedArtwork.moTaNguonGoc}</p></div>}
+                                <div className="artwork-review-description"><span>Căn cứ sử dụng</span><p>{copyrightSummary ? USAGE_BASIS_TEXT[copyrightSummary.canCuSuDung] || copyrightSummary.canCuSuDung : 'Chưa có hồ sơ bản quyền riêng'}</p></div>
+                                {copyrightSummary && <p>Trạng thái xác minh riêng: {copyrightSummary.trangThai}</p>}
+                                <p>Khai báo nguồn gốc không đồng nghĩa với xác minh bản quyền hoặc quyền sử dụng.</p>
+                                <p>Loại phát hành độc bản/nhiều bản độc lập với phân loại nguồn gốc sáng tạo ở trên.</p>
                             </section>
 
                             <section className="artwork-review-section">
@@ -917,6 +978,14 @@ const AdminArt: React.FC = () => {
                                 )}
                             </section>
                         </div>
+
+                        {originalPreviewOpen && originalArtwork && <div role="dialog" aria-label="Tác phẩm gốc" style={{position:'absolute',inset:24,background:'#fff',zIndex:5,overflowY:'auto',padding:24,borderRadius:12,boxShadow:'0 8px 30px #0003'}}>
+                            <button type="button" onClick={() => setOriginalPreviewOpen(false)} style={{float:'right'}}>Đóng</button>
+                            <h3>Tác phẩm gốc: {originalArtwork.tenTacPham}</h3>
+                            <p>Họa sĩ: {originalArtwork.tenHoaSi}</p>
+                            {originalArtwork.hinhAnh && <img src={originalArtwork.hinhAnh} alt={originalArtwork.tenTacPham} style={{maxWidth:'100%',maxHeight:480,objectFit:'contain'}} />}
+                            <p>{originalArtwork.coTheXemCongKhai ? 'Tác phẩm đang được hiển thị công khai.' : 'Tác phẩm hiện không được hiển thị công khai.'}</p>
+                        </div>}
 
                         {selectedArtwork.trangThai === 0 && (
                             <div className="artwork-review-footer">

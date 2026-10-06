@@ -52,6 +52,9 @@ public class CopyrightBusiness : ICopyrightBusiness
         await _repository.GetForAdminById(maBanQuyen)
         ?? throw new KeyNotFoundException("Không tìm thấy khai báo bản quyền");
 
+    public Task<BanQuyenResponse?> GetForAdminByArtworkId(int maTacPham) =>
+        _repository.GetForAdminByArtworkId(maTacPham);
+
     public async Task VerifyInitialQuantity(
         int maTacPham,
         int maTaiKhoan,
@@ -168,22 +171,60 @@ public class CopyrightBusiness : ICopyrightBusiness
     {
         ValidateArtworkType(request.LoaiTacPham);
         request.TacGiaGoc = Optional(request.TacGiaGoc, "Tác giả gốc", 255);
+        request.TenTacPhamGoc = Optional(request.TenTacPhamGoc, "Tên tác phẩm gốc", 500);
         request.MoTaNguonGoc = Optional(request.MoTaNguonGoc, "Mô tả nguồn gốc", 4000);
         request.NguonThamKhao = Optional(request.NguonThamKhao, "Nguồn tham khảo", 1000);
         request.SoDangKy = Optional(request.SoDangKy, "Số đăng ký", 100);
+        if (request.LoaiTacPham == 0)
+        {
+            request.TacGiaGoc = null; request.MaTacPhamGoc = null; request.TenTacPhamGoc = null;
+            request.KhongXacDinhTacGiaGoc = false; request.MoTaNguonGoc = null;
+        }
+        else if (request.LoaiTacPham == 4)
+        {
+            request.TacGiaGoc = null; request.MaTacPhamGoc = null; request.TenTacPhamGoc = null;
+            request.KhongXacDinhTacGiaGoc = false;
+        }
+        else if (request.MaTacPhamGoc.HasValue)
+        {
+            request.TacGiaGoc = null; request.TenTacPhamGoc = null;
+            request.KhongXacDinhTacGiaGoc = false;
+        }
+        else if (request.KhongXacDinhTacGiaGoc) request.TacGiaGoc = null;
         ValidateUsageBasis(request.CanCuSuDung);
-        ValidateDerivativeOrigin(request.LoaiTacPham, request.TacGiaGoc, request.MaTacPhamGoc, request.MoTaNguonGoc);
+        ValidateOrigin(request.LoaiTacPham, request.MaTacPham, request.TacGiaGoc,
+            request.MaTacPhamGoc, request.TenTacPhamGoc, request.KhongXacDinhTacGiaGoc,
+            request.NguonThamKhao, request.MoTaNguonGoc);
     }
 
     private static void NormalizeOrigin(CapNhatBanQuyenRequest request)
     {
         ValidateArtworkType(request.LoaiTacPham);
         request.TacGiaGoc = Optional(request.TacGiaGoc, "Tác giả gốc", 255);
+        request.TenTacPhamGoc = Optional(request.TenTacPhamGoc, "Tên tác phẩm gốc", 500);
         request.MoTaNguonGoc = Optional(request.MoTaNguonGoc, "Mô tả nguồn gốc", 4000);
         request.NguonThamKhao = Optional(request.NguonThamKhao, "Nguồn tham khảo", 1000);
         request.SoDangKy = Optional(request.SoDangKy, "Số đăng ký", 100);
+        if (request.LoaiTacPham == 0)
+        {
+            request.TacGiaGoc = null; request.MaTacPhamGoc = null; request.TenTacPhamGoc = null;
+            request.KhongXacDinhTacGiaGoc = false; request.MoTaNguonGoc = null;
+        }
+        else if (request.LoaiTacPham == 4)
+        {
+            request.TacGiaGoc = null; request.MaTacPhamGoc = null; request.TenTacPhamGoc = null;
+            request.KhongXacDinhTacGiaGoc = false;
+        }
+        else if (request.MaTacPhamGoc.HasValue)
+        {
+            request.TacGiaGoc = null; request.TenTacPhamGoc = null;
+            request.KhongXacDinhTacGiaGoc = false;
+        }
+        else if (request.KhongXacDinhTacGiaGoc) request.TacGiaGoc = null;
         ValidateUsageBasis(request.CanCuSuDung);
-        ValidateDerivativeOrigin(request.LoaiTacPham, request.TacGiaGoc, request.MaTacPhamGoc, request.MoTaNguonGoc);
+        ValidateOrigin(request.LoaiTacPham, null, request.TacGiaGoc,
+            request.MaTacPhamGoc, request.TenTacPhamGoc, request.KhongXacDinhTacGiaGoc,
+            request.NguonThamKhao, request.MoTaNguonGoc);
     }
 
     private static void ValidateArtworkType(byte value)
@@ -197,12 +238,20 @@ public class CopyrightBusiness : ICopyrightBusiness
             throw new ArgumentException("Vui lòng chọn căn cứ sử dụng hợp lệ");
     }
 
-    private static void ValidateDerivativeOrigin(byte type, string? originalAuthor, int? originalArtworkId, string? originDescription)
+    private static void ValidateOrigin(byte type, int? currentArtworkId, string? originalAuthor,
+        int? originalArtworkId, string? originalArtworkName, bool unknownAuthor,
+        string? sourceReference, string? originDescription)
     {
-        if (type == 2 && string.IsNullOrWhiteSpace(originalAuthor) && originalArtworkId is null
-            && string.IsNullOrWhiteSpace(originDescription))
-            throw new ArgumentException("Phiên bản vẽ lại phải khai báo tác giả gốc, tác phẩm gốc hoặc mô tả nguồn gốc");
         if (originalArtworkId <= 0) throw new ArgumentException("Mã tác phẩm gốc không hợp lệ");
+        if (currentArtworkId.HasValue && originalArtworkId == currentArtworkId)
+            throw new ArgumentException("Tác phẩm gốc không thể trỏ tới chính tác phẩm hiện tại");
+        if (type == 2 && originalArtworkId is null
+            && (string.IsNullOrWhiteSpace(originalArtworkName)
+                || (string.IsNullOrWhiteSpace(originalAuthor) && !unknownAuthor)))
+            throw new ArgumentException("Phiên bản vẽ lại cần tên tác phẩm gốc và tác giả, hoặc đánh dấu không xác định tác giả");
+        if (type == 4 && (string.IsNullOrWhiteSpace(sourceReference)
+            || string.IsNullOrWhiteSpace(originDescription)))
+            throw new ArgumentException("Tác phẩm dựa trên tư liệu tham khảo cần nguồn và mô tả cách sử dụng nguồn");
     }
 
     private static void ValidateDate(DateTime? date)

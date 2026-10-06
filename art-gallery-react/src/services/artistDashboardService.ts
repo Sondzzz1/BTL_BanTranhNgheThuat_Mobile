@@ -26,11 +26,21 @@ export interface TaoTacPhamRequest {
     kichThuoc?: string;
     chatLieu?: string;
     chatLieuKhung?: string;
-    /** 0 = tự sáng tác; 2 = phiên bản vẽ lại / phái sinh. */
-    loaiTacPham: 0 | 2;
+    /** 0 = tự sáng tác; 2 = vẽ lại / phái sinh; 4 = dựa trên tư liệu tham khảo. */
+    loaiTacPham: 0 | 2 | 4;
     tacGiaGoc?: string;
     maTacPhamGoc?: number;
+    tenTacPhamGoc?: string;
+    khongXacDinhTacGiaGoc?: boolean;
+    nguonThamKhao?: string;
     moTaNguonGoc?: string;
+}
+
+export interface OriginalArtworkOption {
+    maTacPham: number;
+    tenTacPham: string;
+    tenHoaSi: string;
+    hinhAnh?: string;
 }
 
 export interface CapNhatTacPhamRequest {
@@ -43,6 +53,14 @@ export interface CapNhatTacPhamRequest {
     kichThuoc?: string;
     chatLieu?: string;
     chatLieuKhung?: string;
+    /** Chỉ sửa được khi tác phẩm đang chờ duyệt hoặc bị từ chối. */
+    loaiTacPham?: 0 | 2 | 4;
+    tacGiaGoc?: string;
+    maTacPhamGoc?: number;
+    tenTacPhamGoc?: string;
+    khongXacDinhTacGiaGoc?: boolean;
+    nguonThamKhao?: string;
+    moTaNguonGoc?: string;
 }
 
 export interface ChiTietTacPhamPayload {
@@ -97,6 +115,9 @@ export interface TacPhamHoaSiResponse {
     loaiTacPhamText: string;
     tacGiaGoc?: string;
     maTacPhamGoc?: number;
+    tenTacPhamGoc?: string;
+    khongXacDinhTacGiaGoc?: boolean;
+    nguonThamKhao?: string;
     moTaNguonGoc?: string;
 }
 
@@ -226,6 +247,14 @@ export const artistDashboardService = {
   },
   taoTacPham: async (data: TaoTacPhamRequest): Promise<{ message: string; maTacPham: number }> => {
     const response = await apiClient.post('/hoa-si/tac-pham/create', data);
+    return response.data;
+  },
+  searchOriginalArtworks: async (keyword: string): Promise<OriginalArtworkOption[]> => {
+    const response = await apiClient.get<OriginalArtworkOption[]>('/tranh', { params: { keyword } });
+    return response.data;
+  },
+  getPublicOriginalArtwork: async (id: number): Promise<OriginalArtworkOption> => {
+    const response = await apiClient.get<OriginalArtworkOption>(`/tranh/${id}`);
     return response.data;
   },
   capNhatTacPham: async (id: number, data: CapNhatTacPhamRequest): Promise<any> => {

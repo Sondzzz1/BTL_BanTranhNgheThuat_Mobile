@@ -1,5 +1,15 @@
 namespace DoAn2_BackEnd.DTO;
 
+/// <summary>Thông tin tác phẩm gốc để đọc, không phải hồ sơ quyền tác giả.</summary>
+public class TacPhamGocTomTatResponse
+{
+    public int MaTacPham { get; set; }
+    public string TenTacPham { get; set; } = string.Empty;
+    public string TenHoaSi { get; set; } = string.Empty;
+    public string? HinhAnh { get; set; }
+    public bool CoTheXemCongKhai { get; set; }
+}
+
 public class TacPhamViewDTO
 {
     public int MaTacPham { get; set; }

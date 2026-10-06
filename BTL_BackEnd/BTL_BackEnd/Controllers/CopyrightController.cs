@@ -115,6 +115,14 @@ public class CopyrightController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult> GetForAdminById(int id) => Ok(await _business.GetForAdminById(id));
 
+    [HttpGet("admin/tac-pham/{artworkId:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<ActionResult> GetForAdminByArtworkId(int artworkId)
+    {
+        var result = await _business.GetForAdminByArtworkId(artworkId);
+        return result == null ? NotFound() : Ok(result);
+    }
+
     [HttpGet("admin/nhat-ky")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult> Audit([FromQuery] string? objectName, [FromQuery] int? objectId) =>

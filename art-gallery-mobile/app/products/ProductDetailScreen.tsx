@@ -33,6 +33,42 @@ interface ProductDetailScreenProps {
   navigation: any;
 }
 
+type CreativeOrigin = NonNullable<Product['nguonGocSangTao']>;
+
+// The public API now returns `nguonGocSangTao`.  Keep this fallback while a
+// mobile client can still be pointed to an older backend that returns flat fields.
+function getCreativeOrigin(product: Product): CreativeOrigin {
+  if (product.nguonGocSangTao) return product.nguonGocSangTao;
+
+  if (product.loaiTacPham === 2) {
+    return {
+      loai: 'DERIVATIVE',
+      tenLoai: 'Phiên bản vẽ lại / phái sinh',
+      tenTacPhamGocNgoaiHeThong: product.tenTacPhamGoc,
+      tacGiaGoc: product.tacGiaGoc,
+      khongXacDinhTacGiaGoc: product.khongXacDinhTacGiaGoc ?? false,
+      nguonThamKhao: product.nguonThamKhao,
+      moTaNguonGoc: product.moTaNguonGoc,
+    };
+  }
+
+  if (product.loaiTacPham === 4) {
+    return {
+      loai: 'REFERENCE',
+      tenLoai: 'Dựa trên tư liệu tham khảo',
+      khongXacDinhTacGiaGoc: false,
+      nguonThamKhao: product.nguonThamKhao,
+      moTaNguonGoc: product.moTaNguonGoc,
+    };
+  }
+
+  return {
+    loai: 'ORIGINAL',
+    tenLoai: 'Tác phẩm gốc',
+    khongXacDinhTacGiaGoc: false,
+  };
+}
+
 function DetailProductRail({
   title,
   subtitle,
@@ -323,9 +359,12 @@ export default function ProductDetailScreen({
   const isOutOfStock = product.soLuong === 0;
   const isVerifiedExclusive = Boolean(
     product.laTacPhamDocBan
+    && product.soLuongBanDau === 1
     && copyright?.trangThai === 'VERIFIED'
-    && copyright.laTacPhamDocBan,
+    && copyright.laTacPhamDocBan
+    && copyright.soLuongBanDau === 1,
   );
+  const creativeOrigin = getCreativeOrigin(product);
 
   return (
     <View style={styles.container}>
@@ -368,23 +407,47 @@ export default function ProductDetailScreen({
             )}
           </View>
 
-          {product.laTacPhamDocBan && (
-            <View style={[
-              styles.exclusiveStatusBadge,
-              isVerifiedExclusive && styles.exclusiveStatusBadgeVerified,
+          <View style={[
+            styles.exclusiveStatusBadge,
+            product.laTacPhamDocBan
+              ? isVerifiedExclusive && styles.exclusiveStatusBadgeVerified
+              : styles.multipleStatusBadge,
+          ]}>
+            <Text style={[
+              styles.exclusiveStatusText,
+              product.laTacPhamDocBan
+                ? isVerifiedExclusive && styles.exclusiveStatusTextVerified
+                : styles.multipleStatusText,
             ]}>
-              <Text style={[
-                styles.exclusiveStatusText,
-                isVerifiedExclusive && styles.exclusiveStatusTextVerified,
-              ]}>
-                {isVerifiedExclusive
-                  ? 'Độc bản đã xác minh'
-                  : 'Khai báo độc bản · chưa xác minh'}
-              </Text>
-            </View>
-          )}
+              {product.laTacPhamDocBan
+                ? isVerifiedExclusive ? 'Độc bản đã xác minh' : 'Khai báo độc bản · chưa xác minh'
+                : `Khai báo nhiều bản${product.soLuongBanDau != null && product.soLuongBanDau >= 2 ? ` · ban đầu ${product.soLuongBanDau} bản` : ''}`}
+            </Text>
+          </View>
 
           <Text style={styles.price}>{formatPrice(product.gia)}</Text>
+
+          <View style={styles.provenanceSection} accessibilityLabel="Thông tin nguồn gốc sáng tạo">
+            <Text style={styles.provenanceTitle}>Nguồn gốc sáng tạo</Text>
+            <Text style={styles.provenanceLine}>Phân loại: {creativeOrigin.tenLoai}</Text>
+            {creativeOrigin.loai === 'ORIGINAL' && <Text style={styles.provenanceMuted}>Tác phẩm này được họa sĩ khai báo là sáng tác gốc.</Text>}
+            {creativeOrigin.loai === 'DERIVATIVE' && <>
+              <Text style={styles.provenanceLine}>Tác phẩm gốc: {creativeOrigin.tacPhamGoc?.tenTacPham || creativeOrigin.tenTacPhamGocNgoaiHeThong || 'Chưa xác định'}</Text>
+              <Text style={styles.provenanceLine}>Tác giả gốc: {creativeOrigin.khongXacDinhTacGiaGoc ? 'Chưa xác định' : creativeOrigin.tacGiaGoc || creativeOrigin.tacPhamGoc?.tenHoaSi || 'Chưa có thông tin'}</Text>
+              {creativeOrigin.tacPhamGoc?.coTheXemCongKhai && <TouchableOpacity
+                style={styles.originArtworkCard}
+                onPress={() => navigation.push('ProductDetail', { id: creativeOrigin.tacPhamGoc?.maTacPham })}
+                accessibilityRole="button"
+                accessibilityLabel={`Xem tác phẩm gốc ${creativeOrigin.tacPhamGoc.tenTacPham}`}
+              >
+                {creativeOrigin.tacPhamGoc.hinhAnh && <Image source={{ uri: creativeOrigin.tacPhamGoc.hinhAnh }} style={styles.originArtworkImage} />}
+                <View style={{ flex: 1 }}><Text style={styles.provenanceLine}>{creativeOrigin.tacPhamGoc.tenTacPham}</Text><Text style={styles.provenanceMuted}>{creativeOrigin.tacPhamGoc.tenHoaSi} · Xem tác phẩm →</Text></View>
+              </TouchableOpacity>}
+            </>}
+            {creativeOrigin.nguonThamKhao && <Text style={styles.provenanceLine}>Nguồn tham khảo: {creativeOrigin.nguonThamKhao}</Text>}
+            {creativeOrigin.moTaNguonGoc && <Text style={styles.provenanceLine}>Cách sử dụng nguồn: {creativeOrigin.moTaNguonGoc}</Text>}
+            <Text style={styles.provenanceLegal}>Đây là thông tin do họa sĩ khai báo; không phải kết luận xác minh quyền tác giả.</Text>
+          </View>
 
           {/* Details */}
           {product.moTa && (
@@ -460,11 +523,17 @@ export default function ProductDetailScreen({
           </View>
 
           <View style={styles.provenanceSection}>
-            <View style={styles.provenanceHeader}><Text style={styles.provenanceTitle}>Nguồn gốc & bản quyền</Text><Text style={[styles.provenanceBadge, copyright?.trangThai === 'VERIFIED' && styles.provenanceVerified]}>{copyright?.trangThai || 'CHƯA KHAI BÁO'}</Text></View>
+            <View style={styles.provenanceHeader}><Text style={styles.provenanceTitle}>Xác minh bản quyền</Text><Text style={[styles.provenanceBadge, copyright?.trangThai === 'VERIFIED' && styles.provenanceVerified]}>{copyright?.trangThai || 'CHƯA XÁC MINH'}</Text></View>
             {copyright?.trangThai === 'VERIFIED' ? <>
               <Text style={styles.provenanceLine}>Phân loại: {copyright.loaiTacPhamText}</Text>
               <Text style={styles.provenanceLine}>Họa sĩ thực hiện: {copyright.hoaSiThucHien}</Text>
               {copyright.tacGiaGoc ? <Text style={styles.provenanceLine}>Tác giả gốc: {copyright.tacGiaGoc}</Text> : null}
+              {copyright.canCuSuDung && <Text style={styles.provenanceLine}>Căn cứ sử dụng đã kiểm tra: {{
+                AUTHOR_OR_RIGHTS_OWNER: 'Tác giả / chủ thể quyền',
+                REVIEWED_PUBLIC_DOMAIN: 'Phạm vi công cộng đã được xem xét',
+                PERMISSION_GRANTED: 'Có văn bản cho phép',
+                OTHER_LAWFUL_BASIS: 'Căn cứ hợp pháp khác',
+              }[copyright.canCuSuDung] || copyright.canCuSuDung}</Text>}
               <Text style={styles.provenanceLine}>
                 {copyright.laTacPhamDocBan
                   ? 'Tranh độc bản · chỉ một hiện vật đã được xác minh'
@@ -472,7 +541,7 @@ export default function ProductDetailScreen({
                     ? `Tranh nhiều bản · phát hành ban đầu ${copyright.soLuongBanDau} bản`
                     : 'Loại phát hành chưa đủ dữ liệu để xác định'}
               </Text>
-            </> : <Text style={styles.provenanceMuted}>Thông tin nguồn gốc chưa được nền tảng xác minh.</Text>}
+            </> : <Text style={styles.provenanceMuted}>Nền tảng chưa xác minh hồ sơ bản quyền của tác phẩm này.</Text>}
             <Text style={styles.provenanceLegal}>{copyright?.luuYPhapLy || 'Xác minh của nền tảng không thay thế đăng ký quyền tác giả tại cơ quan nhà nước.'}</Text>
           </View>
 
@@ -736,6 +805,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0fdf4',
     borderColor: '#bbf7d0',
   },
+  multipleStatusBadge: {
+    backgroundColor: '#e0f2fe',
+    borderColor: '#bae6fd',
+  },
   exclusiveStatusText: {
     color: '#9a3412',
     fontSize: 12,
@@ -743,6 +816,9 @@ const styles = StyleSheet.create({
   },
   exclusiveStatusTextVerified: {
     color: '#166534',
+  },
+  multipleStatusText: {
+    color: '#075985',
   },
   price: {
     fontSize: 28,
@@ -976,6 +1052,8 @@ const styles = StyleSheet.create({
   galleryRow: { gap: 10, paddingTop: 14, paddingRight: 4 },
   galleryImage: { width: 210, height: 150, borderRadius: 10, backgroundColor: '#e5e7eb' },
   provenanceSection:{marginBottom:24,padding:15,borderWidth:1,borderColor:'#fed7aa',borderRadius:14,backgroundColor:'#fff7ed'},
+  originArtworkCard:{marginTop:10,flexDirection:'row',alignItems:'center',gap:10,padding:8,borderWidth:1,borderColor:'#fed7aa',borderRadius:10,backgroundColor:'#fff'},
+  originArtworkImage:{width:54,height:54,borderRadius:6},
   provenanceHeader:{flexDirection:'row',justifyContent:'space-between',alignItems:'center',gap:10,marginBottom:11},
   provenanceTitle:{fontSize:17,fontWeight:'900',color:'#7c2d12'},
   provenanceBadge:{paddingHorizontal:8,paddingVertical:4,borderRadius:999,backgroundColor:'#e2e8f0',color:'#475569',fontSize:9,fontWeight:'900'},

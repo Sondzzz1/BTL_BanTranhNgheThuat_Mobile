@@ -166,6 +166,28 @@ export interface TacPhamHoaSiResponse {
   ngayTao: string;
   tenHoaSi?: string;
   lyDo?: string;
+  loaiTacPham?: number;
+  loaiTacPhamText?: string;
+  tacGiaGoc?: string;
+  tenTacPhamGoc?: string;
+  khongXacDinhTacGiaGoc?: boolean;
+  maTacPhamGoc?: number;
+  nguonThamKhao?: string;
+  moTaNguonGoc?: string;
+}
+
+export interface OriginalArtworkReview {
+  maTacPham: number;
+  tenTacPham: string;
+  tenHoaSi: string;
+  hinhAnh?: string;
+  coTheXemCongKhai: boolean;
+}
+
+export interface ArtworkCopyrightSummary {
+  maBanQuyen: number;
+  trangThai: string;
+  canCuSuDung: string;
 }
 
 export interface AdminArtworkQuery {
@@ -539,6 +561,21 @@ export const adminService = {
   async getTacPhamQuanLy(params: AdminArtworkQuery): Promise<TacPhamAdminPageResponse> {
     const response = await apiClient.get('/admin/tac-pham/quan-ly', { params });
     return response.data;
+  },
+
+  async getTacPhamGocChoKiemDuyet(id: number): Promise<OriginalArtworkReview> {
+    const response = await apiClient.get<OriginalArtworkReview>(`/admin/tac-pham/${id}/tac-pham-goc`);
+    return response.data;
+  },
+
+  async getCopyrightByArtworkId(id: number): Promise<ArtworkCopyrightSummary | null> {
+    try {
+      const response = await apiClient.get<ArtworkCopyrightSummary>(`/ban-quyen/admin/tac-pham/${id}`);
+      return response.data;
+    } catch (error: any) {
+      if (error?.response?.status === 404) return null;
+      throw error;
+    }
   },
 
   async getBoLocTacPhamQuanLy(): Promise<AdminArtworkFilterOptionsResponse> {

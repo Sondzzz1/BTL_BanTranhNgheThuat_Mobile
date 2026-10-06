@@ -14,6 +14,14 @@ var tests = new (string Name, Action Run)[]
     ("10. Chứng nhận/lịch sử đã tồn tại không được cấp lần hai", () => Assert(!CanIssue(alreadyExists: true))),
     ("11. Nhiều người mua tranh nhiều bản không nhận chứng nhận độc bản", () => Assert(!ExclusiveArtworkPolicy.CanIssueIndividualOwnershipCertificate(false, 10, true, false, false, true, true, 1, false))),
     ("12. Hoàn trả nhiều bản không thay đổi loại phát hành hay số lượng ban đầu", () => Assert(!ExclusiveArtworkPolicy.HasVerifiedSingleInitialCopy(false, 10))),
+    ("13. Tranh nhiều bản còn tồn 1 vẫn cho sửa tồn kho", () => ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(false, 10, 1)),
+    ("14. Tranh nhiều bản hết hàng vẫn cho sửa thông tin", () => ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(false, 10, 0)),
+    ("15. Tranh nhiều bản không tăng tồn vượt số lượng ban đầu", () => Throws(() => ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(false, 10, 11))),
+    ("16. Độc bản hết hàng vẫn cho sửa thông tin khi giữ tồn 0", () => ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(true, 1, 0, 0)),
+    ("17. Độc bản không được có tồn vượt 1", () => Throws(() => ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(true, 1, 2))),
+    ("18. Dữ liệu nhiều bản cũ chưa đối soát vẫn cho sửa tồn kho hợp lệ", () => ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(false, null, 1)),
+    ("19. Không tự hồi tồn độc bản đã hết hàng", () => Throws(() => ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(true, 1, 1, 0))),
+    ("20. Admin không đối soát tranh nhiều bản với số lượng ban đầu 1", () => Throws(() => ExclusiveArtworkPolicy.EnsureAdminInitialQuantityAllowed(1, 1, false))),
 };
 
 foreach (var test in tests)

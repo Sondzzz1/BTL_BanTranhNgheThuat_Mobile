@@ -64,6 +64,7 @@ export interface PublicCopyright {
   tacGiaGoc?: string;
   hoaSiThucHien?: string;
   moTaNguonGoc?: string;
+  canCuSuDung?: string;
   laTacPhamDocBan: boolean;
   soLuongBanDau?: number;
   luuYPhapLy: string;
