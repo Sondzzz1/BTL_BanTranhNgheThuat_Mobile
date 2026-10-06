@@ -1023,7 +1023,7 @@ export default function ReturnDetailScreen({
               <Text
                 style={styles.bold}
               >
-                LanVu Gallery
+                Son Gallery
               </Text>
               {'\n'}
               123 Đường Nghệ Thuật,

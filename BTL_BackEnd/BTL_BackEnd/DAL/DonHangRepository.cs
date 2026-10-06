@@ -479,6 +479,139 @@ public class DonHangRepository : IDonHangRepository
 
         await IssueExclusiveOwnershipAndCertificates(
             connection, transaction, maDonHang, maTaiKhoan, certificateKey, enforcementStartUtc);
+
+        await CreateInvoiceInternalAsync(connection, transaction, maDonHang);
+    }
+
+    /// <summary>
+    /// Tự động lập hóa đơn bán hàng snapshot ngay trong transaction giao hàng thành công.
+    /// Nếu hóa đơn cho đơn này đã tồn tại thì không làm gì (idempotent).
+    /// </summary>
+    private static async Task CreateInvoiceInternalAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int maDonHang)
+    {
+        const string checkSql = "SELECT COUNT_BIG(*) FROM HoaDonBan WITH (UPDLOCK, HOLDLOCK) WHERE MaDonHang = @MaDonHang;";
+        await using (var checkCmd = new SqlCommand(checkSql, connection, transaction))
+        {
+            checkCmd.Parameters.AddWithValue("@MaDonHang", maDonHang);
+            if (Convert.ToInt64(await checkCmd.ExecuteScalarAsync()) > 0)
+                return; // Đã có hóa đơn -> idempotent
+        }
+
+        const string orderInfoSql = @"
+            SELECT d.MaDonHang, d.MaNguoiDung, d.TenNguoiNhan, d.SoDienThoai, d.DiaChiGiao, d.GhiChu,
+                   nd.Ten AS TenKhachHang, nd.DiaChi AS DiaChiKhachHang, nd.DienThoai AS DienThoaiKhachHang, nd.Email,
+                   tt.PhuongThuc, tt.TrangThai AS TrangThaiThanhToan
+            FROM DonHang d WITH (UPDLOCK, HOLDLOCK)
+            INNER JOIN NguoiDung nd ON nd.MaNguoiDung = d.MaNguoiDung
+            LEFT JOIN ThanhToan tt WITH (UPDLOCK, HOLDLOCK) ON tt.MaDonHang = d.MaDonHang
+            WHERE d.MaDonHang = @MaDonHang;";
+
+        int maNguoiDung;
+        string tenNguoiMua;
+        string diaChiNguoiMua;
+        string soDienThoaiNguoiMua;
+        string? email;
+        string? phuongThuc;
+        string? trangThaiThanhToan;
+        string? ghiChu;
+
+        await using (var orderCmd = new SqlCommand(orderInfoSql, connection, transaction))
+        {
+            orderCmd.Parameters.AddWithValue("@MaDonHang", maDonHang);
+            await using var reader = await orderCmd.ExecuteReaderAsync();
+            if (!await reader.ReadAsync())
+                throw new InvalidOperationException($"Không tìm thấy thông tin đơn hàng {maDonHang} để lập hóa đơn");
+
+            maNguoiDung = reader.GetInt32(reader.GetOrdinal("MaNguoiDung"));
+            tenNguoiMua = !reader.IsDBNull(reader.GetOrdinal("TenNguoiNhan"))
+                ? reader.GetString(reader.GetOrdinal("TenNguoiNhan"))
+                : reader.GetString(reader.GetOrdinal("TenKhachHang"));
+
+            diaChiNguoiMua = !reader.IsDBNull(reader.GetOrdinal("DiaChiGiao"))
+                ? reader.GetString(reader.GetOrdinal("DiaChiGiao"))
+                : (reader.IsDBNull(reader.GetOrdinal("DiaChiKhachHang")) ? "" : reader.GetString(reader.GetOrdinal("DiaChiKhachHang")));
+
+            soDienThoaiNguoiMua = !reader.IsDBNull(reader.GetOrdinal("SoDienThoai"))
+                ? reader.GetString(reader.GetOrdinal("SoDienThoai"))
+                : (reader.IsDBNull(reader.GetOrdinal("DienThoaiKhachHang")) ? "" : reader.GetString(reader.GetOrdinal("DienThoaiKhachHang")));
+
+            email = reader.IsDBNull(reader.GetOrdinal("Email")) ? null : reader.GetString(reader.GetOrdinal("Email"));
+            phuongThuc = reader.IsDBNull(reader.GetOrdinal("PhuongThuc")) ? null : reader.GetString(reader.GetOrdinal("PhuongThuc"));
+            trangThaiThanhToan = reader.IsDBNull(reader.GetOrdinal("TrangThaiThanhToan")) ? null : reader.GetString(reader.GetOrdinal("TrangThaiThanhToan"));
+            ghiChu = reader.IsDBNull(reader.GetOrdinal("GhiChu")) ? null : reader.GetString(reader.GetOrdinal("GhiChu"));
+        }
+
+        const string lineSql = @"
+            SELECT c.MaTacPham, c.SoLuong, c.DonGia, t.TenTacPham
+            FROM ChiTietDonHang c WITH (UPDLOCK, HOLDLOCK)
+            INNER JOIN TacPham t WITH (UPDLOCK, HOLDLOCK) ON t.MaTacPham = c.MaTacPham
+            WHERE c.MaDonHang = @MaDonHang;";
+
+        var lines = new List<(int MaTacPham, string TenTacPham, int SoLuong, decimal DonGia, decimal ThanhTien)>();
+        decimal tongTienHang = 0;
+
+        await using (var lineCmd = new SqlCommand(lineSql, connection, transaction))
+        {
+            lineCmd.Parameters.AddWithValue("@MaDonHang", maDonHang);
+            await using var reader = await lineCmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var maTacPham = reader.GetInt32(reader.GetOrdinal("MaTacPham"));
+                var tenTacPham = reader.GetString(reader.GetOrdinal("TenTacPham"));
+                var soLuong = reader.GetInt32(reader.GetOrdinal("SoLuong"));
+                var donGia = reader.GetDecimal(reader.GetOrdinal("DonGia"));
+                var thanhTien = soLuong * donGia;
+                tongTienHang += thanhTien;
+                lines.Add((maTacPham, tenTacPham, soLuong, donGia, thanhTien));
+            }
+        }
+
+        if (lines.Count == 0)
+            throw new InvalidOperationException($"Đơn hàng {maDonHang} không có chi tiết sản phẩm để lập hóa đơn");
+
+        const string insertInvoiceSql = @"
+            INSERT INTO HoaDonBan
+                (MaDonHang, MaNguoiDung, NgayXuatHD, TongTienHang, TenNguoiMua, DiaChiNguoiMua, SoDienThoaiNguoiMua, Email, PhuongThucThanhToan, TrangThaiThanhToan, GhiChu, TrangThai)
+            OUTPUT INSERTED.MaHoaDon
+            VALUES
+                (@MaDonHang, @MaNguoiDung, GETDATE(), @TongTienHang, @TenNguoiMua, @DiaChiNguoiMua, @SoDienThoaiNguoiMua, @Email, @PhuongThucThanhToan, @TrangThaiThanhToan, @GhiChu, 'HopLe');";
+
+        int maHoaDon;
+        await using (var insertCmd = new SqlCommand(insertInvoiceSql, connection, transaction))
+        {
+            insertCmd.Parameters.AddWithValue("@MaDonHang", maDonHang);
+            insertCmd.Parameters.AddWithValue("@MaNguoiDung", maNguoiDung);
+            insertCmd.Parameters.AddWithValue("@TongTienHang", tongTienHang);
+            insertCmd.Parameters.AddWithValue("@TenNguoiMua", (object?)tenNguoiMua ?? DBNull.Value);
+            insertCmd.Parameters.AddWithValue("@DiaChiNguoiMua", (object?)diaChiNguoiMua ?? DBNull.Value);
+            insertCmd.Parameters.AddWithValue("@SoDienThoaiNguoiMua", (object?)soDienThoaiNguoiMua ?? DBNull.Value);
+            insertCmd.Parameters.AddWithValue("@Email", (object?)email ?? DBNull.Value);
+            insertCmd.Parameters.AddWithValue("@PhuongThucThanhToan", (object?)phuongThuc ?? DBNull.Value);
+            insertCmd.Parameters.AddWithValue("@TrangThaiThanhToan", (object?)trangThaiThanhToan ?? DBNull.Value);
+            insertCmd.Parameters.AddWithValue("@GhiChu", (object?)ghiChu ?? DBNull.Value);
+            maHoaDon = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
+        }
+
+        const string insertDetailSql = @"
+            INSERT INTO ChiTietHoaDonBan
+                (MaHoaDon, MaTacPham, TenTacPham, SoLuong, DonGia, ThanhTien)
+            VALUES
+                (@MaHoaDon, @MaTacPham, @TenTacPham, @SoLuong, @DonGia, @ThanhTien);";
+
+        foreach (var line in lines)
+        {
+            await using var detailCmd = new SqlCommand(insertDetailSql, connection, transaction);
+            detailCmd.Parameters.AddWithValue("@MaHoaDon", maHoaDon);
+            detailCmd.Parameters.AddWithValue("@MaTacPham", line.MaTacPham);
+            detailCmd.Parameters.AddWithValue("@TenTacPham", line.TenTacPham);
+            detailCmd.Parameters.AddWithValue("@SoLuong", line.SoLuong);
+            detailCmd.Parameters.AddWithValue("@DonGia", line.DonGia);
+            detailCmd.Parameters.AddWithValue("@ThanhTien", line.ThanhTien);
+            await detailCmd.ExecuteNonQueryAsync();
+        }
     }
 
     /// <summary>

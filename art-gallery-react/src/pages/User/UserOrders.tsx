@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { orderService } from '../../services/orderService';
 import { Order } from '../../types';
 import CancelOrderModal from '../../components/CancelOrderModal';
+import InvoiceModal from '../../components/InvoiceModal';
+import { invoiceService } from '../../services/invoiceService';
 import { formatVnd } from '../../utils/currency';
 
 const UserOrders: React.FC = () => {
@@ -15,6 +17,8 @@ const UserOrders: React.FC = () => {
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [orderToCancel, setOrderToCancel] = useState<{ id: string, maHD: string } | null>(null);
   const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(null);
+  const [selectedInvoiceOrderId, setSelectedInvoiceOrderId] = useState<number | null>(null);
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -213,9 +217,42 @@ const UserOrders: React.FC = () => {
                     </span>
                   )}
                   {order.trangThai === 'success' && (
-                    <span className="delivery-status-note completed">
-                      <i className="ti-check"></i> Đã hoàn tất nhận hàng
-                    </span>
+                    <>
+                      <button
+                        className="btn-detail"
+                        style={{ backgroundColor: '#059669', color: '#fff', border: 'none', cursor: 'pointer' }}
+                        onClick={() => setSelectedInvoiceOrderId(Number(order.id))}
+                        title="Xem hóa đơn bán hàng"
+                      >
+                        <i className="ti-receipt"></i> Xem hóa đơn
+                      </button>
+                      <button
+                        className="btn-detail"
+                        style={{ backgroundColor: '#dc2626', color: '#fff', border: 'none', cursor: 'pointer' }}
+                        disabled={downloadingInvoiceId === order.id}
+                        onClick={async () => {
+                          try {
+                            setDownloadingInvoiceId(order.id);
+                            const inv = await invoiceService.getByOrderId(Number(order.id));
+                            if (inv) {
+                              await invoiceService.downloadPdf(inv.maHoaDon);
+                            } else {
+                              alert('Chưa có hóa đơn cho đơn hàng này');
+                            }
+                          } catch (err: any) {
+                            alert(err.response?.data?.message || err.message || 'Lỗi khi tải hóa đơn PDF');
+                          } finally {
+                            setDownloadingInvoiceId(null);
+                          }
+                        }}
+                        title="Tải hóa đơn PDF"
+                      >
+                        <i className="ti-download"></i> {downloadingInvoiceId === order.id ? 'Đang tải...' : 'Tải PDF'}
+                      </button>
+                      <span className="delivery-status-note completed">
+                        <i className="ti-check"></i> Đã hoàn tất nhận hàng
+                      </span>
+                    </>
                   )}
                   {(order.trangThai === 'pending' || order.trangThai === 'confirmed') && (
                     <button 
@@ -234,6 +271,12 @@ const UserOrders: React.FC = () => {
           ))}
         </div>
       )}
+
+      <InvoiceModal
+        isOpen={selectedInvoiceOrderId !== null}
+        onClose={() => setSelectedInvoiceOrderId(null)}
+        orderId={selectedInvoiceOrderId ?? undefined}
+      />
 
       {orderToCancel && (
         <CancelOrderModal

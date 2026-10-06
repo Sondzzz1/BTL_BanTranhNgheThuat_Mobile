@@ -154,7 +154,7 @@ const AdminSettings: React.FC = () => {
             <div className="block" style={{ marginTop: 20 }}>
                 <h4><i className="ti-info-alt"></i> Thông tin hệ thống</h4>
                 <div style={{ padding: 8 }}>
-                    <p><strong>Tên cửa hàng:</strong> Art Gallery</p>
+                    <p><strong>Tên cửa hàng:</strong> Son Gallery</p>
                     <p><strong>Đơn vị tiền tệ:</strong> VNĐ (Việt Nam Đồng)</p>
                     <p style={{ color: '#666', fontStyle: 'italic' }}>
                         Cấu hình hệ thống nâng cao chưa được mở. Liên hệ quản trị server để thay đổi.

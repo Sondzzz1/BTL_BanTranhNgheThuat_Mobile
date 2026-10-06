@@ -118,6 +118,13 @@
   color: #64748b;
 }
 
+.artwork-sequence {
+  width: 56px;
+  text-align: center;
+  color: #475569;
+  font-weight: 700;
+}
+
 .artwork-artist-group td {
   padding: 10px 14px !important;
   background: #fff7ed !important;

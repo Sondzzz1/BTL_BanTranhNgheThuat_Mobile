@@ -30,7 +30,7 @@ const AdminLayout: React.FC = () => {
     return (
         <div className="admin-wrapper">
             <div className="sidebar">
-                <h2><i className="ti-palette"></i> ART GALLERY</h2>
+                <h2><i className="ti-palette"></i> SON GALLERY</h2>
                 <ul>
                     {isAdmin && (
                         <NavLink to="/admin" end>

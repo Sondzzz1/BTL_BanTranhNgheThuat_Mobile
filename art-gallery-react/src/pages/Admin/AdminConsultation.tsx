@@ -62,7 +62,7 @@ const AdminConsultation: React.FC = () => {
         <table className="styled-table">
           <thead>
             <tr>
-              <th>Mã</th>
+              <th>STT</th>
               <th>Khách hàng</th>
               <th>Ngày</th>
               <th>Giờ</th>
@@ -72,9 +72,9 @@ const AdminConsultation: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item) => (
+            {filtered.map((item, index) => (
               <tr key={item.id}>
-                <td>#{item.id}</td>
+                <td>{index + 1}</td>
                 <td>{item.khachHang}</td>
                 <td>{item.ngay}</td>
                 <td>{item.gio}</td>

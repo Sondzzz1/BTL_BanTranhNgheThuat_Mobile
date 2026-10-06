@@ -92,6 +92,7 @@ builder.Services.AddScoped<ICustomArtRepository, CustomArtRepository>();
 builder.Services.AddScoped<IConsultationRepository, ConsultationRepository>();
 builder.Services.AddScoped<ICopyrightRepository, CopyrightRepository>();
 builder.Services.AddScoped<IThongBaoRepository, ThongBaoRepository>();
+builder.Services.AddScoped<IHoaDonBanRepository, HoaDonBanRepository>();
 
 // Register BLL (Business Layer)
 builder.Services.AddScoped<IAuthBusiness, AuthBusiness>();
@@ -109,8 +110,10 @@ builder.Services.AddScoped<ICustomArtBusiness, CustomArtBusiness>();
 builder.Services.AddScoped<IConsultationBusiness, ConsultationBusiness>();
 builder.Services.AddScoped<ICopyrightBusiness, CopyrightBusiness>();
 builder.Services.AddScoped<IThongBaoBusiness, ThongBaoBusiness>();
+builder.Services.AddScoped<IHoaDonBanBusiness, HoaDonBanBusiness>();
 builder.Services.AddSingleton<CopyrightFileHelper>();
 builder.Services.AddSingleton<CertificateDocumentService>();
+builder.Services.AddSingleton<InvoiceDocumentService>();
 builder.Services.AddScoped<DoAn2_BackEnd.Helpers.CommissionFileHelper>();
 
 // Swagger/OpenAPI

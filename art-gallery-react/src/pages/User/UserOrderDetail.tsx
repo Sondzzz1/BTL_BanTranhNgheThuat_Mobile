@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { orderService } from '../../services/orderService';
+import { invoiceService } from '../../services/invoiceService';
+import InvoiceModal from '../../components/InvoiceModal';
 import { Order } from '../../types';
 import { formatVnd } from '../../utils/currency';
 
@@ -10,6 +12,8 @@ const UserOrderDetail: React.FC = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [isConfirmingReceived, setIsConfirmingReceived] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -150,9 +154,44 @@ const UserOrderDetail: React.FC = () => {
             </p>
           )}
           {order.trangThai === 'success' && (
-            <p className="delivery-status-note completed" style={{ marginTop: '16px' }}>
-              <i className="ti-check"></i> Đơn đã hoàn tất. Bạn không cần xác nhận nhận hàng thêm lần nữa.
-            </p>
+            <div style={{ marginTop: '16px' }}>
+              <p className="delivery-status-note completed" style={{ marginBottom: '12px' }}>
+                <i className="ti-check"></i> Đơn đã hoàn tất. Bạn không cần xác nhận nhận hàng thêm lần nữa.
+              </p>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn-received"
+                  style={{ backgroundColor: '#059669', borderColor: '#059669', cursor: 'pointer' }}
+                  onClick={() => setIsInvoiceModalOpen(true)}
+                >
+                  <i className="ti-receipt"></i> Xem hóa đơn
+                </button>
+                <button
+                  type="button"
+                  className="btn-received"
+                  style={{ backgroundColor: '#dc2626', borderColor: '#dc2626', cursor: 'pointer' }}
+                  disabled={isDownloadingInvoice}
+                  onClick={async () => {
+                    try {
+                      setIsDownloadingInvoice(true);
+                      const inv = await invoiceService.getByOrderId(Number(order.id));
+                      if (inv) {
+                        await invoiceService.downloadPdf(inv.maHoaDon);
+                      } else {
+                        alert('Chưa có hóa đơn cho đơn hàng này');
+                      }
+                    } catch (err: any) {
+                      alert(err.response?.data?.message || err.message || 'Lỗi khi tải hóa đơn PDF');
+                    } finally {
+                      setIsDownloadingInvoice(false);
+                    }
+                  }}
+                >
+                  <i className="ti-download"></i> {isDownloadingInvoice ? 'Đang tải PDF...' : 'Tải PDF'}
+                </button>
+              </div>
+            </div>
           )}
         </div>
         <div className="order-date-info">
@@ -209,6 +248,12 @@ const UserOrderDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        orderId={Number(order.id)}
+      />
     </div>
   );
 };

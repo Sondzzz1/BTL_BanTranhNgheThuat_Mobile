@@ -119,7 +119,7 @@ const ArtistRevenue: React.FC = () => {
                     <td style={{ color: isFullyRefunded ? '#6c757d' : '#28a745', fontWeight: 'bold' }}>
                       {formatCurrency(dh.doanhThuSauHoan)}
                     </td>
-                    <td>
+                    <td className="revenue-reconciliation-cell">
                       {isRefunded ? (
                         <div className="revenue-reconciliation-status">
                           <span className={`status ${isFullyRefunded ? 'canceled' : 'refunded'}`}>

@@ -73,7 +73,7 @@ export default function LoginScreen({ navigation, route }: LoginScreenProps) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Art Gallery</Text>
+          <Text style={styles.title}>Son Gallery</Text>
           <Text style={styles.subtitle}>Chào mừng trở lại</Text>
         </View>
 

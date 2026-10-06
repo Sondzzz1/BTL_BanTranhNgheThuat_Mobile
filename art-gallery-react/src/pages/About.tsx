@@ -9,7 +9,7 @@ const About: React.FC = () => {
                 <div className="hero-content">
                     <h1>Nhà sáng lập</h1>
                     <h2>Họa sĩ, Kiến trúc sư Lân Vũ</h2>
-                    <p className="hero-subtitle">Người sáng lập và kiến tạo nên LanVu Gallery</p>
+                    <p className="hero-subtitle">Người sáng lập và kiến tạo nên Son Gallery</p>
                 </div>
             </div>
 
@@ -20,7 +20,7 @@ const About: React.FC = () => {
                 </div>
                 <div className="info-box">
                     <h2>Về Nhà Sáng Lập</h2>
-                    <p><strong>Họa sĩ, Kiến trúc sư Lân Vũ</strong> tên đầy đủ là Vũ Thành Lân, sinh năm 1994, được biết đến là nhà sáng lập LanVu Gallery. Anh tốt nghiệp khoa Quy hoạch, Đại học Kiến trúc Hà Nội.</p>   
+                    <p><strong>Họa sĩ, Kiến trúc sư Lân Vũ</strong> tên đầy đủ là Vũ Thành Lân, sinh năm 1994, được biết đến là nhà sáng lập Son Gallery. Anh tốt nghiệp khoa Quy hoạch, Đại học Kiến trúc Hà Nội.</p>
                     <p>Sinh ra và lớn lên trong gia đình có nền tảng học vấn nghệ thuật tại vùng quê thuộc tỉnh Ninh Bình, cha anh là một nhiếp ảnh gia – nghệ nhân cây cảnh, họa sĩ. Lân Vũ đến với hội họa hoàn toàn do yêu thích, say mê đồng thời được truyền cảm hứng từ chính những bức ảnh của cha mình. Anh bắt đầu thể hiện năng khiếu vẽ rất nhiều bằng bút chì, vẽ màu nước, bút sáp từ thời trung học.</p>
                     <p><strong>Năm 2012</strong>, khi bước chân vào cổng trường đại học Lân Vũ đã tiếp tục nuôi dưỡng đam mê vẽ của mình một cách nghiêm túc hơn. Ngoài thời gian học trên lớp, hầu hết thời gian còn lại anh dành để vẽ.</p>  
                     <p>Đi học xa nhà, xa quê hương nên nỗi nhớ về nét đẹp bình dị nơi thôn quê đã là nguồn cảm hứng sáng tác bất tận trong tranh của họa sĩ Lân Vũ. Những tác phẩm đầu tiên của anh chủ yếu về đề tài quê hương, anh vẽ mọi thứ từ thiên nhiên, đồ vật thường ngày được người thân và bạn bè hết mực khen ngợi, đó là nguồn động lực để Lân Vũ theo đuổi đam mê trong tương lai.</p>
@@ -66,8 +66,8 @@ const About: React.FC = () => {
             <div className="vision-box" style={{ marginBottom: '80px' }}>
                 <h2>Tầm nhìn và sứ mệnh</h2>
                 <div className="vision-content">
-                    <p>Với tư cách là nhà sáng lập LanVu Gallery, họa sĩ Lân Vũ mong muốn tạo ra một không gian nghệ thuật nơi mọi người có thể tìm thấy những tác phẩm tranh sơn dầu cao cấp, độc bản, mang đậm giá trị nghệ thuật và văn hóa Việt Nam.</p>
-                    <p>LanVu Gallery không chỉ là nơi trưng bày và bán tranh, mà còn là nơi kết nối giữa nghệ thuật và cuộc sống, giúp mọi người tìm thấy những tác phẩm phù hợp với không gian sống của mình, tạo nên một môi trường sống đẹp và ý nghĩa hơn.</p>
+                    <p>Với tư cách là nhà sáng lập Son Gallery, họa sĩ Lân Vũ mong muốn tạo ra một không gian nghệ thuật nơi mọi người có thể tìm thấy những tác phẩm tranh sơn dầu cao cấp, độc bản, mang đậm giá trị nghệ thuật và văn hóa Việt Nam.</p>
+                    <p>Son Gallery không chỉ là nơi trưng bày và bán tranh, mà còn là nơi kết nối giữa nghệ thuật và cuộc sống, giúp mọi người tìm thấy những tác phẩm phù hợp với không gian sống của mình, tạo nên một môi trường sống đẹp và ý nghĩa hơn.</p>
                 </div>
             </div>
         </div>

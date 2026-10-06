@@ -19,7 +19,7 @@ const Footer: React.FC = () => {
 
         <div className="footer-container">
           <div className="footer-contact">
-            <h3>LANVU GALLERY</h3>
+            <h3>SON GALLERY</h3>
             <p><i className="ti-location-pin"></i> 56 Nguyễn Phong Sắc, Dịch Vọng, Cầu Giấy, Hà Nội</p>
             <p><i className="ti-mobile"></i> 094 888 3535 - 094 886 3535</p>
             <p><i className="ti-email"></i> lanvugallery@gmail.com</p>
@@ -47,7 +47,7 @@ const Footer: React.FC = () => {
 
           <div className="footer-social">
             <h3>Fanpage</h3>
-            <div className="fanpage-box">LanVu Gallery - 51,628 người theo dõi</div>
+            <div className="fanpage-box">Son Gallery - 51,628 người theo dõi</div>
           </div>
         </div>
       </div>

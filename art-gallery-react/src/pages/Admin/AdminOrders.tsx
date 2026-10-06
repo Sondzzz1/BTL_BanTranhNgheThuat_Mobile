@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, DonHangAdminResponse, DonHangResponse } from '../../services/adminService';
 import { formatVnd } from '../../utils/currency';
+import { invoiceService } from '../../services/invoiceService';
+import InvoiceModal from '../../components/InvoiceModal';
 
 const AdminOrders: React.FC = () => {
     const [orders, setOrders] = useState<DonHangAdminResponse[]>([]);
@@ -11,6 +13,8 @@ const AdminOrders: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDetailLoading, setIsDetailLoading] = useState(false);
     const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+    const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
 
     useEffect(() => {
         loadOrders();
@@ -136,7 +140,7 @@ const AdminOrders: React.FC = () => {
             return;
         }
 
-        if (!window.confirm(`Xác nhận hệ thống đã nhận ${formatVnd(selectedOrder.tongTien)} cho đơn DH${selectedOrder.maDonHang}?`)) {
+        if (!window.confirm(`Xác nhận hệ thống đã nhận ${formatVnd(selectedOrder.tongTien)} cho đơn hàng này?`)) {
             return;
         }
 
@@ -191,7 +195,7 @@ const AdminOrders: React.FC = () => {
 
     const filteredOrders = orders.filter(order => {
         const matchesStatus = statusFilter === -1 || order.trangThai === statusFilter;
-        const matchesSearch = order.maDonHang.toString().includes(searchTerm);
+        const matchesSearch = order.tenKhachHang.toLocaleLowerCase('vi-VN').includes(searchTerm.trim().toLocaleLowerCase('vi-VN'));
         return matchesStatus && matchesSearch;
     });
 
@@ -223,7 +227,7 @@ const AdminOrders: React.FC = () => {
                 <div className="filter-item">
                     <input
                         type="text"
-                        placeholder="Mã đơn hàng..."
+                        placeholder="Tìm theo khách hàng..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -243,7 +247,7 @@ const AdminOrders: React.FC = () => {
                     <table className="styled-table">
                         <thead>
                             <tr>
-                                <th>Mã đơn</th>
+                                <th>STT</th>
                                 <th>Ngày đặt</th>
                                 <th>Trạng thái</th>
                                 <th>Tổng tiền</th>
@@ -251,9 +255,9 @@ const AdminOrders: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredOrders.map((order) => (
+                            {filteredOrders.map((order, index) => (
                                 <tr key={order.maDonHang}>
-                                    <td>DH{order.maDonHang}</td>
+                                    <td>{index + 1}</td>
                                     <td>{formatDate(order.ngayDat)}</td>
                                     <td>
                                         {order.trangThai <= 2 && (
@@ -360,7 +364,7 @@ const AdminOrders: React.FC = () => {
                 <div className="modal show" onClick={() => setIsModalOpen(false)}>
                     <div className="modal-content order-detail-modal" onClick={e => e.stopPropagation()}>
                         <span className="close" onClick={() => setIsModalOpen(false)}>&times;</span>
-                        <h3><i className="ti-receipt"></i> Chi tiết đơn hàng DH{selectedOrder?.maDonHang}</h3>
+                        <h3><i className="ti-receipt"></i> Chi tiết đơn hàng</h3>
                         
                         {isDetailLoading ? (
                             <div style={{ textAlign: 'center', padding: '30px' }}>Đang tải chi tiết...</div>
@@ -458,6 +462,41 @@ const AdminOrders: React.FC = () => {
                                 </div>
 
                                 <div className="modal-buttons">
+                                    {selectedOrder.trangThai === 3 && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                className="btn-confirm-bank-transfer"
+                                                style={{ backgroundColor: '#059669', borderColor: '#059669', marginRight: '8px', cursor: 'pointer' }}
+                                                onClick={() => setIsInvoiceModalOpen(true)}
+                                            >
+                                                <i className="ti-receipt"></i> Xem hóa đơn
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn-confirm-bank-transfer"
+                                                style={{ backgroundColor: '#dc2626', borderColor: '#dc2626', marginRight: '8px', cursor: 'pointer' }}
+                                                disabled={isDownloadingInvoice}
+                                                onClick={async () => {
+                                                    try {
+                                                        setIsDownloadingInvoice(true);
+                                                        const inv = await invoiceService.getByOrderId(selectedOrder.maDonHang);
+                                                        if (inv) {
+                                                            await invoiceService.downloadPdf(inv.maHoaDon);
+                                                        } else {
+                                                            alert('Chưa có hóa đơn cho đơn hàng này');
+                                                        }
+                                                    } catch (err: any) {
+                                                        alert(err.response?.data?.message || err.message || 'Lỗi khi tải hóa đơn PDF');
+                                                    } finally {
+                                                        setIsDownloadingInvoice(false);
+                                                    }
+                                                }}
+                                            >
+                                                <i className="ti-download"></i> {isDownloadingInvoice ? 'Đang tải...' : 'Tải PDF'}
+                                            </button>
+                                        </>
+                                    )}
                                     <button className="cancel" onClick={() => setIsModalOpen(false)}>Đóng</button>
                                 </div>
                             </div>
@@ -467,6 +506,12 @@ const AdminOrders: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <InvoiceModal
+                isOpen={isInvoiceModalOpen}
+                onClose={() => setIsInvoiceModalOpen(false)}
+                orderId={selectedOrder?.maDonHang}
+            />
         </div>
     );
 };

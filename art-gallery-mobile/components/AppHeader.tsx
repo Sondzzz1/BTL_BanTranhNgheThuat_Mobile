@@ -108,7 +108,7 @@ export default function AppHeader({ navigation, cartCount: propCartCount }: AppH
               <View style={styles.roofIcon}>
                 <View style={styles.roofLeft} />
               </View>
-              <Text style={styles.logoTitle}>LANVU GALLERY</Text>
+              <Text style={styles.logoTitle}>SON GALLERY</Text>
               <Text style={styles.logoSubtitle}>ART IS FOREVER</Text>
             </View>
           </TouchableOpacity>

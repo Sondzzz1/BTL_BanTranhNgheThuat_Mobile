@@ -38,7 +38,7 @@ const Header: React.FC = () => {
         <div id="header">
           <div className="logo">
             <Link to="/">
-              <h1 style={{ color: '#ff7b00', margin: 0 }}>🎨 ART GALLERY</h1>
+              <h1 style={{ color: '#ff7b00', margin: 0 }}>🎨 SON GALLERY</h1>
             </Link>
           </div>
           

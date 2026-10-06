@@ -125,7 +125,7 @@ const Home: React.FC = () => {
           <h2>GIỚI THIỆU</h2>
           <div className="intro-text">
             <h3>Nội dung độc đáo</h3>
-            <p><i>Hơn 1000 tác phẩm Tranh Sơn Dầu Cao Cấp chỉ có tại Lanvu Gallery.</i></p>
+            <p><i>Hơn 1000 tác phẩm Tranh Sơn Dầu Cao Cấp chỉ có tại Son Gallery.</i></p>
           </div>
           <div className="intro-text">
             <h3>Chất lượng hoàn hảo</h3>
@@ -232,9 +232,9 @@ const Home: React.FC = () => {
             </div>
             <div className="carousel-review">
               <p className="review-text">
-                Đa tham khảo nhiều nơi bán tranh sơn dầu và dần lần nơi xem thì mình đã quyết định chọn tranh tại LanVu Gallery 
+                Đa tham khảo nhiều nơi bán tranh sơn dầu và dần lần nơi xem thì mình đã quyết định chọn tranh tại Son Gallery
                 vì hợp với phong cách thiết kế của nhà mình và rất có hợp. Tranh làm khung đẹp hơn mình nghĩ, anh thợ treo tranh 
-                cũng rất nhiệt tình. Cảm ơn team LanVu Gallery
+                cũng rất nhiệt tình. Cảm ơn team Son Gallery
               </p>
               <button className="read-more-btn">XEM THÊM ›</button>
               <div className="review-stars">⭐⭐⭐⭐⭐</div>

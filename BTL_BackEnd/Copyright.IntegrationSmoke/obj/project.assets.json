@@ -2134,11 +2134,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.IntegrationSmoke\\Copyright.IntegrationSmoke.csproj",
+      "projectUniqueName": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.IntegrationSmoke\\Copyright.IntegrationSmoke.csproj",
       "projectName": "Copyright.IntegrationSmoke",
-      "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.IntegrationSmoke\\Copyright.IntegrationSmoke.csproj",
+      "projectPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.IntegrationSmoke\\Copyright.IntegrationSmoke.csproj",
       "packagesPath": "C:\\Users\\huanp\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.IntegrationSmoke\\obj\\",
+      "outputPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.IntegrationSmoke\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\huanp\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -2156,8 +2156,8 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj": {
-              "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj"
+            "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj": {
+              "projectPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj"
             }
           }
         }

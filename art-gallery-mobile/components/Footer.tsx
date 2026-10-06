@@ -91,7 +91,7 @@ export default function Footer({ navigation }: FooterProps) {
           <View style={styles.columnsContainer}>
             {/* Column 1: Brand Info */}
             <View style={styles.column}>
-              <Text style={styles.columnTitle}>LANVU GALLERY</Text>
+              <Text style={styles.columnTitle}>SON GALLERY</Text>
               <View style={styles.contactItem}>
                 <Text style={styles.iconText}>📍</Text>
                 <Text style={styles.infoText}>
@@ -157,7 +157,7 @@ export default function Footer({ navigation }: FooterProps) {
                 style={styles.fanpageCard}
                 onPress={() => handleOpenLink('https://facebook.com/lanvugallery123')}
               >
-                <Text style={styles.fanpageTitle}>LanVu Gallery</Text>
+                <Text style={styles.fanpageTitle}>Son Gallery</Text>
                 <Text style={styles.fanpageSubtitle}>51,628 người theo dõi</Text>
               </TouchableOpacity>
             </View>
@@ -165,7 +165,7 @@ export default function Footer({ navigation }: FooterProps) {
 
           <View style={styles.bottomBar}>
             <Text style={styles.copyrightText}>
-              © 2026 ART GALLERY / LANVU GALLERY. All rights reserved.
+              © 2026 Son Gallery. All rights reserved.
             </Text>
           </View>
         </View>

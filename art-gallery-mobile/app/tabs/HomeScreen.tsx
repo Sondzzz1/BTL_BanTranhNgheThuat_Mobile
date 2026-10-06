@@ -171,12 +171,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       >
         <View style={styles.gallerySection}>
           <View style={styles.galleryHeading}>
-            <Text style={styles.eyebrow}>LANVU GALLERY</Text>
+            <Text style={styles.eyebrow}>SON GALLERY</Text>
             <Text style={styles.sectionTitle}>Giới thiệu</Text>
             <Text style={styles.galleryLead}>Hành trình theo đuổi giá trị nghệ thuật bền bỉ, làm nên những không gian mang dấu ấn riêng.</Text>
           </View>
 
-          <TouchableOpacity style={styles.profileVideoCard} onPress={handleGalleryProfilePress} activeOpacity={0.88} accessibilityLabel="Xem Gallery Profile LanVu Gallery">
+          <TouchableOpacity style={styles.profileVideoCard} onPress={handleGalleryProfilePress} activeOpacity={0.88} accessibilityLabel="Xem Gallery Profile Son Gallery">
             <Image source={require('../../assets/images/slide2.webp')} style={styles.profileVideoImage} resizeMode="cover" />
             <View style={styles.profileVideoShade} />
             <View style={styles.profileVideoContent}>
@@ -209,7 +209,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
           <View style={styles.galleryCopyCard}>
             <Text style={styles.galleryCopyLabel}>NỘI DUNG ĐỘC ĐÁO</Text>
-            <Text style={styles.galleryCopyText}>Hơn 1000 tác phẩm Tranh Sáng Tác chỉ có tại LanVu Gallery, độc quyền và độc bản. Đa dạng chất liệu, chủ đề tranh, màu sắc, kích thước phù hợp mọi không gian nội thất.</Text>
+            <Text style={styles.galleryCopyText}>Hơn 1000 tác phẩm Tranh Sáng Tác chỉ có tại Son Gallery, độc quyền và độc bản. Đa dạng chất liệu, chủ đề tranh, màu sắc, kích thước phù hợp mọi không gian nội thất.</Text>
           </View>
 
           <View style={styles.qualityCard}>

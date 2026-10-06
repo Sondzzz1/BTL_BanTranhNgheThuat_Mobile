@@ -57,7 +57,7 @@ export default function ArtServicesScreen({ navigation }: any) {
         <ImageBackground source={HERO_IMAGE} style={styles.hero} imageStyle={styles.heroImage}>
           <View style={styles.heroOverlay} />
           <View style={styles.heroContent}>
-            <Text style={styles.eyebrowLight}>LANVU GALLERY · ART SERVICES</Text>
+            <Text style={styles.eyebrowLight}>SON GALLERY · ART SERVICES</Text>
             <Text style={styles.heroTitle}>Dịch vụ nghệ thuật{`\n`}dành riêng cho bạn</Text>
             <Text style={styles.heroDescription}>
               Từ một ý tưởng cá nhân đến lựa chọn tác phẩm cho không gian, chúng tôi đồng hành bằng
@@ -151,7 +151,7 @@ export default function ArtServicesScreen({ navigation }: any) {
                   />
                   <View style={styles.artworkInfo}>
                     <Text style={styles.artworkTitle} numberOfLines={2}>{item.tenTacPham}</Text>
-                    <Text style={styles.artworkArtist} numberOfLines={1}>{item.tenHoaSi || 'Lanvu Gallery'}</Text>
+                    <Text style={styles.artworkArtist} numberOfLines={1}>{item.tenHoaSi || 'Son Gallery'}</Text>
                     <Text style={styles.artworkPrice}>{formatVnd(item.gia)}</Text>
                   </View>
                 </TouchableOpacity>

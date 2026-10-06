@@ -349,8 +349,18 @@ const AdminArt: React.FC = () => {
         return groups;
     }, {});
 
+    // STT được tính theo thứ tự đang hiển thị của toàn bộ trang hiện tại, không dùng mã nội bộ của tác phẩm.
+    const artworkDisplayOrder = groupByArtist
+        ? Object.keys(artworksByArtist)
+            .sort((a, b) => a.localeCompare(b, 'vi'))
+            .flatMap((artistName) => artworksByArtist[artistName])
+        : artworks;
+    const getArtworkSequence = (artwork: TacPhamHoaSiResponse) =>
+        (pageInfo.page - 1) * pageInfo.pageSize + artworkDisplayOrder.indexOf(artwork) + 1;
+
     const renderArtworkRow = (artwork: TacPhamHoaSiResponse) => (
         <tr key={artwork.maTacPham}>
+            <td className="artwork-sequence">{getArtworkSequence(artwork)}</td>
             <td>
                 <img
                     src={artwork.hinhAnh || '/assets/images/no-image.svg'}
@@ -364,7 +374,7 @@ const AdminArt: React.FC = () => {
             <td>
                 <strong>{artwork.tenTacPham}</strong>
                 <br />
-                <small style={{ color: '#64748b' }}>Mã #{artwork.maTacPham} · {artwork.laTacPhamDocBan ? 'Độc bản' : 'Nhiều bản'}</small>
+                <small style={{ color: '#64748b' }}>{artwork.laTacPhamDocBan ? 'Độc bản' : 'Nhiều bản'}</small>
             </td>
             <td>{artwork.tenDanhMuc || '-'}</td>
             <td>{artwork.tenHoaSi || '-'}</td>
@@ -606,6 +616,7 @@ const AdminArt: React.FC = () => {
                         <table className="art-table">
                             <thead>
                                 <tr>
+                                    <th>STT</th>
                                     <th>Ảnh</th>
                                     <th>Tên tranh</th>
                                     <th>Danh mục</th>
@@ -619,7 +630,7 @@ const AdminArt: React.FC = () => {
                                 {groupByArtist
                                     ? Object.keys(artworksByArtist).sort((a, b) => a.localeCompare(b, 'vi')).map((artistName) => (
                                         <React.Fragment key={artistName}>
-                                            <tr className="artwork-artist-group"><td colSpan={7}><i className="ti-user"></i> {artistName} ({artworksByArtist[artistName].length})</td></tr>
+                                            <tr className="artwork-artist-group"><td colSpan={8}><i className="ti-user"></i> {artistName} ({artworksByArtist[artistName].length})</td></tr>
                                             {artworksByArtist[artistName].map(renderArtworkRow)}
                                         </React.Fragment>
                                     ))
@@ -659,6 +670,7 @@ const AdminArt: React.FC = () => {
                                     <table className="art-table">
                                         <thead>
                                             <tr>
+                                                <th>STT</th>
                                                 <th>Ảnh</th>
                                                 <th>Tên tranh</th>
                                                 <th>Danh mục</th>
@@ -670,8 +682,9 @@ const AdminArt: React.FC = () => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {pendingEdits.map((edit) => (
+                                            {pendingEdits.map((edit, index) => (
                                                 <tr key={edit.maChinhSua}>
+                                                    <td className="artwork-sequence">{index + 1}</td>
                                                     <td>
                                                         <img
                                                             src={edit.hinhAnh || '/assets/images/no-image.svg'}
@@ -684,8 +697,6 @@ const AdminArt: React.FC = () => {
                                                     </td>
                                                     <td>
                                                         <strong>{edit.tenTacPham}</strong>
-                                                        <br />
-                                                        <small style={{ color: '#666' }}>ID: {edit.maTacPham}</small>
                                                     </td>
                                                     <td>{edit.tenDanhMuc || '-'}</td>
                                                     <td>{edit.tenHoaSi}</td>
@@ -818,7 +829,7 @@ const AdminArt: React.FC = () => {
 
                         <div className="artwork-review-header">
                             <div>
-                                <span className="artwork-review-eyebrow">HỒ SƠ TÁC PHẨM #{selectedArtwork.maTacPham}</span>
+                                <span className="artwork-review-eyebrow">HỒ SƠ TÁC PHẨM · STT {getArtworkSequence(selectedArtwork)}</span>
                                 <h3>{selectedArtwork.tenTacPham}</h3>
                                 <p>Họa sĩ: <strong>{selectedArtwork.tenHoaSi || '-'}</strong></p>
                             </div>

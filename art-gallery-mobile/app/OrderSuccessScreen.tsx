@@ -34,7 +34,7 @@ export default function OrderSuccessScreen({
         {/* Success Message */}
         <Text style={styles.title}>Đặt hàng thành công!</Text>
         <Text style={styles.subtitle}>
-          Cảm ơn bạn đã đặt hàng tại Art Gallery
+          Cảm ơn bạn đã đặt hàng tại Son Gallery
         </Text>
 
         {/* Order Info */}
