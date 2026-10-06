@@ -35,6 +35,10 @@ const ArtistArtworks: React.FC = () => {
     maDanhMuc: '',
     soLuong: '1',
     loaiPhatHanh: 'exclusive' as 'exclusive' | 'multiple',
+    loaiTacPham: 0 as 0 | 2,
+    tacGiaGoc: '',
+    maTacPhamGoc: '',
+    moTaNguonGoc: '',
     moTa: '',
     kichThuoc: '',
     chatLieu: '',
@@ -79,6 +83,10 @@ const ArtistArtworks: React.FC = () => {
         maDanhMuc: cat ? cat.maDanhMuc.toString() : (categories.length > 0 ? categories[0].maDanhMuc.toString() : ''),
         soLuong: artwork.soLuong.toString(),
         loaiPhatHanh: artwork.laTacPhamDocBan ? 'exclusive' : 'multiple',
+        loaiTacPham: artwork.loaiTacPham === 2 ? 2 : 0,
+        tacGiaGoc: artwork.tacGiaGoc || '',
+        maTacPhamGoc: artwork.maTacPhamGoc?.toString() || '',
+        moTaNguonGoc: artwork.moTaNguonGoc || '',
         moTa: artwork.moTa || '',
         kichThuoc: artwork.kichThuoc || '',
         chatLieu: artwork.chatLieu || '',
@@ -113,6 +121,10 @@ const ArtistArtworks: React.FC = () => {
         maDanhMuc: categories.length > 0 ? categories[0].maDanhMuc.toString() : '',
         soLuong: '1',
         loaiPhatHanh: 'exclusive',
+        loaiTacPham: 0,
+        tacGiaGoc: '',
+        maTacPhamGoc: '',
+        moTaNguonGoc: '',
         moTa: '',
         kichThuoc: '',
         chatLieu: '',
@@ -188,7 +200,7 @@ const ArtistArtworks: React.FC = () => {
         return;
       }
 
-      const payload = {
+      const artworkPayload = {
         tenTacPham: formData.tenTacPham,
         gia: parseFloat(formData.gia),
         maDanhMuc: formData.maDanhMuc ? parseInt(formData.maDanhMuc) : undefined,
@@ -201,25 +213,47 @@ const ArtistArtworks: React.FC = () => {
         chatLieuKhung: formData.chatLieuKhung,
       };
 
-      if (!Number.isInteger(payload.soLuong) || payload.soLuong <= 0) {
+      if (!Number.isInteger(artworkPayload.soLuong) || artworkPayload.soLuong <= 0) {
         alert('Số lượng phát hành phải là số nguyên lớn hơn 0.');
         return;
       }
-      if (!editingArtwork && payload.laTacPhamDocBan && payload.soLuong !== 1) {
+      if (!editingArtwork && artworkPayload.laTacPhamDocBan && artworkPayload.soLuong !== 1) {
         alert('Tranh độc bản phải được tạo với số lượng bằng 1.');
         return;
       }
-      if (!editingArtwork && !payload.laTacPhamDocBan && payload.soLuong < 2) {
+      if (!editingArtwork && !artworkPayload.laTacPhamDocBan && artworkPayload.soLuong < 2) {
         alert('Tranh nhiều bản cần khai báo số lượng ban đầu từ 2 trở lên.');
+        return;
+      }
+
+      const originalArtworkId = formData.maTacPhamGoc.trim()
+        ? Number(formData.maTacPhamGoc)
+        : undefined;
+      if (!editingArtwork && formData.loaiTacPham === 2
+        && !formData.tacGiaGoc.trim()
+        && !originalArtworkId
+        && !formData.moTaNguonGoc.trim()) {
+        alert('Phiên bản vẽ lại cần khai báo ít nhất tác giả gốc, mã tác phẩm gốc hoặc mô tả nguồn gốc.');
+        return;
+      }
+      if (!editingArtwork && formData.maTacPhamGoc.trim()
+        && (!Number.isInteger(originalArtworkId) || originalArtworkId! <= 0)) {
+        alert('Mã tác phẩm gốc phải là số nguyên dương.');
         return;
       }
 
       let artworkId: number;
       if (editingArtwork) {
-        await artistDashboardService.capNhatTacPham(editingArtwork.maTacPham, payload);
+        await artistDashboardService.capNhatTacPham(editingArtwork.maTacPham, artworkPayload);
         artworkId = editingArtwork.maTacPham;
       } else {
-        const created = await artistDashboardService.taoTacPham(payload);
+        const created = await artistDashboardService.taoTacPham({
+          ...artworkPayload,
+          loaiTacPham: formData.loaiTacPham,
+          tacGiaGoc: formData.loaiTacPham === 2 ? formData.tacGiaGoc.trim() || undefined : undefined,
+          maTacPhamGoc: formData.loaiTacPham === 2 ? originalArtworkId : undefined,
+          moTaNguonGoc: formData.loaiTacPham === 2 ? formData.moTaNguonGoc.trim() || undefined : undefined,
+        });
         artworkId = created.maTacPham;
       }
 
@@ -623,6 +657,93 @@ const ArtistArtworks: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {!editingArtwork ? (
+                <section
+                  aria-labelledby="artwork-origin-heading"
+                  style={{
+                    margin: '4px 0 18px', padding: 16, border: '1px solid #d6e4f0',
+                    borderRadius: 8, background: '#f8fbff'
+                  }}
+                >
+                  <div id="artwork-origin-heading" style={{ fontWeight: 700, color: '#1f3d5a', marginBottom: 6 }}>
+                    Nguồn gốc sáng tạo <span style={{ color: 'red' }}>*</span>
+                  </div>
+                  <p style={{ margin: '0 0 12px', fontSize: 13, color: '#667085', lineHeight: 1.5 }}>
+                    Khai báo này khác với loại phát hành: độc bản/nhiều bản là số hiện vật phát hành,
+                    còn nguồn gốc cho biết tác phẩm là do bạn tự sáng tác hay được vẽ lại từ tác phẩm có trước.
+                  </p>
+                  <div className="form-group" style={{ maxWidth: 420, marginBottom: 10 }}>
+                    <label>Loại tác phẩm</label>
+                    <select
+                      value={formData.loaiTacPham}
+                      onChange={(e) => {
+                        const loaiTacPham = Number(e.target.value) as 0 | 2;
+                        setFormData({
+                          ...formData,
+                          loaiTacPham,
+                          ...(loaiTacPham === 0 ? {
+                            tacGiaGoc: '', maTacPhamGoc: '', moTaNguonGoc: '',
+                          } : {}),
+                        });
+                      }}
+                    >
+                      <option value={0}>Tự sáng tác</option>
+                      <option value={2}>Phiên bản vẽ lại / phái sinh</option>
+                    </select>
+                  </div>
+
+                  {formData.loaiTacPham === 2 && (
+                    <>
+                      <p style={{ margin: '0 0 12px', fontSize: 13, color: '#9a5b00', lineHeight: 1.5 }}>
+                        Cần khai báo ít nhất một trong ba thông tin dưới đây. Mã tác phẩm chỉ dùng khi tác phẩm gốc đã có trên hệ thống.
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Tác giả gốc</label>
+                          <input
+                            type="text"
+                            value={formData.tacGiaGoc}
+                            onChange={(e) => setFormData({ ...formData, tacGiaGoc: e.target.value })}
+                            placeholder="Tên tác giả của tác phẩm gốc"
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label>Mã tác phẩm gốc</label>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={formData.maTacPhamGoc}
+                            onChange={(e) => setFormData({ ...formData, maTacPhamGoc: e.target.value })}
+                            placeholder="Nếu tác phẩm gốc có trên hệ thống"
+                          />
+                        </div>
+                      </div>
+                      <div className="form-group" style={{ margin: '12px 0 0' }}>
+                        <label>Mô tả nguồn gốc</label>
+                        <textarea
+                          rows={3}
+                          value={formData.moTaNguonGoc}
+                          onChange={(e) => setFormData({ ...formData, moTaNguonGoc: e.target.value })}
+                          placeholder="Ví dụ: Vẽ lại theo tác phẩm X, phạm vi sáng tạo/điều chỉnh và thông tin cho phép nếu có"
+                        />
+                      </div>
+                    </>
+                  )}
+                  <small style={{ display: 'block', marginTop: 12, color: '#667085', lineHeight: 1.45 }}>
+                    Khai báo nguồn gốc không đồng nghĩa với được xác minh hoặc được chuyển quyền tác giả.
+                    Bạn có thể bổ sung căn cứ và bằng chứng tại mục “Nguồn gốc và xác minh” sau khi tạo tác phẩm.
+                  </small>
+                </section>
+              ) : (
+                <div style={{ margin: '4px 0 18px', padding: '10px 12px', borderRadius: 8, background: '#f8f9fa', fontSize: 13, color: '#495057' }}>
+                  <strong>Nguồn gốc đã khai báo:</strong> {editingArtwork.loaiTacPhamText || 'Tự sáng tác'}.
+                  {editingArtwork.loaiTacPham === 2 && (
+                    <span> Điều chỉnh hoặc bổ sung bằng chứng tại mục “Nguồn gốc và xác minh”.</span>
+                  )}
+                </div>
+              )}
 
               <div className="artwork-image-url-section">
                 <div className="image-url-heading">

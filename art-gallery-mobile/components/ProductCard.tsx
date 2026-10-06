@@ -25,7 +25,8 @@ export default function ProductCard({
       style={styles.container}
       onPress={onPress}
       activeOpacity={0.8}
-      disabled={isOutOfStock}
+      accessibilityRole="button"
+      accessibilityLabel={`${product.tenTacPham}${isOutOfStock ? ', đã hết hàng' : ''}`}
     >
       {/* Artwork Image Box */}
       <View style={styles.imageContainer}>

@@ -44,7 +44,14 @@ export default function ArtistCopyright() {
       if (error?.response?.status === 404) {
         try {
           const artwork = await artistDashboardService.getTacPhamById(artworkId);
-          setForm({ ...emptyForm, laTacPhamDocBan: artwork.laTacPhamDocBan });
+          setForm({
+            ...emptyForm,
+            laTacPhamDocBan: artwork.laTacPhamDocBan,
+            loaiTacPham: artwork.loaiTacPham === 2 ? 2 : 0,
+            tacGiaGoc: artwork.tacGiaGoc || '',
+            maTacPhamGoc: artwork.maTacPhamGoc?.toString() || '',
+            moTaNguonGoc: artwork.moTaNguonGoc || '',
+          });
         } catch (artworkError: any) {
           alert(artworkError?.response?.data?.message || 'Không thể tải khai báo phát hành của tác phẩm');
         }

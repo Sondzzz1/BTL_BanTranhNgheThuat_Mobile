@@ -139,6 +139,18 @@ public class TacPhamHoaSiResponse
     public DateTime NgayTao { get; set; }
     public string? TenHoaSi { get; set; }
     public string? LyDo { get; set; }
+    public byte LoaiTacPham { get; set; }
+    public string LoaiTacPhamText => LoaiTacPham switch
+    {
+        2 => "Phiên bản vẽ lại / phái sinh",
+        1 => "Tác phẩm đặt vẽ gốc",
+        3 => "Đặt vẽ từ tác phẩm có sẵn",
+        4 => "Đặt vẽ theo tư liệu cá nhân",
+        _ => "Tự sáng tác"
+    };
+    public string? TacGiaGoc { get; set; }
+    public int? MaTacPhamGoc { get; set; }
+    public string? MoTaNguonGoc { get; set; }
 }
 
 public class TacPhamAdminPageResponse
@@ -163,6 +175,14 @@ public class TaoTacPhamRequest
     public string? KichThuoc { get; set; }
     public string? ChatLieu { get; set; }
     public string? ChatLieuKhung { get; set; }
+    /// <summary>
+    /// Khai báo nguồn gốc của tác phẩm đăng bán trực tiếp: 0=tự sáng tác, 2=phiên bản vẽ lại/phái sinh.
+    /// Các loại đặt vẽ được tạo duy nhất bởi luồng yêu cầu vẽ tranh.
+    /// </summary>
+    public byte LoaiTacPham { get; set; }
+    public string? TacGiaGoc { get; set; }
+    public int? MaTacPhamGoc { get; set; }
+    public string? MoTaNguonGoc { get; set; }
 }
 
 public class CapNhatTacPhamRequest

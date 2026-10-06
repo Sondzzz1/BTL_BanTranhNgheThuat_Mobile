@@ -26,6 +26,11 @@ export interface TaoTacPhamRequest {
     kichThuoc?: string;
     chatLieu?: string;
     chatLieuKhung?: string;
+    /** 0 = tự sáng tác; 2 = phiên bản vẽ lại / phái sinh. */
+    loaiTacPham: 0 | 2;
+    tacGiaGoc?: string;
+    maTacPhamGoc?: number;
+    moTaNguonGoc?: string;
 }
 
 export interface CapNhatTacPhamRequest {
@@ -88,6 +93,11 @@ export interface TacPhamHoaSiResponse {
     trangThaiText: string;
     ngayTao: string;
     lyDo?: string;
+    loaiTacPham: number;
+    loaiTacPhamText: string;
+    tacGiaGoc?: string;
+    maTacPhamGoc?: number;
+    moTaNguonGoc?: string;
 }
 
 export interface BaiVietResponse {

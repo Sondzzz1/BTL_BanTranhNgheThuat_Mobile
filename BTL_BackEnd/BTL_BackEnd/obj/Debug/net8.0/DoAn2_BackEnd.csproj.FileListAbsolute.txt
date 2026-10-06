@@ -634,3 +634,15 @@ C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-verification\DoAn2_BackEnd.deps
 C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-verification\DoAn2_BackEnd.runtimeconfig.json
 C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-verification\DoAn2_BackEnd.dll
 C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-verification\DoAn2_BackEnd.pdb
+C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-build-verification\appsettings.Development.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-build-verification\appsettings.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-build-verification\DoAn2_BackEnd.deps.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-build-verification\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-build-verification\DoAn2_BackEnd.dll
+C:\Users\huanp\Downloads\BTL_Mobile\temp\invoice-build-verification\DoAn2_BackEnd.pdb
+C:\Users\huanp\Downloads\BTL_Mobile\temp\artist-origin-build\appsettings.Development.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\artist-origin-build\appsettings.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\artist-origin-build\DoAn2_BackEnd.deps.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\artist-origin-build\DoAn2_BackEnd.runtimeconfig.json
+C:\Users\huanp\Downloads\BTL_Mobile\temp\artist-origin-build\DoAn2_BackEnd.dll
+C:\Users\huanp\Downloads\BTL_Mobile\temp\artist-origin-build\DoAn2_BackEnd.pdb

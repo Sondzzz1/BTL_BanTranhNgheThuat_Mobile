@@ -550,7 +550,7 @@ public class DonHangRepository : IDonHangRepository
             INNER JOIN TacPham t WITH (UPDLOCK, HOLDLOCK) ON t.MaTacPham = c.MaTacPham
             WHERE c.MaDonHang = @MaDonHang;";
 
-        var lines = new List<(int MaTacPham, string TenTacPham, int SoLuong, decimal DonGia, decimal ThanhTien)>();
+        var lines = new List<(int MaTacPham, string TenTacPham, int SoLuong, decimal DonGia)>();
         decimal tongTienHang = 0;
 
         await using (var lineCmd = new SqlCommand(lineSql, connection, transaction))
@@ -563,9 +563,8 @@ public class DonHangRepository : IDonHangRepository
                 var tenTacPham = reader.GetString(reader.GetOrdinal("TenTacPham"));
                 var soLuong = reader.GetInt32(reader.GetOrdinal("SoLuong"));
                 var donGia = reader.GetDecimal(reader.GetOrdinal("DonGia"));
-                var thanhTien = soLuong * donGia;
-                tongTienHang += thanhTien;
-                lines.Add((maTacPham, tenTacPham, soLuong, donGia, thanhTien));
+                tongTienHang += soLuong * donGia;
+                lines.Add((maTacPham, tenTacPham, soLuong, donGia));
             }
         }
 
@@ -595,11 +594,12 @@ public class DonHangRepository : IDonHangRepository
             maHoaDon = Convert.ToInt32(await insertCmd.ExecuteScalarAsync());
         }
 
+        // ThanhTien là computed column (SoLuong * DonGia), SQL Server tự tính khi INSERT.
         const string insertDetailSql = @"
             INSERT INTO ChiTietHoaDonBan
-                (MaHoaDon, MaTacPham, TenTacPham, SoLuong, DonGia, ThanhTien)
+                (MaHoaDon, MaTacPham, TenTacPham, SoLuong, DonGia)
             VALUES
-                (@MaHoaDon, @MaTacPham, @TenTacPham, @SoLuong, @DonGia, @ThanhTien);";
+                (@MaHoaDon, @MaTacPham, @TenTacPham, @SoLuong, @DonGia);";
 
         foreach (var line in lines)
         {
@@ -609,7 +609,6 @@ public class DonHangRepository : IDonHangRepository
             detailCmd.Parameters.AddWithValue("@TenTacPham", line.TenTacPham);
             detailCmd.Parameters.AddWithValue("@SoLuong", line.SoLuong);
             detailCmd.Parameters.AddWithValue("@DonGia", line.DonGia);
-            detailCmd.Parameters.AddWithValue("@ThanhTien", line.ThanhTien);
             await detailCmd.ExecuteNonQueryAsync();
         }
     }

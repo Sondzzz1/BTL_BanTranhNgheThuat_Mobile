@@ -170,7 +170,7 @@ public class HoaDonBanRepository : IHoaDonBanRepository
                 INNER JOIN TacPham t WITH (UPDLOCK, HOLDLOCK) ON t.MaTacPham = c.MaTacPham
                 WHERE c.MaDonHang = @MaDonHang;";
 
-            var lineItems = new List<(int MaTacPham, string TenTacPham, int SoLuong, decimal DonGia, decimal ThanhTien)>();
+            var lineItems = new List<(int MaTacPham, string TenTacPham, int SoLuong, decimal DonGia)>();
             decimal tongTienHang = 0;
 
             await using (var lineCmd = new SqlCommand(lineSql, connection, transaction))
@@ -183,9 +183,8 @@ public class HoaDonBanRepository : IHoaDonBanRepository
                     var tenTacPham = reader.GetString(reader.GetOrdinal("TenTacPham"));
                     var soLuong = reader.GetInt32(reader.GetOrdinal("SoLuong"));
                     var donGia = reader.GetDecimal(reader.GetOrdinal("DonGia"));
-                    var thanhTien = soLuong * donGia;
-                    tongTienHang += thanhTien;
-                    lineItems.Add((maTacPham, tenTacPham, soLuong, donGia, thanhTien));
+                    tongTienHang += soLuong * donGia;
+                    lineItems.Add((maTacPham, tenTacPham, soLuong, donGia));
                 }
             }
 
@@ -217,11 +216,12 @@ public class HoaDonBanRepository : IHoaDonBanRepository
             }
 
             // 5. INSERT ChiTietHoaDonBan
+            // ThanhTien là computed column (SoLuong * DonGia), SQL Server tự tính khi INSERT.
             const string insertDetailSql = @"
                 INSERT INTO ChiTietHoaDonBan
-                    (MaHoaDon, MaTacPham, TenTacPham, SoLuong, DonGia, ThanhTien)
+                    (MaHoaDon, MaTacPham, TenTacPham, SoLuong, DonGia)
                 VALUES
-                    (@MaHoaDon, @MaTacPham, @TenTacPham, @SoLuong, @DonGia, @ThanhTien);";
+                    (@MaHoaDon, @MaTacPham, @TenTacPham, @SoLuong, @DonGia);";
 
             foreach (var item in lineItems)
             {
@@ -231,7 +231,6 @@ public class HoaDonBanRepository : IHoaDonBanRepository
                 detailCmd.Parameters.AddWithValue("@TenTacPham", item.TenTacPham);
                 detailCmd.Parameters.AddWithValue("@SoLuong", item.SoLuong);
                 detailCmd.Parameters.AddWithValue("@DonGia", item.DonGia);
-                detailCmd.Parameters.AddWithValue("@ThanhTien", item.ThanhTien);
                 await detailCmd.ExecuteNonQueryAsync();
             }
 

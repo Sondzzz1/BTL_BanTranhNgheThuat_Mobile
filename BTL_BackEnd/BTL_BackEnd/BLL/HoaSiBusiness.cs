@@ -114,7 +114,11 @@ public class HoaSiBusiness : IHoaSiBusiness
                 TrangThai = tacPham.TrangThai,
                 TrangThaiText = GetTrangThaiTacPhamText(tacPham.TrangThai),
                 NgayTao = tacPham.NgayTao,
-                LyDo = tacPham.LyDo
+                LyDo = tacPham.LyDo,
+                LoaiTacPham = tacPham.LoaiTacPham,
+                TacGiaGoc = tacPham.TacGiaGoc,
+                MaTacPhamGoc = tacPham.MaTacPhamGoc,
+                MoTaNguonGoc = tacPham.MoTaNguonGoc
             });
         }
 
@@ -152,7 +156,11 @@ public class HoaSiBusiness : IHoaSiBusiness
             TrangThai = tacPham.TrangThai,
             TrangThaiText = GetTrangThaiTacPhamText(tacPham.TrangThai),
             NgayTao = tacPham.NgayTao,
-            LyDo = tacPham.LyDo
+            LyDo = tacPham.LyDo,
+            LoaiTacPham = tacPham.LoaiTacPham,
+            TacGiaGoc = tacPham.TacGiaGoc,
+            MaTacPhamGoc = tacPham.MaTacPhamGoc,
+            MoTaNguonGoc = tacPham.MoTaNguonGoc
         };
     }
 
@@ -163,6 +171,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (request.Gia <= 0)
             throw new ArgumentException("Giá phải lớn hơn 0");
         ExclusiveArtworkPolicy.EnsureCreateDeclaration(request.LaTacPhamDocBan, request.SoLuong);
+        await NormalizeAndValidateCreationOrigin(request);
 
         var tacPham = new TacPham
         {
@@ -178,6 +187,10 @@ public class HoaSiBusiness : IHoaSiBusiness
             KichThuoc = request.KichThuoc?.Trim(),
             ChatLieu = request.ChatLieu?.Trim(),
             ChatLieuKhung = request.ChatLieuKhung?.Trim(),
+            LoaiTacPham = request.LoaiTacPham,
+            TacGiaGoc = request.TacGiaGoc,
+            MaTacPhamGoc = request.MaTacPhamGoc,
+            MoTaNguonGoc = request.MoTaNguonGoc,
             TrangThai = 0, // 0: Chờ duyệt (Pending Approval)
             NgayTao = DateTime.UtcNow
         };
@@ -342,7 +355,11 @@ public class HoaSiBusiness : IHoaSiBusiness
                 TrangThai = tp.TrangThai,
                 TrangThaiText = "Đã xóa",
                 NgayTao = tp.NgayTao,
-                LyDo = null
+                LyDo = null,
+                LoaiTacPham = tp.LoaiTacPham,
+                TacGiaGoc = tp.TacGiaGoc,
+                MaTacPhamGoc = tp.MaTacPhamGoc,
+                MoTaNguonGoc = tp.MoTaNguonGoc
             });
         }
         
@@ -891,6 +908,54 @@ public class HoaSiBusiness : IHoaSiBusiness
         return daThanhToanHopLe
             ? "Đã giao · thanh toán hợp lệ"
             : "Đã giao · chờ xác nhận thanh toán";
+    }
+
+    /// <summary>
+    /// The direct artist listing flow is only for independently listed works.  Commission
+    /// variants are created by the custom-art workflow, so an artist cannot manufacture one
+    /// merely by posting a different numeric type to this endpoint.
+    /// </summary>
+    private async Task NormalizeAndValidateCreationOrigin(TaoTacPhamRequest request)
+    {
+        if (request.LoaiTacPham is not (0 or 2))
+            throw new ArgumentException(
+                "Tác phẩm đăng bán trực tiếp chỉ có thể khai báo là tự sáng tác hoặc phiên bản vẽ lại");
+
+        request.TacGiaGoc = NormalizeOptionalOriginField(request.TacGiaGoc, "Tác giả gốc", 255);
+        request.MoTaNguonGoc = NormalizeOptionalOriginField(request.MoTaNguonGoc, "Mô tả nguồn gốc", 4000);
+
+        if (request.LoaiTacPham == 0)
+        {
+            // Never retain derivative metadata when the artist explicitly declares an original.
+            request.TacGiaGoc = null;
+            request.MaTacPhamGoc = null;
+            request.MoTaNguonGoc = null;
+            return;
+        }
+
+        if (request.MaTacPhamGoc is <= 0)
+            throw new ArgumentException("Mã tác phẩm gốc không hợp lệ");
+
+        if (string.IsNullOrWhiteSpace(request.TacGiaGoc)
+            && request.MaTacPhamGoc is null
+            && string.IsNullOrWhiteSpace(request.MoTaNguonGoc))
+            throw new ArgumentException(
+                "Phiên bản vẽ lại phải khai báo ít nhất tác giả gốc, mã tác phẩm gốc hoặc mô tả nguồn gốc");
+
+        if (request.MaTacPhamGoc.HasValue)
+        {
+            var originalArtwork = await _tacPhamRepo.GetById(request.MaTacPhamGoc.Value);
+            if (originalArtwork == null || originalArtwork.TrangThai == TacPhamStatus.Deleted)
+                throw new ArgumentException("Không tìm thấy tác phẩm gốc trong hệ thống");
+        }
+    }
+
+    private static string? NormalizeOptionalOriginField(string? value, string fieldName, int maximumLength)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        if (normalized?.Length > maximumLength)
+            throw new ArgumentException($"{fieldName} không được vượt quá {maximumLength} ký tự");
+        return normalized;
     }
 
     private string GetTrangThaiTacPhamText(byte trangThai)
