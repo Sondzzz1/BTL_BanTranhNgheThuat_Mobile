@@ -427,28 +427,6 @@ export default function ProductDetailScreen({
 
           <Text style={styles.price}>{formatPrice(product.gia)}</Text>
 
-          <View style={styles.provenanceSection} accessibilityLabel="Thông tin nguồn gốc sáng tạo">
-            <Text style={styles.provenanceTitle}>Nguồn gốc sáng tạo</Text>
-            <Text style={styles.provenanceLine}>Phân loại: {creativeOrigin.tenLoai}</Text>
-            {creativeOrigin.loai === 'ORIGINAL' && <Text style={styles.provenanceMuted}>Tác phẩm này được họa sĩ khai báo là sáng tác gốc.</Text>}
-            {creativeOrigin.loai === 'DERIVATIVE' && <>
-              <Text style={styles.provenanceLine}>Tác phẩm gốc: {creativeOrigin.tacPhamGoc?.tenTacPham || creativeOrigin.tenTacPhamGocNgoaiHeThong || 'Chưa xác định'}</Text>
-              <Text style={styles.provenanceLine}>Tác giả gốc: {creativeOrigin.khongXacDinhTacGiaGoc ? 'Chưa xác định' : creativeOrigin.tacGiaGoc || creativeOrigin.tacPhamGoc?.tenHoaSi || 'Chưa có thông tin'}</Text>
-              {creativeOrigin.tacPhamGoc?.coTheXemCongKhai && <TouchableOpacity
-                style={styles.originArtworkCard}
-                onPress={() => navigation.push('ProductDetail', { id: creativeOrigin.tacPhamGoc?.maTacPham })}
-                accessibilityRole="button"
-                accessibilityLabel={`Xem tác phẩm gốc ${creativeOrigin.tacPhamGoc.tenTacPham}`}
-              >
-                {creativeOrigin.tacPhamGoc.hinhAnh && <Image source={{ uri: creativeOrigin.tacPhamGoc.hinhAnh }} style={styles.originArtworkImage} />}
-                <View style={{ flex: 1 }}><Text style={styles.provenanceLine}>{creativeOrigin.tacPhamGoc.tenTacPham}</Text><Text style={styles.provenanceMuted}>{creativeOrigin.tacPhamGoc.tenHoaSi} · Xem tác phẩm →</Text></View>
-              </TouchableOpacity>}
-            </>}
-            {creativeOrigin.nguonThamKhao && <Text style={styles.provenanceLine}>Nguồn tham khảo: {creativeOrigin.nguonThamKhao}</Text>}
-            {creativeOrigin.moTaNguonGoc && <Text style={styles.provenanceLine}>Cách sử dụng nguồn: {creativeOrigin.moTaNguonGoc}</Text>}
-            <Text style={styles.provenanceLegal}>Đây là thông tin do họa sĩ khai báo; không phải kết luận xác minh quyền tác giả.</Text>
-          </View>
-
           {/* Details */}
           {product.moTa && (
             <View style={styles.section}>
@@ -520,6 +498,28 @@ export default function ProductDetailScreen({
                 </ScrollView>
               </>
             )}
+          </View>
+
+          <View style={styles.provenanceSection} accessibilityLabel="Thông tin nguồn gốc sáng tạo">
+            <Text style={styles.provenanceTitle}>Nguồn gốc sáng tạo</Text>
+            <Text style={styles.provenanceLine}>Phân loại: {creativeOrigin.tenLoai}</Text>
+            {creativeOrigin.loai === 'ORIGINAL' && <Text style={styles.provenanceMuted}>Tác phẩm này được họa sĩ khai báo là sáng tác gốc.</Text>}
+            {creativeOrigin.loai === 'DERIVATIVE' && <>
+              <Text style={styles.provenanceLine}>Tác phẩm gốc: {creativeOrigin.tacPhamGoc?.tenTacPham || creativeOrigin.tenTacPhamGocNgoaiHeThong || 'Chưa xác định'}</Text>
+              <Text style={styles.provenanceLine}>Tác giả gốc: {creativeOrigin.khongXacDinhTacGiaGoc ? 'Chưa xác định' : creativeOrigin.tacGiaGoc || creativeOrigin.tacPhamGoc?.tenHoaSi || 'Chưa có thông tin'}</Text>
+              {creativeOrigin.tacPhamGoc?.coTheXemCongKhai && <TouchableOpacity
+                style={styles.originArtworkCard}
+                onPress={() => navigation.push('ProductDetail', { id: creativeOrigin.tacPhamGoc?.maTacPham })}
+                accessibilityRole="button"
+                accessibilityLabel={`Xem tác phẩm gốc ${creativeOrigin.tacPhamGoc.tenTacPham}`}
+              >
+                {creativeOrigin.tacPhamGoc.hinhAnh && <Image source={{ uri: creativeOrigin.tacPhamGoc.hinhAnh }} style={styles.originArtworkImage} />}
+                <View style={{ flex: 1 }}><Text style={styles.provenanceLine}>{creativeOrigin.tacPhamGoc.tenTacPham}</Text><Text style={styles.provenanceMuted}>{creativeOrigin.tacPhamGoc.tenHoaSi} · Xem tác phẩm →</Text></View>
+              </TouchableOpacity>}
+            </>}
+            {creativeOrigin.nguonThamKhao && <Text style={styles.provenanceLine}>Nguồn tham khảo: {creativeOrigin.nguonThamKhao}</Text>}
+            {creativeOrigin.moTaNguonGoc && <Text style={styles.provenanceLine}>Cách sử dụng nguồn: {creativeOrigin.moTaNguonGoc}</Text>}
+            <Text style={styles.provenanceLegal}>Đây là thông tin do họa sĩ khai báo; không phải kết luận xác minh quyền tác giả.</Text>
           </View>
 
           <View style={styles.provenanceSection}>
