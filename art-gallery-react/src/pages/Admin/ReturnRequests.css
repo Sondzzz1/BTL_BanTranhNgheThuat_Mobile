@@ -1,0 +1,28 @@
+#return-requests .styled-table .return-request-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 14px;
+  border: 1px solid #1d4ed8;
+  border-radius: 6px;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+#return-requests .styled-table .return-request-action:hover {
+  background: #1e40af;
+  border-color: #1e40af;
+  color: #fff;
+}
+
+#return-requests .styled-table .return-request-action:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 2px;
+}

@@ -1,0 +1,25 @@
+.admin-report .report-muted { color: #64748b; line-height: 1.6; }
+.admin-report .report-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 16px 0; }
+.admin-report .report-controls label { display: flex; flex-direction: column; gap: 8px; font-weight: 600; }
+.admin-report select, .admin-report input { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; min-width: 0; background: #fff; }
+.admin-report button { padding: 9px 15px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #24466b; cursor: pointer; }
+.admin-report button:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+.admin-report button:disabled { opacity: .6; cursor: wait; }
+.admin-report button[aria-pressed=true], .admin-report .report-submit { background: #24466b; border-color: #24466b; color: white; }
+.admin-report fieldset { border: 0; padding: 0; margin: 18px 0; }
+.admin-report legend { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.admin-report .report-presets, .admin-report .report-date-fields, .admin-report .report-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.admin-report .report-actions { justify-content: flex-end; margin-top: 16px; }
+.admin-report .report-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.admin-report .report-metrics .report-panel { margin: 0; }
+.admin-report .report-metrics strong { font-size: 22px; color: #24466b; overflow-wrap: anywhere; }
+.admin-report .report-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 24px; }
+.admin-report .report-error { padding: 16px; background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; border-radius: 8px; }
+.admin-report .report-bar-row { margin: 16px 0; }
+.admin-report .report-bar-row > div:first-child { display: flex; justify-content: space-between; gap: 16px; overflow-wrap: anywhere; }
+.admin-report .report-bar-track { height: 8px; background: #e2e8f0; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+.admin-report .report-bar-track > div { height: 100%; background: #416c98; }
+.admin-report .report-table-scroll { overflow-x: auto; }
+.admin-report table { width: 100%; }
+@media (max-width: 1100px) { .admin-report .report-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .admin-report .report-metrics { grid-template-columns: 1fr; } .admin-report .report-result-heading { align-items: flex-start; flex-direction: column; } .admin-report .report-panel { padding: 14px; } }

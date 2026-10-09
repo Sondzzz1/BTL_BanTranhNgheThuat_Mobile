@@ -8,6 +8,7 @@ import {
   RETURN_STATUS_TEXT,
 } from '../../services/adminReturnService';
 import { formatVnd } from '../../utils/currency';
+import './ReturnRequests.css';
 
 const filters = [
   ['ALL', 'Tất cả'], ['CHO_DUYET', 'Chờ duyệt'], ['DA_DUYET', 'Đã duyệt'],
@@ -159,7 +160,7 @@ const ReturnRequests: React.FC = () => {
                   <td style={{ textAlign: 'left' }}>{RETURN_REASON_TEXT[item.lyDo] || item.lyDo}</td>
                   <td>{new Date(item.ngayTao).toLocaleDateString('vi-VN')}</td>
                   <td>{badge(item.trangThai)}</td>
-                  <td><button className="btn-edit" onClick={() => openDetail(item.maYeuCau)}>Xem / xử lý</button></td>
+                  <td><button type="button" className="return-request-action" onClick={() => openDetail(item.maYeuCau)}>Xem / xử lý</button></td>
                 </tr>
               ))}
             </tbody>

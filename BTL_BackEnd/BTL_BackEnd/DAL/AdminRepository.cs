@@ -6,6 +6,71 @@ namespace DoAn2_BackEnd.DAL;
 
 public class AdminRepository : IAdminRepository
 {
+    public static string GetReportQuery(bool ordersOnly)
+    {
+        // Only constant SQL branches; no user values are interpolated into SQL.
+        return ordersOnly ? @"
+            SELECT dh.MaDonHang, dh.NgayDat AS ReportDate, dh.TrangThai
+            FROM DonHang dh
+            WHERE dh.NgayDat >= @FromDate AND dh.NgayDat < @EndExclusive
+            ORDER BY dh.NgayDat, dh.MaDonHang" : @"
+            SELECT dh.MaDonHang, COALESCE(dh.NgayGiao, dh.NgayDat) AS ReportDate,
+                dh.TrangThai, dh.MaNguoiDung, ISNULL(nd.Ten, N'Không xác định') AS CustomerName,
+                ct.MaTacPham, ISNULL(tp.TenTacPham, N'Không xác định') AS ArtworkName,
+                tp.MaHoaSi, ISNULL(hs.TenHoaSi, N'Không xác định') AS ArtistName,
+                CAST(CASE WHEN tp.MaYeuCauVeTranh IS NOT NULL THEN 1 ELSE 0 END AS bit) AS IsCommission,
+                ct.SoLuong, ISNULL(ct.SoLuongDaHoan, 0) AS Returned, ct.DonGia,
+                ISNULL(p.PaymentCount, 0) AS PaymentCount, p.PaymentStatus
+            FROM DonHang dh
+            JOIN ChiTietDonHang ct ON ct.MaDonHang = dh.MaDonHang
+            LEFT JOIN TacPham tp ON tp.MaTacPham = ct.MaTacPham
+            LEFT JOIN HoaSi hs ON hs.MaHoaSi = tp.MaHoaSi
+            LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = dh.MaNguoiDung
+            LEFT JOIN (SELECT MaDonHang, COUNT(*) AS PaymentCount, MAX(TrangThai) AS PaymentStatus
+                       FROM ThanhToan GROUP BY MaDonHang) p ON p.MaDonHang = dh.MaDonHang
+            WHERE dh.TrangThai = @Delivered
+              AND COALESCE(dh.NgayGiao, dh.NgayDat) >= @FromDate
+              AND COALESCE(dh.NgayGiao, dh.NgayDat) < @EndExclusive
+            ORDER BY dh.MaDonHang, ct.MaChiTietDH";
+    }
+
+    public async Task<List<AdminReportSource>> GetReportSource(string type, DateTime fromDate, DateTime toDate)
+    {
+        var ordersOnly = type == "don-hang";
+        var query = GetReportQuery(ordersOnly);
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var command = new SqlCommand(query, connection);
+        command.Parameters.Add("@FromDate", System.Data.SqlDbType.DateTime2).Value = fromDate.Date;
+        command.Parameters.Add("@EndExclusive", System.Data.SqlDbType.DateTime2).Value = toDate.Date.AddDays(1);
+        if (!ordersOnly) command.Parameters.Add("@Delivered", System.Data.SqlDbType.TinyInt).Value = Helpers.DonHangStatus.DaGiao;
+        using var reader = await command.ExecuteReaderAsync();
+        var result = new List<AdminReportSource>();
+        while (await reader.ReadAsync())
+        {
+            var row = new AdminReportSource
+            {
+                OrderId = reader.GetInt32(0), Date = reader.GetDateTime(1), Status = reader.GetByte(2)
+            };
+            if (!ordersOnly)
+            {
+                row.CustomerId = reader.GetInt32(3);
+                row.CustomerName = reader.GetString(4);
+                row.ArtworkId = reader.GetInt32(5);
+                row.ArtworkName = reader.GetString(6);
+                row.ArtistId = reader.IsDBNull(7) ? null : reader.GetInt32(7);
+                row.ArtistName = reader.GetString(8);
+                row.IsCommission = reader.GetBoolean(9);
+                row.Quantity = reader.GetInt32(10);
+                row.Returned = reader.GetInt32(11);
+                row.UnitPrice = reader.GetDecimal(12);
+                row.PaymentCount = reader.GetInt32(13);
+                row.PaymentStatus = reader.IsDBNull(14) ? null : reader.GetString(14);
+            }
+            result.Add(row);
+        }
+        return result;
+    }
     private readonly string _connectionString;
 
     public AdminRepository(IConfiguration configuration)

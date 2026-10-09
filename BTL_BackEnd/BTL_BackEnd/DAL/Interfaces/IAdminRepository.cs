@@ -4,6 +4,7 @@ namespace DoAn2_BackEnd.DAL.Interfaces;
 
 public interface IAdminRepository
 {
+    Task<List<AdminReportSource>> GetReportSource(string type, DateTime fromDate, DateTime toDate);
     Task<DashboardResponse> GetDashboard();
     Task<ThongKeTongQuanResponse> GetThongKeTongQuan();
     Task<ThongKeNhanhResponse> GetThongKeNhanh(DateTime ngay);

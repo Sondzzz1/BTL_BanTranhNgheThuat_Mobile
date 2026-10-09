@@ -4,6 +4,7 @@ namespace DoAn2_BackEnd.BLL.Interfaces;
 
 public interface IAdminBusiness
 {
+    Task<AdminReportResponse> GetReport(string type, DateTime fromDate, DateTime toDate);
     Task<DashboardResponse> GetDashboard();
     Task<ThongKeTongQuanResponse> GetThongKeTongQuan();
     Task<ThongKeNhanhResponse> GetThongKeNhanh(DateTime ngay);

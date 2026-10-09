@@ -906,11 +906,7 @@ public class HoaSiBusiness : IHoaSiBusiness
             // Hoàn tiền toàn bộ phải đi kèm dữ liệu hoàn tất ở các dòng hàng. Điều này
             // vừa loại trừ bản ghi cũ/bất thường, vừa bảo đảm đơn hoàn toàn bộ có doanh
             // thu sau hoàn bằng 0 thay vì vô tình ghi nhận lại doanh thu ban đầu.
-            var daHoanToanBoTheoDong = daHoanTien
-                && chiTiet.Count > 0
-                && chiTiet.All(item => item.SoLuong > 0
-                    && Math.Clamp(item.SoLuongDaHoan, 0, item.SoLuong) == item.SoLuong);
-            if (daHoanTien && !daHoanToanBoTheoDong) continue;
+            if (!RevenueRules.IsRecognized(payments?.Count ?? 0, payment?.TrangThai, chiTiet)) continue;
 
             foreach (var ct in chiTiet.Where(item => artworksById.ContainsKey(item.MaTacPham)))
             {

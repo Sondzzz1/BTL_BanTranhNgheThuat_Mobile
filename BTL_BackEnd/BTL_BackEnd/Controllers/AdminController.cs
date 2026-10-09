@@ -19,6 +19,23 @@ public class AdminController : ControllerBase
         _adminBusiness = adminBusiness;
     }
 
+    // Separate bounded contract keeps legacy dashboard/report consumers compatible.
+    [HttpGet("bao-cao/{type}")]
+    public async Task<ActionResult<AdminReportResponse>> GetReport(string type,
+        [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
+    {
+        if (!fromDate.HasValue || !toDate.HasValue)
+            return BadRequest(new { message = "Vui lòng chọn từ ngày và đến ngày." });
+        try
+        {
+            return Ok(await _adminBusiness.GetReport(type, fromDate.Value, toDate.Value));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpGet("profile")]
     public ActionResult Profile()
     {

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj": {}
+    "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj": {}
   },
   "projects": {
-    "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj": {
+    "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj",
+        "projectUniqueName": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj",
         "projectName": "DoAn2_BackEnd",
-        "projectPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj",
+        "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj",
         "packagesPath": "C:\\Users\\huanp\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\obj\\",
+        "outputPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\huanp\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -98,14 +98,14 @@
         }
       }
     },
-    "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj": {
+    "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj",
+        "projectUniqueName": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj",
         "projectName": "Copyright.UnitTests",
-        "projectPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj",
+        "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\Copyright.UnitTests.csproj",
         "packagesPath": "C:\\Users\\huanp\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\obj\\",
+        "outputPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\Copyright.UnitTests\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\huanp\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -123,8 +123,8 @@
           "net8.0": {
             "targetAlias": "net8.0",
             "projectReferences": {
-              "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj": {
-                "projectPath": "c:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj"
+              "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj": {
+                "projectPath": "C:\\Users\\huanp\\Downloads\\BTL_Mobile\\BTL_BackEnd\\BTL_BackEnd\\DoAn2_BackEnd.csproj"
               }
             }
           }

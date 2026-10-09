@@ -11,6 +11,12 @@ namespace DoAn2_BackEnd.BLL;
 
 public class AdminBusiness : IAdminBusiness
 {
+    public async Task<AdminReportResponse> GetReport(string type, DateTime fromDate, DateTime toDate)
+    {
+        AdminReportBuilder.Validate(type, fromDate, toDate);
+        var source = await _adminRepo.GetReportSource(type, fromDate.Date, toDate.Date);
+        return AdminReportBuilder.Build(type, fromDate.Date, toDate.Date, source);
+    }
     private readonly IAdminRepository _adminRepo;
     private readonly ITacPhamRepository _tacPhamRepo;
     private readonly IHoaSiRepository _hoaSiRepo;
