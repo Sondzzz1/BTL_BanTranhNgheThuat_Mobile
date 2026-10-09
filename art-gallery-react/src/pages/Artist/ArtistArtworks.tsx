@@ -1,5 +1,5 @@
 // Artist Artworks - Quản lý tác phẩm của họa sĩ
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   artistDashboardService,
@@ -9,6 +9,7 @@ import {
 import { categoryService } from '../../services/categoryService';
 import { formatVnd } from '../../utils/currency';
 import './ArtistArtworks.css';
+import { newRequestKey } from '../../utils/requestKey';
 
 const STATUS_LABEL: Record<number, { text: string; cls: string; icon: string }> = {
   0: { text: 'Chờ duyệt',  cls: 'pending',   icon: 'ti-time' },
@@ -19,6 +20,9 @@ const STATUS_LABEL: Record<number, { text: string; cls: string; icon: string }> 
 
 const ArtistArtworks: React.FC = () => {
   const navigate = useNavigate();
+  const sending = useRef(false);
+  const createRequestKey = useRef('');
+  const [saving, setSaving] = useState(false);
   const [myArtworks, setMyArtworks] = useState<TacPhamHoaSiResponse[]>([]);
   const [categories, setCategories] = useState<{ maDanhMuc: number, tenDanhMuc: string }[]>([]);
   const [filterCat, setFilterCat] = useState<string>('all');
@@ -98,6 +102,8 @@ const ArtistArtworks: React.FC = () => {
   };
 
   const handleOpenModal = async (artwork?: TacPhamHoaSiResponse) => {
+    if (sending.current) return;
+    createRequestKey.current = newRequestKey();
     setFailedImageIndexes([]);
     if (artwork) {
       setEditingArtwork(artwork);
@@ -182,6 +188,9 @@ const ArtistArtworks: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (sending.current) return;
+    sending.current = true;
+    setSaving(true);
     try {
       const urls = normalizedImageUrls();
       const invalidUrl = urls.find((url) => !isValidImageUrl(url));
@@ -273,7 +282,7 @@ const ArtistArtworks: React.FC = () => {
         const created = await artistDashboardService.taoTacPham({
           ...artworkPayload,
           ...originPayload,
-        });
+        }, createRequestKey.current);
         artworkId = created.maTacPham;
       }
 
@@ -311,7 +320,7 @@ const ArtistArtworks: React.FC = () => {
       await loadData();
     } catch (error: any) {
       alert(error?.response?.data?.message || error.message || 'Có lỗi xảy ra');
-    }
+    } finally { sending.current = false; setSaving(false); }
   };
 
   const handleDelete = async (id: number) => {
@@ -840,8 +849,8 @@ const ArtistArtworks: React.FC = () => {
               </div>
 
               <div className="modal-buttons">
-                <button type="submit" className="btn-save">
-                  {editingArtwork ? 'Cập nhật' : 'Thêm mới'}
+                <button type="submit" className="btn-save" disabled={saving}>
+                  {saving ? 'Đang gửi...' : editingArtwork ? 'Cập nhật' : 'Thêm mới'}
                 </button>
                 <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>
                   Hủy

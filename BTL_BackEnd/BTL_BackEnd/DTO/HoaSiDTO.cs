@@ -167,6 +167,8 @@ public class TacPhamAdminPageResponse
 
 public class TaoTacPhamRequest
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Guid? SubmitRequestKey { get; set; }
     public string TenTacPham { get; set; } = null!;
     public int? MaDanhMuc { get; set; }
     public decimal Gia { get; set; }

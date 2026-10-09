@@ -12,6 +12,10 @@ public static class TacPhamStatus
 public class TacPham
 {
     public int MaTacPham { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Guid? SubmitRequestKey { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte? ExpectedStatus { get; set; }
     public string TenTacPham { get; set; } = null!;
     public int MaHoaSi { get; set; }
     public int? MaDanhMuc { get; set; }

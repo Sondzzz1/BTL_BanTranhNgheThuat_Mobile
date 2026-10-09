@@ -3,6 +3,9 @@ using DoAn2_BackEnd.DTO;
 using DoAn2_BackEnd.Models;
 using Microsoft.Data.SqlClient;
 using System.Text;
+using System.Text.Json;
+using System.Security.Cryptography;
+using DoAn2_BackEnd.Helpers;
 
 namespace DoAn2_BackEnd.DAL;
 
@@ -221,12 +224,30 @@ public class TacPhamRepository : ITacPhamRepository
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+        var requestHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
+        { tacPham.TenTacPham,tacPham.MaHoaSi,tacPham.MaDanhMuc,tacPham.Gia,tacPham.SoLuong,tacPham.SoLuongBanDau,tacPham.MoTa,tacPham.HinhAnh,tacPham.ChatLieu,tacPham.ChatLieuKhung,tacPham.KichThuoc,tacPham.LaTacPhamDocBan,tacPham.LoaiTacPham,tacPham.TacGiaGoc,tacPham.MaTacPhamGoc,tacPham.TenTacPhamGoc,tacPham.KhongXacDinhTacGiaGoc,tacPham.NguonThamKhao,tacPham.MoTaNguonGoc }))));
+        if (tacPham.SubmitRequestKey.HasValue)
+        {
+            using var prior = new SqlCommand("SELECT MaTacPham,SubmitRequestHash FROM TacPham WITH (UPDLOCK,HOLDLOCK) WHERE MaHoaSi=@Artist AND SubmitRequestKey=@Key;", connection, transaction);
+            prior.Parameters.AddWithValue("@Artist", tacPham.MaHoaSi);
+            prior.Parameters.AddWithValue("@Key", tacPham.SubmitRequestKey.Value);
+            using var reader = await prior.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var priorId = reader.GetInt32(0);
+                if (!reader.IsDBNull(1) && reader.GetString(1) != requestHash)
+                    throw new InvalidOperationException("Lần gửi này đã tạo một tác phẩm với nội dung khác. Vui lòng mở tác phẩm đã lưu để chỉnh sửa, hoặc mở form Thêm mới cho yêu cầu mới.");
+                await reader.CloseAsync();
+                transaction.Commit(); return priorId;
+            }
+        }
 
-        var query = @"INSERT INTO TacPham (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, SoLuongBanDau, MoTa, HinhAnh, ChatLieu, ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo,LaTacPhamDocBan,LoaiTacPham,TacGiaGoc,MaTacPhamGoc,TenTacPhamGoc,KhongXacDinhTacGiaGoc,NguonThamKhao,MoTaNguonGoc)
-                      VALUES (@TenTacPham, @MaHoaSi, @MaDanhMuc, @Gia, @SoLuong, @SoLuongBanDau, @MoTa, @HinhAnh, @ChatLieu, @ChatLieuKhung, @KichThuoc, @TrangThai, @NgayTao, @LyDo,@LaTacPhamDocBan,@LoaiTacPham,@TacGiaGoc,@MaTacPhamGoc,@TenTacPhamGoc,@KhongXacDinhTacGiaGoc,@NguonThamKhao,@MoTaNguonGoc);
+        var query = @"INSERT INTO TacPham (TenTacPham, MaHoaSi, MaDanhMuc, Gia, SoLuong, SoLuongBanDau, MoTa, HinhAnh, ChatLieu, ChatLieuKhung, KichThuoc, TrangThai, NgayTao, LyDo,LaTacPhamDocBan,LoaiTacPham,TacGiaGoc,MaTacPhamGoc,TenTacPhamGoc,KhongXacDinhTacGiaGoc,NguonThamKhao,MoTaNguonGoc,SubmitRequestKey,SubmitRequestHash)
+                      VALUES (@TenTacPham, @MaHoaSi, @MaDanhMuc, @Gia, @SoLuong, @SoLuongBanDau, @MoTa, @HinhAnh, @ChatLieu, @ChatLieuKhung, @KichThuoc, @TrangThai, @NgayTao, @LyDo,@LaTacPhamDocBan,@LoaiTacPham,@TacGiaGoc,@MaTacPhamGoc,@TenTacPhamGoc,@KhongXacDinhTacGiaGoc,@NguonThamKhao,@MoTaNguonGoc,@SubmitRequestKey,@SubmitRequestHash);
                       SELECT CAST(SCOPE_IDENTITY() as int);";
 
-        using var command = new SqlCommand(query, connection);
+        using var command = new SqlCommand(query, connection, transaction);
         command.Parameters.AddWithValue("@TenTacPham", tacPham.TenTacPham);
         command.Parameters.AddWithValue("@MaHoaSi", tacPham.MaHoaSi);
         command.Parameters.AddWithValue("@MaDanhMuc", (object?)tacPham.MaDanhMuc ?? DBNull.Value);
@@ -250,14 +271,31 @@ public class TacPhamRepository : ITacPhamRepository
         command.Parameters.AddWithValue("@NguonThamKhao", (object?)tacPham.NguonThamKhao ?? DBNull.Value);
         command.Parameters.AddWithValue("@MoTaNguonGoc", (object?)tacPham.MoTaNguonGoc ?? DBNull.Value);
 
-        var result = await command.ExecuteScalarAsync();
-        return Convert.ToInt32(result);
+        command.Parameters.AddWithValue("@SubmitRequestKey", (object?)tacPham.SubmitRequestKey ?? DBNull.Value);
+        command.Parameters.AddWithValue("@SubmitRequestHash", tacPham.SubmitRequestKey.HasValue ? requestHash : (object)DBNull.Value);
+        var result = Convert.ToInt32(await command.ExecuteScalarAsync());
+        if (tacPham.TrangThai == 0 && tacPham.MaYeuCauVeTranh == null)
+        {
+            var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, result, tacPham.MaHoaSi);
+            await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                "TacPham", result, "ARTWORK_SUBMITTED", owner.Artist, owner.Name,
+                "vừa gửi tác phẩm mới để duyệt", $"/admin/art?artworkId={result}"));
+        }
+        await transaction.CommitAsync();
+        return result;
     }
 
     public async Task<bool> Update(TacPham tacPham)
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+        using var current = new SqlCommand("SELECT TrangThai FROM TacPham WITH (UPDLOCK,HOLDLOCK) WHERE MaTacPham=@Id;", connection, transaction);
+        current.Parameters.AddWithValue("@Id", tacPham.MaTacPham);
+        var statusValue = await current.ExecuteScalarAsync();
+        if (statusValue == null) return false;
+        var oldStatus = Convert.ToByte(statusValue);
+        if (tacPham.ExpectedStatus.HasValue && oldStatus != tacPham.ExpectedStatus.Value) return false;
 
         var query = @"UPDATE TacPham 
                       SET TenTacPham = @TenTacPham, 
@@ -280,7 +318,7 @@ public class TacPhamRepository : ITacPhamRepository
                           LyDo = @LyDo
                       WHERE MaTacPham = @MaTacPham";
 
-        using var command = new SqlCommand(query, connection);
+        using var command = new SqlCommand(query, connection, transaction);
         command.Parameters.AddWithValue("@MaTacPham", tacPham.MaTacPham);
         command.Parameters.AddWithValue("@TenTacPham", tacPham.TenTacPham);
         command.Parameters.AddWithValue("@MaDanhMuc", (object?)tacPham.MaDanhMuc ?? DBNull.Value);
@@ -303,10 +341,18 @@ public class TacPhamRepository : ITacPhamRepository
         command.Parameters.AddWithValue("@MoTaNguonGoc", (object?)tacPham.MoTaNguonGoc ?? DBNull.Value);
 
         var rowsAffected = await command.ExecuteNonQueryAsync();
+        if (rowsAffected == 1 && oldStatus == 3 && tacPham.TrangThai == 0)
+        {
+            var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, tacPham.MaTacPham, tacPham.MaHoaSi);
+            await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                "TacPham", tacPham.MaTacPham, "ARTWORK_RESUBMITTED", owner.Artist, owner.Name,
+                "đã gửi lại tác phẩm sau khi chỉnh sửa", $"/admin/art?artworkId={tacPham.MaTacPham}"));
+        }
+        await transaction.CommitAsync();
         return rowsAffected > 0;
     }
 
-    public async Task<bool> UpdateWithArtistNotification(TacPham tacPham, ThongBao thongBao)
+    public async Task<bool> UpdateWithArtistNotification(TacPham tacPham, ThongBao thongBao, TacPhamChinhSua? edit = null)
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
@@ -324,10 +370,30 @@ public class TacPhamRepository : ITacPhamRepository
             if (accountIdValue is null || accountIdValue == DBNull.Value)
                 throw new InvalidOperationException("Không tìm được tài khoản chủ sở hữu tác phẩm");
 
+            await using var state = new SqlCommand("SELECT TrangThai FROM TacPham WHERE MaTacPham=@Id;", connection, transaction);
+            state.Parameters.AddWithValue("@Id", tacPham.MaTacPham);
+            var oldStatus = Convert.ToByte(await state.ExecuteScalarAsync());
+            if (edit == null && tacPham.ExpectedStatus.HasValue && oldStatus != tacPham.ExpectedStatus.Value)
+            { await transaction.RollbackAsync(); return oldStatus == tacPham.TrangThai; }
+            if (edit != null)
+            {
+                await using var review = new SqlCommand(@"UPDATE TacPhamChinhSua SET TrangThai=@Status,LyDo=@Reason
+                    WHERE MaChinhSua=@Edit AND MaTacPham=@Id AND TrangThai=0 AND NgayChinhSua=@Revision;", connection, transaction);
+                review.Parameters.AddWithValue("@Status", edit.TrangThai);
+                review.Parameters.AddWithValue("@Reason", (object?)edit.LyDo ?? DBNull.Value);
+                review.Parameters.AddWithValue("@Edit", edit.MaChinhSua);
+                review.Parameters.AddWithValue("@Id", tacPham.MaTacPham);
+                review.Parameters.AddWithValue("@Revision", edit.NgayChinhSua);
+                if (await review.ExecuteNonQueryAsync() != 1) { await transaction.RollbackAsync(); return false; }
+            }
+
             const string updateSql = @"UPDATE TacPham
                 SET TenTacPham=@TenTacPham,MaDanhMuc=@MaDanhMuc,Gia=@Gia,SoLuong=@SoLuong,
                     MoTa=@MoTa,HinhAnh=@HinhAnh,ChatLieu=@ChatLieu,ChatLieuKhung=@ChatLieuKhung,
-                    KichThuoc=@KichThuoc,TrangThai=@TrangThai,LyDo=@LyDo
+                    KichThuoc=@KichThuoc,TrangThai=@TrangThai,LyDo=@LyDo,
+                    LoaiTacPham=@LoaiTacPham,TacGiaGoc=@TacGiaGoc,MaTacPhamGoc=@MaTacPhamGoc,
+                    TenTacPhamGoc=@TenTacPhamGoc,KhongXacDinhTacGiaGoc=@KhongXacDinhTacGiaGoc,
+                    NguonThamKhao=@NguonThamKhao,MoTaNguonGoc=@MoTaNguonGoc
                 WHERE MaTacPham=@MaTacPham AND MaHoaSi=@MaHoaSi AND MaYeuCauVeTranh IS NULL;";
             await using var update = new SqlCommand(updateSql, connection, transaction);
             AddUpdateParameters(update, tacPham);
@@ -335,6 +401,7 @@ public class TacPhamRepository : ITacPhamRepository
                 throw new InvalidOperationException("Tác phẩm đã thay đổi hoặc không còn tồn tại");
 
             thongBao.MaTaiKhoan = Convert.ToInt32(accountIdValue);
+            await ThongBaoSql.StampEventAsync(connection, transaction, thongBao);
             await ThongBaoSql.InsertAsync(connection, transaction, thongBao);
             await transaction.CommitAsync();
             return true;
@@ -344,6 +411,24 @@ public class TacPhamRepository : ITacPhamRepository
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    public async Task<bool> DeleteWithArtistNotification(int maTacPham)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+        var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, maTacPham);
+        using var command = new SqlCommand("DELETE FROM TacPham WHERE MaTacPham=@Id AND MaYeuCauVeTranh IS NULL;", connection, transaction);
+        command.Parameters.AddWithValue("@Id", maTacPham);
+        if (await command.ExecuteNonQueryAsync() != 1) return false;
+        var notification = WorkflowNotifications.Decision("TacPham", maTacPham, "ARTWORK_REMOVED", owner.Name,
+            "Tác phẩm", "đã được Admin gỡ khỏi hệ thống", "/artist/artworks");
+        notification.MaTaiKhoan = owner.AccountId;
+        await ThongBaoSql.StampEventAsync(connection, transaction, notification);
+        await ThongBaoSql.InsertAsync(connection, transaction, notification);
+        await transaction.CommitAsync();
+        return true;
     }
 
     public async Task<bool> Delete(int maTacPham)

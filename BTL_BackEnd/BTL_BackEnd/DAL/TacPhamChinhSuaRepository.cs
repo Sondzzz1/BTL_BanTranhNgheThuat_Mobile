@@ -1,6 +1,7 @@
 using DoAn2_BackEnd.DAL.Interfaces;
 using DoAn2_BackEnd.Models;
 using Microsoft.Data.SqlClient;
+using DoAn2_BackEnd.Helpers;
 
 namespace DoAn2_BackEnd.DAL;
 
@@ -87,55 +88,39 @@ public class TacPhamChinhSuaRepository : ITacPhamChinhSuaRepository
         return list;
     }
 
-    public async Task<int> Create(TacPhamChinhSua chinhSua)
+    public Task<int> Create(TacPhamChinhSua edit) => Submit(edit);
+
+    public async Task<bool> Update(TacPhamChinhSua edit) => await Submit(edit) > 0;
+
+    private async Task<int> Submit(TacPhamChinhSua edit)
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-
-        var query = @"
-            INSERT INTO TacPhamChinhSua 
-                (MaTacPham, TenTacPham, MaDanhMuc, Gia, SoLuong, MoTa, HinhAnh, 
-                 KichThuoc, ChatLieu, ChatLieuKhung, NgayChinhSua, TrangThai, LyDo)
-            VALUES 
-                (@MaTacPham, @TenTacPham, @MaDanhMuc, @Gia, @SoLuong, @MoTa, @HinhAnh, 
-                 @KichThuoc, @ChatLieu, @ChatLieuKhung, @NgayChinhSua, @TrangThai, @LyDo);
-            SELECT CAST(SCOPE_IDENTITY() AS INT);";
-
-        using var command = new SqlCommand(query, connection);
-        AddParameters(command, chinhSua);
-
-        var result = await command.ExecuteScalarAsync();
-        return result != null ? Convert.ToInt32(result) : 0;
-    }
-
-    public async Task<bool> Update(TacPhamChinhSua chinhSua)
-    {
-        using var connection = new SqlConnection(_connectionString);
-        await connection.OpenAsync();
-
-        var query = @"
-            UPDATE TacPhamChinhSua
-            SET MaTacPham = @MaTacPham,
-                TenTacPham = @TenTacPham,
-                MaDanhMuc = @MaDanhMuc,
-                Gia = @Gia,
-                SoLuong = @SoLuong,
-                MoTa = @MoTa,
-                HinhAnh = @HinhAnh,
-                KichThuoc = @KichThuoc,
-                ChatLieu = @ChatLieu,
-                ChatLieuKhung = @ChatLieuKhung,
-                NgayChinhSua = @NgayChinhSua,
-                TrangThai = @TrangThai,
-                LyDo = @LyDo
-            WHERE MaChinhSua = @MaChinhSua";
-
-        using var command = new SqlCommand(query, connection);
-        command.Parameters.AddWithValue("@MaChinhSua", chinhSua.MaChinhSua);
-        AddParameters(command, chinhSua);
-
-        var rowsAffected = await command.ExecuteNonQueryAsync();
-        return rowsAffected > 0;
+        using var transaction = connection.BeginTransaction();
+        var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, edit.MaTacPham);
+        using var command = new SqlCommand(@"DECLARE @Id INT;
+            SELECT @Id=MaChinhSua FROM TacPhamChinhSua WITH (UPDLOCK,HOLDLOCK) WHERE MaTacPham=@MaTacPham AND TrangThai=0;
+            IF @Id IS NOT NULL AND EXISTS (SELECT TenTacPham,MaDanhMuc,Gia,SoLuong,MoTa,HinhAnh,KichThuoc,ChatLieu,ChatLieuKhung FROM TacPhamChinhSua WHERE MaChinhSua=@Id INTERSECT SELECT @TenTacPham,@MaDanhMuc,@Gia,@SoLuong,@MoTa,@HinhAnh,@KichThuoc,@ChatLieu,@ChatLieuKhung)
+                SELECT -@Id;
+            ELSE IF @Id IS NOT NULL
+            BEGIN
+                UPDATE TacPhamChinhSua SET TenTacPham=@TenTacPham,MaDanhMuc=@MaDanhMuc,Gia=@Gia,SoLuong=@SoLuong,MoTa=@MoTa,HinhAnh=@HinhAnh,KichThuoc=@KichThuoc,ChatLieu=@ChatLieu,ChatLieuKhung=@ChatLieuKhung,NgayChinhSua=SYSUTCDATETIME(),LyDo=NULL WHERE MaChinhSua=@Id;
+                SELECT @Id;
+            END
+            ELSE
+            BEGIN
+                INSERT INTO TacPhamChinhSua(MaTacPham,TenTacPham,MaDanhMuc,Gia,SoLuong,MoTa,HinhAnh,KichThuoc,ChatLieu,ChatLieuKhung,NgayChinhSua,TrangThai,LyDo)
+                VALUES(@MaTacPham,@TenTacPham,@MaDanhMuc,@Gia,@SoLuong,@MoTa,@HinhAnh,@KichThuoc,@ChatLieu,@ChatLieuKhung,SYSUTCDATETIME(),0,NULL);
+                SELECT CAST(SCOPE_IDENTITY() AS INT);
+            END;", connection, transaction);
+        AddParameters(command, edit);
+        var id = Convert.ToInt32(await command.ExecuteScalarAsync());
+        if (id > 0)
+            await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                "TacPham", edit.MaTacPham, "ARTWORK_EDIT_SUBMITTED", owner.Artist, owner.Name,
+                "vừa gửi yêu cầu cập nhật tác phẩm", $"/admin/art?artworkId={edit.MaTacPham}&tab=edits"));
+        await transaction.CommitAsync();
+        return Math.Abs(id);
     }
 
     public async Task<bool> Delete(int maChinhSua)
@@ -184,7 +169,6 @@ public class TacPhamChinhSuaRepository : ITacPhamChinhSuaRepository
         command.Parameters.AddWithValue("@KichThuoc", (object?)chinhSua.KichThuoc ?? DBNull.Value);
         command.Parameters.AddWithValue("@ChatLieu", (object?)chinhSua.ChatLieu ?? DBNull.Value);
         command.Parameters.AddWithValue("@ChatLieuKhung", (object?)chinhSua.ChatLieuKhung ?? DBNull.Value);
-        command.Parameters.AddWithValue("@NgayChinhSua", chinhSua.NgayChinhSua);
         command.Parameters.AddWithValue("@TrangThai", chinhSua.TrangThai);
         command.Parameters.AddWithValue("@LyDo", (object?)chinhSua.LyDo ?? DBNull.Value);
     }

@@ -1,6 +1,7 @@
 using DoAn2_BackEnd.DAL.Interfaces;
 using DoAn2_BackEnd.Models;
 using Microsoft.Data.SqlClient;
+using DoAn2_BackEnd.Helpers;
 
 namespace DoAn2_BackEnd.DAL;
 
@@ -21,6 +22,8 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+        var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, maTacPham, maHoaSi);
 
         const string sql = @"INSERT INTO ChiTietTacPham
             (MaTacPham,CauChuyenSangTac,YNghiaNghiThuat,KyThuatThucHien,CamHungSangTao,ThongTinBosung,
@@ -32,7 +35,7 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
             WHERE EXISTS (SELECT 1 FROM TacPham WHERE MaTacPham=@MaTacPham AND MaHoaSi=@MaHoaSi AND MaYeuCauVeTranh IS NULL)
               AND NOT EXISTS (SELECT 1 FROM ChiTietTacPham WHERE MaTacPham=@MaTacPham);
             SELECT CASE WHEN @@ROWCOUNT=1 THEN CAST(SCOPE_IDENTITY() AS INT) ELSE 0 END;";
-        using var command = new SqlCommand(sql, connection);
+        using var command = new SqlCommand(sql, connection, transaction);
 
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
@@ -53,8 +56,13 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
 
         try
         {
-            var result = await command.ExecuteScalarAsync();
-            return Convert.ToInt32(result);
+            var result = Convert.ToInt32(await command.ExecuteScalarAsync());
+            if (result > 0)
+                await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                    "ChiTietTacPham", maTacPham, "DETAIL_SUBMITTED", owner.Artist, owner.Name,
+                    "vừa gửi nội dung chi tiết của tác phẩm để duyệt", $"/admin/artwork-details?artworkId={maTacPham}"));
+            await transaction.CommitAsync();
+            return result;
         }
         catch (SqlException ex) when (ex.Number is 2601 or 2627)
         {
@@ -71,8 +79,13 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
     {
         using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction();
+        var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, maTacPham, maHoaSi);
 
-        const string sql = @"UPDATE c SET
+        const string sql = @"IF NOT EXISTS (SELECT 1 FROM ChiTietTacPham WHERE MaTacPham=@MaTacPham) SELECT -1;
+            ELSE IF EXISTS (SELECT CauChuyenSangTac,YNghiaNghiThuat,KyThuatThucHien,CamHungSangTao,ThongTinBosung,KichThuoc,ChatLieu,ChatLieuKhung,NamSangTac,DiaDiemSangTac,HinhAnh1,HinhAnh2,HinhAnh3,HinhAnh4 FROM ChiTietTacPham WHERE MaTacPham=@MaTacPham AND TrangThai=0
+            INTERSECT SELECT @CauChuyenSangTac,@YNghiaNghiThuat,@KyThuatThucHien,@CamHungSangTao,@ThongTinBosung,@KichThuoc,@ChatLieu,@ChatLieuKhung,@NamSangTac,@DiaDiemSangTac,@HinhAnh1,@HinhAnh2,@HinhAnh3,@HinhAnh4) SELECT 0;
+            ELSE BEGIN UPDATE c SET
             CauChuyenSangTac=@CauChuyenSangTac, YNghiaNghiThuat=@YNghiaNghiThuat,
             KyThuatThucHien=@KyThuatThucHien, CamHungSangTao=@CamHungSangTao,
             ThongTinBosung=@ThongTinBosung, KichThuoc=@KichThuoc, ChatLieu=@ChatLieu,
@@ -80,8 +93,9 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
             HinhAnh1=@HinhAnh1,HinhAnh2=@HinhAnh2,HinhAnh3=@HinhAnh3,HinhAnh4=@HinhAnh4,
             TrangThai=0,LyDoTuChoi=NULL,NgayCapNhat=SYSUTCDATETIME(),NgayDuyet=NULL,MaNguoiDuyet=NULL
             FROM ChiTietTacPham c INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
-            WHERE c.MaTacPham=@MaTacPham AND t.MaHoaSi=@MaHoaSi AND t.MaYeuCauVeTranh IS NULL;";
-        using var command = new SqlCommand(sql, connection);
+            WHERE c.MaTacPham=@MaTacPham AND t.MaHoaSi=@MaHoaSi AND t.MaYeuCauVeTranh IS NULL;
+            SELECT @@ROWCOUNT; END;";
+        using var command = new SqlCommand(sql, connection, transaction);
 
         command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
@@ -100,7 +114,13 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
         command.Parameters.AddWithValue("@HinhAnh3", (object?)chiTiet.HinhAnh3 ?? DBNull.Value);
         command.Parameters.AddWithValue("@HinhAnh4", (object?)chiTiet.HinhAnh4 ?? DBNull.Value);
 
-        return await command.ExecuteNonQueryAsync() == 1;
+        var changed = Convert.ToInt32(await command.ExecuteScalarAsync());
+        if (changed == 1)
+            await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                "ChiTietTacPham", maTacPham, "DETAIL_SUBMITTED", owner.Artist, owner.Name,
+                "vừa gửi nội dung chi tiết của tác phẩm để duyệt", $"/admin/artwork-details?artworkId={maTacPham}"));
+        await transaction.CommitAsync();
+        return changed is 0 or 1;
     }
 
     // ================================================================
@@ -211,11 +231,13 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
             const string sql = @"UPDATE c SET TrangThai=@TrangThai,
                 LyDoTuChoi=@LyDoTuChoi,NgayDuyet=SYSUTCDATETIME(),MaNguoiDuyet=@MaNguoiDuyet
                 FROM ChiTietTacPham c INNER JOIN TacPham t ON t.MaTacPham=c.MaTacPham
-                WHERE c.MaTacPham=@MaTacPham AND c.TrangThai=0 AND t.MaYeuCauVeTranh IS NULL;";
+                WHERE c.MaTacPham=@MaTacPham AND c.TrangThai=0 AND t.MaYeuCauVeTranh IS NULL
+                  AND (@Revision IS NULL OR COALESCE(c.NgayCapNhat,c.NgayTao)=@Revision);";
             await using var command = new SqlCommand(sql, connection, transaction);
 
             command.Parameters.AddWithValue("@MaTacPham", maTacPham);
             command.Parameters.AddWithValue("@MaNguoiDuyet", maNguoiDuyet);
+            command.Parameters.AddWithValue("@Revision", (object?)thongBao?.ExpectedRevision ?? DBNull.Value);
             command.Parameters.AddWithValue("@TrangThai", pheDuyet ? 1 : 2);
             command.Parameters.AddWithValue("@LyDoTuChoi", (object?)lyDoTuChoi ?? DBNull.Value);
 
@@ -227,6 +249,7 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
             if (thongBao is not null)
             {
                 thongBao.MaTaiKhoan = accountId!.Value;
+                await ThongBaoSql.StampEventAsync(connection, transaction, thongBao);
                 await ThongBaoSql.InsertAsync(connection, transaction, thongBao);
             }
             await transaction.CommitAsync();

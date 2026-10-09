@@ -36,7 +36,8 @@ public class ThongBaoController : ControllerBase
     {
         var accountId = JwtHelper.GetMaTaiKhoan(User);
         if (!accountId.HasValue) return Unauthorized(new { message = "Token thiếu mã tài khoản" });
-        await _thongBaoBusiness.MarkAsRead(id, accountId.Value);
+        if (!await _thongBaoBusiness.MarkAsRead(id, accountId.Value))
+            return NotFound(new { message = "Không tìm thấy thông báo của bạn" });
         return Ok(new { message = "Đã đánh dấu đã đọc" });
     }
 

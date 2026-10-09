@@ -103,6 +103,10 @@ public partial class CopyrightRepository : ICopyrightRepository
             var id = Convert.ToInt32(await insert.ExecuteScalarAsync());
             await AuditLogSql.InsertAsync(connection, transaction, "BanQuyen", id, "CREATE", maTaiKhoan, null,
                 after: JsonSerializer.Serialize(new { request.MaTacPham, request.LoaiTacPham, request.LaTacPhamDocBan, isLegacy }));
+            var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, request.MaTacPham, maHoaSi);
+            await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                "BanQuyen", id, "COPYRIGHT_SUBMITTED", owner.Artist, owner.Name,
+                "vừa gửi hồ sơ xác minh nguồn gốc/bản quyền cho tác phẩm", $"/admin/copyright?copyrightId={id}"));
             await transaction.CommitAsync();
             return id;
         }
@@ -175,6 +179,13 @@ public partial class CopyrightRepository : ICopyrightRepository
             await update.ExecuteNonQueryAsync();
             await AuditLogSql.InsertAsync(connection, transaction, "BanQuyen", maBanQuyen, "UPDATE", maTaiKhoan, null,
                 before: JsonSerializer.Serialize(new { status }), after: JsonSerializer.Serialize(new { status = CopyrightStatuses.Pending }));
+            if (status != CopyrightStatuses.Pending)
+            {
+                var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, artworkId, maHoaSi);
+                await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                    "BanQuyen", maBanQuyen, "COPYRIGHT_SUBMITTED", owner.Artist, owner.Name,
+                    "đã gửi lại hồ sơ xác minh cho tác phẩm", $"/admin/copyright?copyrightId={maBanQuyen}"));
+            }
             await transaction.CommitAsync();
             return true;
         }
@@ -236,6 +247,16 @@ public partial class CopyrightRepository : ICopyrightRepository
             }
             await AuditLogSql.InsertAsync(connection, transaction, "BangChungBanQuyen", id, "ADD", maTaiKhoan, null,
                 after: JsonSerializer.Serialize(new { maBanQuyen, file.OriginalName, file.Size, file.Sha256 }));
+            if (status != CopyrightStatuses.Pending)
+            {
+                using var entity = new SqlCommand("SELECT MaTacPham FROM BanQuyen WHERE MaBanQuyen=@Id;", connection, transaction);
+                entity.Parameters.AddWithValue("@Id", maBanQuyen);
+                var artworkId = Convert.ToInt32(await entity.ExecuteScalarAsync());
+                var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, artworkId, maHoaSi);
+                await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+                    "BanQuyen", maBanQuyen, "COPYRIGHT_SUBMITTED", owner.Artist, owner.Name,
+                    "đã bổ sung hồ sơ xác minh cho tác phẩm", $"/admin/copyright?copyrightId={maBanQuyen}"));
+            }
             await transaction.CommitAsync();
             return id;
         }

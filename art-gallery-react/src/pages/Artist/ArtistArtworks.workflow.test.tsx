@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ArtistArtworks from './ArtistArtworks';
 import { artistDashboardService } from '../../services/artistDashboardService';
+jest.mock('../../utils/requestKey', () => ({ newRequestKey: () => '12345678-1234-4234-9234-123456789012' }));
 
 jest.mock('react-router-dom', () => ({ useNavigate: () => jest.fn() }), { virtual: true });
 jest.mock('../../services/artistDashboardService', () => ({ artistDashboardService: {
@@ -31,7 +32,7 @@ test('basic artwork creation sends description only to the artwork API', async (
   fireEvent.change(screen.getByPlaceholderText('Mô tả về tác phẩm...'), { target: { value: 'Tranh hoa ly...' } });
   fireEvent.change(screen.getByLabelText('Ảnh đại diện tác phẩm'), { target: { value: 'https://example.com/art.jpg' } });
   fireEvent.submit(container.querySelector('form')!);
-  await waitFor(() => expect(service.taoTacPham).toHaveBeenCalledWith(expect.objectContaining({ moTa: 'Tranh hoa ly...' })));
+  await waitFor(() => expect(service.taoTacPham).toHaveBeenCalledWith(expect.objectContaining({ moTa: 'Tranh hoa ly...' }), '12345678-1234-4234-9234-123456789012'));
   await waitFor(() => expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Thêm tác phẩm thành công')));
   expect(service.taoChiTietTacPham).not.toHaveBeenCalled();
   expect(service.capNhatChiTietTacPham).not.toHaveBeenCalled();

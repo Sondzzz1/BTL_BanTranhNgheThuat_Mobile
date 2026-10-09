@@ -1,5 +1,6 @@
 // Admin Artwork Details - Admin duyệt chi tiết tác phẩm
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import apiClient from '../../services/api';
 import './AdminArtworkDetails.css';
 
@@ -46,6 +47,9 @@ interface ChiTietDayDu {
 }
 
 const AdminArtworkDetails: React.FC = () => {
+  const location = useLocation();
+  const detailRequest = useRef(0);
+  const targetId = Number(new URLSearchParams(location.search).get('artworkId'));
   const [danhSach, setDanhSach] = useState<ChiTietChoDuyet[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<number>(-1);
@@ -75,8 +79,10 @@ const AdminArtworkDetails: React.FC = () => {
   };
 
   const handleViewDetail = async (maTacPham: number) => {
+    const sequence = ++detailRequest.current;
     try {
       const response = await apiClient.get(`/admin/chi-tiet-tac-pham/${maTacPham}`);
+      if (sequence !== detailRequest.current) return;
       setSelectedDetail(response.data);
       setIsModalOpen(true);
     } catch (error) {
@@ -84,6 +90,13 @@ const AdminArtworkDetails: React.FC = () => {
       alert('Không thể tải chi tiết tác phẩm');
     }
   };
+
+  useEffect(() => {
+    if (Number.isSafeInteger(targetId) && targetId > 0) void handleViewDetail(targetId);
+    const activeRequests = detailRequest;
+    return () => { ++activeRequests.current; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId]);
 
   const handleApprove = async () => {
     if (!selectedDetail) return;

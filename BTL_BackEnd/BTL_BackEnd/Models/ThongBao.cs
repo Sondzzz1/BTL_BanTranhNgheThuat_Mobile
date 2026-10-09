@@ -3,6 +3,8 @@ namespace DoAn2_BackEnd.Models;
 /// <summary>Thông báo trong ứng dụng, gửi tới một tài khoản cụ thể.</summary>
 public class ThongBao
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DateTime? ExpectedRevision { get; set; }
     public long MaThongBao { get; set; }
     public int MaTaiKhoan { get; set; }
     public string Loai { get; set; } = null!;

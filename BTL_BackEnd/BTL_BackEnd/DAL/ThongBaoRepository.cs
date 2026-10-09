@@ -18,7 +18,10 @@ public class ThongBaoRepository : IThongBaoRepository
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        return await ThongBaoSql.InsertAsync(connection, null, thongBao);
+        using var transaction = connection.BeginTransaction();
+        var id = await ThongBaoSql.InsertAsync(connection, transaction, thongBao);
+        await transaction.CommitAsync();
+        return id;
     }
 
     public async Task<(List<ThongBao> Items, int Total)> GetByTaiKhoan(int maTaiKhoan, int page, int pageSize)
@@ -61,7 +64,7 @@ public class ThongBaoRepository : IThongBaoRepository
     {
         const string sql = @"
             UPDATE ThongBao SET DaDoc=1,NgayDoc=COALESCE(NgayDoc,SYSUTCDATETIME())
-            WHERE MaThongBao=@MaThongBao AND MaTaiKhoan=@MaTaiKhoan AND DaDoc=0;";
+            WHERE MaThongBao=@MaThongBao AND MaTaiKhoan=@MaTaiKhoan ;";
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
         await using var command = new SqlCommand(sql, connection);

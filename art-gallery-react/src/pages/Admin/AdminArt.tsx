@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import apiClient from '../../services/api';
 import {
     adminService,
@@ -71,6 +72,9 @@ interface TacPhamChinhSuaResponse {
 }
 
 const AdminArt: React.FC = () => {
+    const location = useLocation();
+    const targetId = Number(new URLSearchParams(location.search).get('artworkId'));
+    const targetEdit = new URLSearchParams(location.search).get('tab') === 'edits';
     const [activeTab, setActiveTab] = useState<'artworks' | 'edits'>('artworks');
     const [artworks, setArtworks] = useState<TacPhamHoaSiResponse[]>([]);
     const [edits, setEdits] = useState<TacPhamChinhSuaResponse[]>([]);
@@ -86,6 +90,7 @@ const AdminArt: React.FC = () => {
     const [copyrightSummary, setCopyrightSummary] = useState<ArtworkCopyrightSummary | null>(null);
     const [originalPreviewOpen, setOriginalPreviewOpen] = useState(false);
     const detailRequestId = useRef(0);
+    const editRequestId = useRef(0);
 
     useEffect(() => {
         if (activeTab === 'artworks') {
@@ -157,11 +162,12 @@ const AdminArt: React.FC = () => {
     };
 
     const loadEdits = async () => {
+        const sequence = ++editRequestId.current;
         setLoading(true);
         try {
             const response = await apiClient.get<TacPhamChinhSuaResponse[]>('/admin/tac-pham-chinh-sua');
-            console.log('Loaded edits:', response.data); // Debug log
-            setEdits(response.data);
+            if (sequence !== editRequestId.current) return;
+            setEdits(targetId && targetEdit ? response.data.filter(item => item.maTacPham === targetId) : response.data);
         } catch (error: any) {
             console.error('Error loading edits:', error);
             console.error('Error response:', error.response?.data);
@@ -213,6 +219,23 @@ const AdminArt: React.FC = () => {
                 .catch(() => { if (requestId === detailRequestId.current) setOriginalMessage('Không thể tải tác phẩm gốc đã liên kết. Hãy kiểm tra trước khi duyệt.'); });
         }
     };
+
+    useEffect(() => {
+        if (!Number.isSafeInteger(targetId) || targetId <= 0) return;
+        let cancelled = false;
+        if (targetEdit) { setActiveTab('edits'); void loadEdits(); }
+        else {
+            setActiveTab('artworks');
+            void adminService.getAllTacPham().then(items => {
+                const item = items.find(value => value.maTacPham === targetId);
+                if (!cancelled && item) openArtworkDetail(item);
+                else if (!cancelled) alert('Tác phẩm không còn tồn tại.');
+            }).catch(() => { if (!cancelled) alert('Không thể mở tác phẩm từ thông báo.'); });
+        }
+        return () => { cancelled = true; };
+        // Target changes must open the requested entity even when this page is already mounted.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [targetId, targetEdit]);
 
     const closeArtworkDetail = () => {
         detailRequestId.current += 1;

@@ -24,6 +24,7 @@ public class ArtworkRuntimeFactAttribute : FactAttribute
 
 // Real controller -> BLL -> DAL -> local SQL. Never targets an existing artwork.
 // JWTs are short-lived in-memory test fixtures; login/password issuance is not tested.
+[Collection("Local SQL workflow")]
 public class ArtworkContentRuntimeTests(ITestOutputHelper output)
 {
     [ArtworkRuntimeFact]
@@ -145,9 +146,7 @@ public class ArtworkContentRuntimeTests(ITestOutputHelper output)
                     IF NOT EXISTS (SELECT 1 FROM TacPham WITH (UPDLOCK,HOLDLOCK)
                         WHERE MaTacPham=@Id AND TenTacPham=@Name AND MaHoaSi=@Artist)
                         THROW 51000, 'Fixture identity changed; refuse cleanup.', 1;
-                    DELETE FROM ThongBao WHERE LoaiDoiTuong='TacPham' AND MaDoiTuong=@Id
-                        AND (EventKey LIKE CONCAT('ARTWORK_REVIEW:',@Id,':%')
-                          OR EventKey LIKE CONCAT('ARTWORK_CONTENT_REVIEW:',@Id,':%'));
+                    DELETE FROM ThongBao WHERE LoaiDoiTuong IN ('TacPham','ChiTietTacPham') AND MaDoiTuong=@Id;
                     DELETE FROM TacPhamChinhSua WHERE MaTacPham=@Id;
                     DELETE FROM ChiTietTacPham WHERE MaTacPham=@Id;
                     DELETE FROM TacPham WHERE MaTacPham=@Id AND TenTacPham=@Name AND MaHoaSi=@Artist;

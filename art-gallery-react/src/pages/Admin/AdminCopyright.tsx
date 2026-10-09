@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { CopyrightAuditRecord, CopyrightRecord, copyrightService } from '../../services/copyrightService';
 import { formatAuditAction, formatAuditActor, formatAuditChange } from '../../utils/copyrightAudit';
 import './AdminCopyright.css';
@@ -12,6 +13,9 @@ const MINIMUM_EVIDENCE_FOR_VERIFICATION = 2;
 const isImageEvidence = (file: CopyrightRecord['bangChung'][number]) => file.loaiTep.startsWith('image/');
 
 export default function AdminCopyright() {
+  const location = useLocation();
+  const detailRequest = useRef(0);
+  const targetId = Number(new URLSearchParams(location.search).get('copyrightId'));
   const [items, setItems] = useState<CopyrightRecord[]>([]);
   const [selected, setSelected] = useState<CopyrightRecord | null>(null);
   const [status, setStatus] = useState('');
@@ -61,13 +65,23 @@ export default function AdminCopyright() {
   }, {}), [items]);
 
   const open = async (id: number) => {
+    const sequence = ++detailRequest.current;
     try {
       const detail = await copyrightService.adminDetail(id);
+      if (sequence !== detailRequest.current) return;
       setSelected(detail);
-      setAuditRows(await copyrightService.adminAudit('TacPham', detail.maTacPham));
+      const audit = await copyrightService.adminAudit('TacPham', detail.maTacPham);
+      if (sequence === detailRequest.current) setAuditRows(audit);
     }
     catch (error: any) { alert(error?.response?.data?.message || 'Không thể tải chi tiết'); }
   };
+
+  useEffect(() => {
+    if (Number.isSafeInteger(targetId) && targetId > 0) void open(targetId);
+    const activeRequests = detailRequest;
+    return () => { ++activeRequests.current; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetId]);
 
   const correctPublication = async () => {
     if (!selected) return;

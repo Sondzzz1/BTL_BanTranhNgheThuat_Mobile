@@ -1,5 +1,6 @@
 // Artist Dashboard Service - Dành riêng cho phân hệ Họa Sĩ quản lý
 import apiClient from './api';
+import { newRequestKey } from '../utils/requestKey';
 
 export interface HoSoHoaSiResponse {
     maHoaSi: number;
@@ -245,8 +246,8 @@ export const artistDashboardService = {
     const response = await apiClient.get(`/hoa-si/tac-pham/${id}`);
     return response.data;
   },
-  taoTacPham: async (data: TaoTacPhamRequest): Promise<{ message: string; maTacPham: number }> => {
-    const response = await apiClient.post('/hoa-si/tac-pham/create', data);
+  taoTacPham: async (data: TaoTacPhamRequest, requestKey = newRequestKey()): Promise<{ message: string; maTacPham: number }> => {
+    const response = await apiClient.post('/hoa-si/tac-pham/create', data, { headers: { 'Idempotency-Key': requestKey } });
     return response.data;
   },
   searchOriginalArtworks: async (keyword: string): Promise<OriginalArtworkOption[]> => {

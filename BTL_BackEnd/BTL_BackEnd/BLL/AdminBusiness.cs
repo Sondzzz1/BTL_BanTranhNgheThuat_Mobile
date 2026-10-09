@@ -184,15 +184,19 @@ public class AdminBusiness : IAdminBusiness
         }).ToList();
     }
 
-    public async Task<bool> DuyetTacPham(int id, DuyetTacPhamRequest request)
+    public Task<bool> DuyetTacPham(int id, DuyetTacPhamRequest request) => ReviewArtwork(id, request, null);
+
+    private async Task<bool> ReviewArtwork(int id, DuyetTacPhamRequest request, int? requiredEditId)
     {
         var tacPham = await GetMarketplaceArtworkForMutation(id);
         if (tacPham == null) return false;
         if (!request.PheDuyet && string.IsNullOrWhiteSpace(request.LyDo))
             throw new ArgumentException("Vui lòng nhập lý do từ chối");
         
+        tacPham.ExpectedStatus = tacPham.TrangThai;
         // Kiểm tra xem có bản chỉnh sửa chờ duyệt không
         var chinhSua = await _tacPhamChinhSuaRepo.GetByMaTacPhamChoDuyet(id);
+        if (requiredEditId.HasValue && chinhSua?.MaChinhSua != requiredEditId.Value) return false;
         if (chinhSua == null && ((request.PheDuyet && tacPham.TrangThai == TacPhamStatus.OnSale)
             || (!request.PheDuyet && tacPham.TrangThai == TacPhamStatus.Rejected)))
             return true; // Retry cùng trạng thái không phải một sự kiện kiểm duyệt mới.
@@ -216,12 +220,11 @@ public class AdminBusiness : IAdminBusiness
                 
                 // Đánh dấu bản chỉnh sửa đã được duyệt
                 chinhSua.TrangThai = 1; // Đã duyệt
-                if (!await _tacPhamChinhSuaRepo.Update(chinhSua))
-                    throw new InvalidOperationException("Không thể lưu kết quả duyệt bản chỉnh sửa tác phẩm");
+                chinhSua.LyDo = null;
             }
             
             // Duyệt tác phẩm
-            tacPham.TrangThai = 1; // Approved (bán)
+            if (chinhSua == null) tacPham.TrangThai = 1; // Duyệt bản sửa không tự bỏ trạng thái ẩn.
             tacPham.LyDo = null; // Xoá lý do từ chối (nếu có)
         }
         else
@@ -232,8 +235,7 @@ public class AdminBusiness : IAdminBusiness
                 // Từ chối bản chỉnh sửa
                 chinhSua.TrangThai = 2; // Từ chối
                 chinhSua.LyDo = string.IsNullOrWhiteSpace(request.LyDo) ? null : request.LyDo.Trim();
-                if (!await _tacPhamChinhSuaRepo.Update(chinhSua))
-                    throw new InvalidOperationException("Không thể lưu kết quả từ chối bản chỉnh sửa tác phẩm");
+
                 
                 // Tác phẩm gốc vẫn giữ nguyên trạng thái (vẫn đang bán)
                 // KHÔNG thay đổi tacPham.TrangThai
@@ -247,41 +249,40 @@ public class AdminBusiness : IAdminBusiness
         }
         
         var isEditReview = chinhSua != null;
-        var notification = new ThongBao
-        {
-            Loai = request.PheDuyet ? "ARTWORK_APPROVED" : "ARTWORK_REJECTED",
-            TieuDe = request.PheDuyet ? "Tác phẩm đã được phê duyệt" : "Tác phẩm bị từ chối",
-            NoiDung = request.PheDuyet
-                ? $"Tác phẩm “{tacPham.TenTacPham}” của bạn đã được phê duyệt."
-                : $"Tác phẩm “{tacPham.TenTacPham}” đã bị từ chối. Lý do: {request.LyDo!.Trim()}",
-            LoaiDoiTuong = "TacPham",
-            MaDoiTuong = tacPham.MaTacPham,
-            DuongDan = $"/artist/artworks/{tacPham.MaTacPham}",
-            EventKey = $"ARTWORK_REVIEW:{tacPham.MaTacPham}:{(isEditReview ? chinhSua!.MaChinhSua : 0)}:{(request.PheDuyet ? "APPROVED" : "REJECTED")}"
-        };
-        return await _tacPhamRepo.UpdateWithArtistNotification(tacPham, notification);
+        var notification = WorkflowNotifications.Decision("TacPham", id,
+            isEditReview ? (request.PheDuyet ? "ARTWORK_EDIT_APPROVED" : "ARTWORK_EDIT_REJECTED")
+                : (request.PheDuyet ? "ARTWORK_APPROVED" : "ARTWORK_REJECTED"),
+            tacPham.TenTacPham, isEditReview ? "Yêu cầu cập nhật tác phẩm" : "Tác phẩm",
+            request.PheDuyet ? "đã được duyệt" : "chưa được duyệt", $"/artist/artworks/{id}", request.PheDuyet ? null : request.LyDo);
+        return await _tacPhamRepo.UpdateWithArtistNotification(tacPham, notification, chinhSua);
     }
 
     public async Task<bool> HideTacPham(int id)
     {
         var tacPham = await GetMarketplaceArtworkForMutation(id);
         if (tacPham == null) return false;
-        tacPham.TrangThai = 2; // Hidden
-        return await _tacPhamRepo.Update(tacPham);
+        if (tacPham.TrangThai == 2) return true;
+        tacPham.ExpectedStatus = tacPham.TrangThai;
+        tacPham.TrangThai = 2;
+        return await _tacPhamRepo.UpdateWithArtistNotification(tacPham, WorkflowNotifications.Decision(
+            "TacPham", id, "ARTWORK_HIDDEN", tacPham.TenTacPham, "Tác phẩm", "đã bị ẩn khỏi hệ thống", $"/artist/artworks/{id}"));
     }
 
     public async Task<bool> ShowTacPham(int id)
     {
         var tacPham = await GetMarketplaceArtworkForMutation(id);
         if (tacPham == null) return false;
-        tacPham.TrangThai = 1; // Approved
-        return await _tacPhamRepo.Update(tacPham);
+        if (tacPham.TrangThai == 1) return true;
+        tacPham.ExpectedStatus = tacPham.TrangThai;
+        tacPham.TrangThai = 1;
+        return await _tacPhamRepo.UpdateWithArtistNotification(tacPham, WorkflowNotifications.Decision(
+            "TacPham", id, "ARTWORK_SHOWN", tacPham.TenTacPham, "Tác phẩm", "đã được hiển thị lại", $"/artist/artworks/{id}"));
     }
 
     public async Task<bool> XoaTacPham(int id)
     {
         var tacPham = await GetMarketplaceArtworkForMutation(id);
-        return tacPham != null && await _tacPhamRepo.Delete(id);
+        return tacPham != null && await _tacPhamRepo.DeleteWithArtistNotification(id);
     }
 
     public async Task<List<TacPhamHoaSiResponse>> TimKiemTacPham(string? keyword, int? maDanhMuc, int? maHoaSi, byte? trangThai, decimal? tuGia, decimal? denGia, int? tuSoLuong, int? denSoLuong, DateTime? tuNgay, DateTime? denNgay, int pageNumber, int pageSize)
@@ -1080,41 +1081,13 @@ public class AdminBusiness : IAdminBusiness
     
     public async Task<bool> DuyetTacPhamChinhSua(int maChinhSua, DuyetTacPhamChinhSuaRequest request)
     {
-        var chinhSua = await _tacPhamChinhSuaRepo.GetById(maChinhSua);
-        if (chinhSua == null) return false;
-        
-        var tacPham = await GetMarketplaceArtworkForMutation(chinhSua.MaTacPham);
-        if (tacPham == null) return false;
-        
-        if (request.PheDuyet)
-        {
-            ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(
-                tacPham.LaTacPhamDocBan, tacPham.SoLuongBanDau, chinhSua.SoLuong, tacPham.SoLuong);
-            // Áp dụng thay đổi vào tác phẩm gốc
-            tacPham.TenTacPham = chinhSua.TenTacPham;
-            tacPham.MaDanhMuc = chinhSua.MaDanhMuc;
-            tacPham.Gia = chinhSua.Gia;
-            tacPham.SoLuong = chinhSua.SoLuong;
-            tacPham.MoTa = chinhSua.MoTa;
-            tacPham.HinhAnh = chinhSua.HinhAnh;
-            tacPham.KichThuoc = chinhSua.KichThuoc;
-            tacPham.ChatLieu = chinhSua.ChatLieu;
-            tacPham.ChatLieuKhung = chinhSua.ChatLieuKhung;
-            
-            await _tacPhamRepo.Update(tacPham);
-            
-            // Đánh dấu bản chỉnh sửa đã được duyệt
-            chinhSua.TrangThai = 1; // Đã duyệt
-            chinhSua.LyDo = null;
-        }
-        else
-        {
-            // Từ chối chỉnh sửa
-            chinhSua.TrangThai = 2; // Từ chối
-            chinhSua.LyDo = string.IsNullOrWhiteSpace(request.LyDo) ? "Không đạt yêu cầu" : request.LyDo.Trim();
-        }
-        
-        return await _tacPhamChinhSuaRepo.Update(chinhSua);
+        var edit = await _tacPhamChinhSuaRepo.GetById(maChinhSua);
+        if (edit == null) return false;
+        if (edit.TrangThai != 0) return edit.TrangThai == (request.PheDuyet ? 1 : 2);
+        // Both existing endpoints use one atomic moderation writer.
+        return await ReviewArtwork(edit.MaTacPham, new DuyetTacPhamRequest
+        { PheDuyet = request.PheDuyet, LyDo = !request.PheDuyet && string.IsNullOrWhiteSpace(request.LyDo)
+            ? "Không đạt yêu cầu" : request.LyDo }, maChinhSua);
     }
 
     private async Task<TacPham?> GetMarketplaceArtworkForMutation(int id)

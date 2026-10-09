@@ -17,7 +17,8 @@ public interface ITacPhamRepository
     Task<(List<TacPham> Items, int TotalItems)> GetAdminPage(AdminArtworkQuery query);
     Task<int> Create(TacPham tacPham);
     Task<bool> Update(TacPham tacPham);
-    Task<bool> UpdateWithArtistNotification(TacPham tacPham, ThongBao thongBao);
+    Task<bool> UpdateWithArtistNotification(TacPham tacPham, ThongBao thongBao, TacPhamChinhSua? edit = null);
     Task<bool> Delete(int maTacPham);
+    Task<bool> DeleteWithArtistNotification(int maTacPham);
     Task<bool> HasDeliveredOrders(int maTacPham);
 }

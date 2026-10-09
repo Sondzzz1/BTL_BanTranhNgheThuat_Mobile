@@ -35,6 +35,13 @@ interface ChiTietTacPham {
 
 type ImageField = 'hinhAnh1' | 'hinhAnh2' | 'hinhAnh3' | 'hinhAnh4';
 
+interface ArtworkInfo {
+  tenTacPham: string;
+  kichThuoc?: string | null;
+  chatLieu?: string | null;
+  chatLieuKhung?: string | null;
+}
+
 const resolveContentImage = (value: string) => {
   if (!value || /^(https?:|data:|blob:)/i.test(value)) return value;
   const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:5273/api';
@@ -45,11 +52,13 @@ const ArtworkDetailContent: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [chiTiet, setChiTiet] = useState<ChiTietTacPham | null>(null);
+  const [artwork, setArtwork] = useState<ArtworkInfo | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<ImageField | null>(null);
   const submitting = useRef(false);
   const [saving, setSaving] = useState(false);
+  const busy = saving || uploadingImage !== null;
   const [imageErrors, setImageErrors] = useState<Partial<Record<ImageField, boolean>>>({});
   const [formData, setFormData] = useState({
     cauChuyenSangTac: '',
@@ -57,9 +66,6 @@ const ArtworkDetailContent: React.FC = () => {
     kyThuatThucHien: '',
     camHungSangTao: '',
     thongTinBosung: '',
-    kichThuoc: '',
-    chatLieu: '',
-    chatLieuKhung: '',
     namSangTac: '',
     diaDiemSangTac: '',
     hinhAnh1: '',
@@ -75,35 +81,38 @@ const ArtworkDetailContent: React.FC = () => {
   const loadChiTiet = async () => {
     if (!id) return;
     setLoading(true);
+    setLoadError(null);
     try {
-      const response = await apiClient.get(`/hoa-si/tac-pham/${id}/chi-tiet`);
-      setChiTiet(response.data);
+      // TacPham is the source of specifications even before detail exists.
+      // Only the optional detail's 404 means "create new content".
+      const [artworkResponse, detail] = await Promise.all([
+        apiClient.get<ArtworkInfo>(`/hoa-si/tac-pham/${id}`),
+        apiClient.get<ChiTietTacPham>(`/hoa-si/tac-pham/${id}/chi-tiet`)
+          .then(response => response.data)
+          .catch(error => {
+            if (error.response?.status === 404) return null;
+            throw error;
+          }),
+      ]);
+      setArtwork(artworkResponse.data);
+      setChiTiet(detail);
       setFormData({
-        cauChuyenSangTac: response.data.cauChuyenSangTac || '',
-        yNghiaNghiThuat: response.data.yNghiaNghiThuat || '',
-        kyThuatThucHien: response.data.kyThuatThucHien || '',
-        camHungSangTao: response.data.camHungSangTao || '',
-        thongTinBosung: response.data.thongTinBosung || '',
-        kichThuoc: response.data.kichThuoc || '',
-        chatLieu: response.data.chatLieu || '',
-        chatLieuKhung: response.data.chatLieuKhung || '',
-        namSangTac: response.data.namSangTac?.toString() || '',
-        diaDiemSangTac: response.data.diaDiemSangTac || '',
-        hinhAnh1: response.data.hinhAnh1 || '',
-        hinhAnh2: response.data.hinhAnh2 || '',
-        hinhAnh3: response.data.hinhAnh3 || '',
-        hinhAnh4: response.data.hinhAnh4 || '',
+        cauChuyenSangTac: detail?.cauChuyenSangTac || '',
+        yNghiaNghiThuat: detail?.yNghiaNghiThuat || '',
+        kyThuatThucHien: detail?.kyThuatThucHien || '',
+        camHungSangTao: detail?.camHungSangTao || '',
+        thongTinBosung: detail?.thongTinBosung || '',
+        namSangTac: detail?.namSangTac?.toString() || '',
+        diaDiemSangTac: detail?.diaDiemSangTac || '',
+        hinhAnh1: detail?.hinhAnh1 || '',
+        hinhAnh2: detail?.hinhAnh2 || '',
+        hinhAnh3: detail?.hinhAnh3 || '',
+        hinhAnh4: detail?.hinhAnh4 || '',
       });
-      setIsEditing(false);
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        // Chưa có chi tiết, cho phép tạo mới
-        setChiTiet(null);
-        setIsEditing(true);
-      } else {
-        console.error('Lỗi khi tải chi tiết:', error);
-        alert('Không thể tải thông tin chi tiết');
-      }
+      setArtwork(null);
+      setChiTiet(null);
+      setLoadError(error.response?.data?.message || 'Không thể tải thông tin tác phẩm. Vui lòng thử lại.');
     } finally {
       setLoading(false);
     }
@@ -111,7 +120,7 @@ const ArtworkDetailContent: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id || submitting.current || uploadingImage) return;
+    if (!id || !artwork || submitting.current || uploadingImage) return;
 
     const content = [formData.cauChuyenSangTac, formData.yNghiaNghiThuat,
       formData.kyThuatThucHien, formData.camHungSangTao, formData.thongTinBosung,
@@ -130,9 +139,6 @@ const ArtworkDetailContent: React.FC = () => {
         kyThuatThucHien: formData.kyThuatThucHien || null,
         camHungSangTao: formData.camHungSangTao || null,
         thongTinBosung: formData.thongTinBosung || null,
-        kichThuoc: formData.kichThuoc || null,
-        chatLieu: formData.chatLieu || null,
-        chatLieuKhung: formData.chatLieuKhung || null,
         namSangTac: formData.namSangTac ? parseInt(formData.namSangTac) : null,
         diaDiemSangTac: formData.diaDiemSangTac || null,
         hinhAnh1: formData.hinhAnh1 || null,
@@ -204,17 +210,15 @@ const ArtworkDetailContent: React.FC = () => {
     return (
       <div className="form-group">
         <label>{label}</label>
-        {isEditing || !chiTiet ? (
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-            disabled={uploadingImage !== null}
-            onChange={(event) => {
-              void handleImageUpload(field, event.target.files?.[0]);
-              event.currentTarget.value = '';
-            }}
-          />
-        ) : null}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+          disabled={busy}
+          onChange={(event) => {
+            void handleImageUpload(field, event.target.files?.[0]);
+            event.currentTarget.value = '';
+          }}
+        />
         {uploadingImage === field && <p className="upload-status">Đang tải ảnh...</p>}
         {value && !imageErrors[field] ? (
           <div className="image-preview-wrap">
@@ -224,15 +228,14 @@ const ArtworkDetailContent: React.FC = () => {
               className="image-preview"
               onError={() => setImageErrors(current => ({ ...current, [field]: true }))}
             />
-            {(isEditing || !chiTiet) && (
-              <button
-                type="button"
-                className="btn-remove-image"
-                onClick={() => setFormData(current => ({ ...current, [field]: '' }))}
-              >
-                Xóa ảnh
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn-remove-image"
+              disabled={busy}
+              onClick={() => setFormData(current => ({ ...current, [field]: '' }))}
+            >
+              Xóa ảnh
+            </button>
           </div>
         ) : value ? (
           <div className="image-placeholder">Không thể hiển thị ảnh đã lưu</div>
@@ -260,6 +263,16 @@ const ArtworkDetailContent: React.FC = () => {
     );
   }
 
+  if (loadError) {
+    return (
+      <div id="artwork-detail-content" className="page">
+        <p role="alert">{loadError}</p>
+        <button type="button" onClick={loadChiTiet}>Thử lại</button>
+        <Link to="/artist/artworks">Quay lại danh sách tác phẩm</Link>
+      </div>
+    );
+  }
+
   return (
     <div id="artwork-detail-content" className="page">
       {/* Header */}
@@ -282,6 +295,8 @@ const ArtworkDetailContent: React.FC = () => {
       </div>
 
       <p className="hint">Mô tả cơ bản và ảnh đại diện được chỉnh sửa tại Quản lý tác phẩm. Nội dung và ảnh bổ sung trên trang này được gửi Admin duyệt riêng.</p>
+      {chiTiet && <p className="section-hint">Bạn có thể chỉnh sửa nội dung và ảnh bổ sung bên dưới, kể cả khi đã được duyệt. Khi gửi cập nhật, nội dung sẽ trở về Chờ duyệt và tạm ngừng hiển thị công khai cho đến khi Admin duyệt lại.</p>}
+      <p>Tác phẩm: <strong>{artwork?.tenTacPham}</strong></p>
 
       {/* Thông báo từ chối */}
       {chiTiet && chiTiet.trangThai === 2 && chiTiet.lyDoTuChoi && (
@@ -319,7 +334,7 @@ const ArtworkDetailContent: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, cauChuyenSangTac: e.target.value })}
               rows={6}
               placeholder="Ví dụ: Tác phẩm được sáng tác vào mùa thu năm 2025, khi tôi đang du lịch tại vùng núi phía Bắc..."
-              disabled={!isEditing && chiTiet !== null}
+              disabled={busy}
             />
           </div>
 
@@ -333,7 +348,7 @@ const ArtworkDetailContent: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, yNghiaNghiThuat: e.target.value })}
               rows={6}
               placeholder="Ví dụ: Tác phẩm thể hiện vẻ đẹp của thiên nhiên và sự hòa quyện giữa con người với môi trường..."
-              disabled={!isEditing && chiTiet !== null}
+              disabled={busy}
             />
           </div>
 
@@ -347,7 +362,7 @@ const ArtworkDetailContent: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, kyThuatThucHien: e.target.value })}
               rows={6}
               placeholder="Ví dụ: Sử dụng kỹ thuật sơn dầu truyền thống, lớp màu được phủ nhiều lần để tạo chiều sâu..."
-              disabled={!isEditing && chiTiet !== null}
+              disabled={busy}
             />
           </div>
 
@@ -361,7 +376,7 @@ const ArtworkDetailContent: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, camHungSangTao: e.target.value })}
               rows={6}
               placeholder="Ví dụ: Lấy cảm hứng từ cánh đồng lúa chín vàng ở quê nhà, nơi tôi đã trải qua tuổi thơ..."
-              disabled={!isEditing && chiTiet !== null}
+              disabled={busy}
             />
           </div>
 
@@ -375,20 +390,22 @@ const ArtworkDetailContent: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, thongTinBosung: e.target.value })}
               rows={4}
               placeholder="Ví dụ: Tác phẩm đã được triển lãm tại Bảo tàng Mỹ thuật Hà Nội năm 2025..."
-              disabled={!isEditing && chiTiet !== null}
+              disabled={busy}
             />
           </div>
         </div>
 
         <div className="form-section">
           <h3><i className="ti-settings"></i> Thông Tin Kỹ Thuật</h3>
+          <p className="section-hint">Kích thước và chất liệu được lấy từ hồ sơ tác phẩm. Để thay đổi, hãy sửa tại Quản lý tác phẩm.</p>
           
           <div className="form-row">
             <div className="form-group">
-              <label>Kích Thước</label>
+              <label htmlFor="detail-artwork-size">Kích Thước</label>
               <input
+                id="detail-artwork-size"
                 type="text"
-                value={formData.kichThuoc}
+                value={artwork?.kichThuoc || ''}
                 readOnly
                 title="Kích thước được quản lý tại thông tin tác phẩm"
               />
@@ -401,29 +418,31 @@ const ArtworkDetailContent: React.FC = () => {
                 value={formData.namSangTac}
                 onChange={(e) => setFormData({ ...formData, namSangTac: e.target.value })}
                 placeholder="Ví dụ: 2025"
-                min="1900"
-                max="2100"
-                disabled={!isEditing && chiTiet !== null}
+                min="1000"
+                max={new Date().getUTCFullYear()}
+                disabled={busy}
               />
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Chất Liệu Tranh</label>
+              <label htmlFor="detail-artwork-material">Chất Liệu Tranh</label>
               <input
+                id="detail-artwork-material"
                 type="text"
-                value={formData.chatLieu}
+                value={artwork?.chatLieu || ''}
                 readOnly
                 title="Chất liệu được quản lý tại thông tin tác phẩm"
               />
             </div>
 
             <div className="form-group">
-              <label>Chất Liệu Khung</label>
+              <label htmlFor="detail-artwork-frame">Chất Liệu Khung</label>
               <input
+                id="detail-artwork-frame"
                 type="text"
-                value={formData.chatLieuKhung}
+                value={artwork?.chatLieuKhung || ''}
                 readOnly
                 title="Chất liệu khung được quản lý tại thông tin tác phẩm"
               />
@@ -437,7 +456,7 @@ const ArtworkDetailContent: React.FC = () => {
               value={formData.diaDiemSangTac}
               onChange={(e) => setFormData({ ...formData, diaDiemSangTac: e.target.value })}
               placeholder="Ví dụ: Hà Nội, Việt Nam"
-              disabled={!isEditing && chiTiet !== null}
+              disabled={busy}
             />
           </div>
         </div>
@@ -459,36 +478,23 @@ const ArtworkDetailContent: React.FC = () => {
 
         {/* Buttons */}
         <div className="form-actions">
-          {!chiTiet || isEditing ? (
-            <>
-              <button type="submit" className="btn-save" disabled={saving || uploadingImage !== null}>
-                <i className="ti-check"></i> {chiTiet ? 'Cập Nhật & Gửi Duyệt' : 'Tạo & Gửi Duyệt'}
-              </button>
-              {chiTiet && (
-                <button
-                  type="button"
-                  className="btn-cancel"
-                  onClick={() => {
-                    setIsEditing(false);
-                    loadChiTiet();
-                  }}
-                >
-                  Hủy
-                </button>
-              )}
-            </>
-          ) : (
+          <button type="submit" className="btn-save" disabled={busy}>
+            <i className="ti-check"></i> {saving ? 'Đang gửi...' : chiTiet ? 'Cập Nhật & Gửi Duyệt Lại' : 'Tạo & Gửi Duyệt'}
+          </button>
+          {chiTiet && (
             <>
               <button
                 type="button"
-                className="btn-edit"
-                onClick={() => setIsEditing(true)}
+                className="btn-cancel"
+                disabled={busy}
+                onClick={() => loadChiTiet()}
               >
-                <i className="ti-pencil"></i> Chỉnh Sửa
+                Khôi phục bản đã lưu
               </button>
               <button
                 type="button"
                 className="btn-delete"
+                disabled={busy}
                 onClick={handleDelete}
               >
                 <i className="ti-trash"></i> Xóa

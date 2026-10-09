@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArtistNotification, notificationService } from '../../services/notificationService';
+import { ArtistNotification, notificationService, notificationPath } from '../../services/notificationService';
 import './ArtistNotifications.css';
 
 const pageSize = 20;
 
-export default function ArtistNotifications() {
+export default function ArtistNotifications({ inboxPath = '/artist/notifications' }: { inboxPath?: string }) {
   const navigate = useNavigate();
   const [items, setItems] = useState<ArtistNotification[]>([]);
   const [page, setPage] = useState(1);
@@ -30,9 +30,10 @@ export default function ArtistNotifications() {
       try {
         await notificationService.markAsRead(item.maThongBao);
         setItems(current => current.map(value => value.maThongBao === item.maThongBao ? { ...value, daDoc: true } : value));
-      } catch { setError('Không thể cập nhật trạng thái đã đọc.'); }
+      } catch { setError('Không thể cập nhật trạng thái đã đọc.'); return; }
     }
-    if (item.duongDan) navigate(item.duongDan);
+    const path = notificationPath(item, inboxPath);
+    if (path) navigate(path);
   };
 
   const markAll = async () => {

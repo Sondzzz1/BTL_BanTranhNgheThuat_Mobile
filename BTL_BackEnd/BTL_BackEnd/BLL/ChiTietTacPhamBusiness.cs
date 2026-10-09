@@ -2,6 +2,7 @@ using DoAn2_BackEnd.BLL.Interfaces;
 using DoAn2_BackEnd.DAL.Interfaces;
 using DoAn2_BackEnd.DTO;
 using DoAn2_BackEnd.Models;
+using DoAn2_BackEnd.Helpers;
 
 namespace DoAn2_BackEnd.BLL;
 
@@ -253,21 +254,11 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         if (chiTiet.TrangThai != 0)
             throw new InvalidOperationException("Chỉ nội dung đang chờ duyệt mới có thể được xử lý");
 
-        ThongBao? notification = null;
-        if (!request.PheDuyet)
-        {
-            var reason = request.LyDoTuChoi!.Trim();
-            notification = new ThongBao
-            {
-                Loai = "ARTWORK_CONTENT_REJECTED",
-                TieuDe = "Nội dung tác phẩm cần chỉnh sửa",
-                NoiDung = $"Tác phẩm “{tacPham.TenTacPham}” chưa được duyệt. Lý do: {reason}",
-                LoaiDoiTuong = "TacPham",
-                MaDoiTuong = maTacPham,
-                DuongDan = $"/artist/artworks/{maTacPham}",
-                EventKey = $"ARTWORK_CONTENT_REVIEW:{maTacPham}:REJECTED"
-            };
-        }
+        var notification = WorkflowNotifications.Decision("ChiTietTacPham", maTacPham,
+            request.PheDuyet ? "ARTWORK_CONTENT_APPROVED" : "ARTWORK_CONTENT_REJECTED",
+            tacPham.TenTacPham, "Nội dung chi tiết của tác phẩm", request.PheDuyet ? "đã được duyệt" : "chưa được duyệt",
+            $"/artist/artworks/{maTacPham}/content", request.PheDuyet ? null : request.LyDoTuChoi);
+        notification.ExpectedRevision = chiTiet.NgayCapNhat ?? chiTiet.NgayTao;
         return await _chiTietRepo.Duyet(maTacPham, maNguoiDuyet, request.PheDuyet, request.LyDoTuChoi?.Trim(), notification);
     }
 

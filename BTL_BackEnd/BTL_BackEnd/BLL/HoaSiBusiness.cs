@@ -181,6 +181,7 @@ public class HoaSiBusiness : IHoaSiBusiness
 
         var tacPham = new TacPham
         {
+            SubmitRequestKey = request.SubmitRequestKey,
             TenTacPham = request.TenTacPham.Trim(),
             MaHoaSi = maHoaSi,
             MaDanhMuc = request.MaDanhMuc,
@@ -221,6 +222,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (tacPham.MaHoaSi != maHoaSi)
             throw new UnauthorizedAccessException("Không có quyền sửa tác phẩm này");
 
+        tacPham.ExpectedStatus = tacPham.TrangThai;
         // The initial publication declaration is intentionally immutable in the artist edit API.
         // This prevents a many-edition artwork with one remaining unit from becoming "exclusive".
         ExclusiveArtworkPolicy.EnsureStockUpdateAllowed(
@@ -451,6 +453,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (tacPham.TrangThai != 3)
             throw new InvalidOperationException("Chỉ có thể gửi duyệt lại tác phẩm đã bị từ chối");
         
+        tacPham.ExpectedStatus = tacPham.TrangThai;
         // Đổi về trạng thái Chờ duyệt
         tacPham.TrangThai = 0;
         tacPham.LyDo = null; // Xóa lý do từ chối cũ

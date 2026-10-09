@@ -135,6 +135,11 @@ public class HoaSiController : ControllerBase
             if (maHoaSi == null)
                 return BadRequest(new { message = "Không tìm thấy thông tin họa sĩ" });
             
+            if (Request.Headers.TryGetValue("Idempotency-Key", out var key))
+            {
+                if (!Guid.TryParse(key.ToString(), out var parsed)) return BadRequest(new { message = "Idempotency-Key phải là UUID" });
+                request.SubmitRequestKey = parsed;
+            }
             var maTacPham = await _hoaSiBusiness.TaoTacPham(maHoaSi.Value, request);
             return Ok(new { message = "Tạo tác phẩm thành công", maTacPham });
         }
