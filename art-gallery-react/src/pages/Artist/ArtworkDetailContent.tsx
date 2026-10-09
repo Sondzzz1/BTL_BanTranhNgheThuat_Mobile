@@ -111,6 +111,14 @@ const ArtworkDetailContent: React.FC = () => {
     e.preventDefault();
     if (!id) return;
 
+    const content = [formData.cauChuyenSangTac, formData.yNghiaNghiThuat,
+      formData.kyThuatThucHien, formData.camHungSangTao, formData.thongTinBosung,
+      formData.diaDiemSangTac, formData.hinhAnh1, formData.hinhAnh2, formData.hinhAnh3, formData.hinhAnh4];
+    if (!formData.namSangTac.trim() && !content.some(value => value.trim())) {
+      alert('Vui lòng nhập nội dung chi tiết hoặc ảnh bổ sung trước khi gửi duyệt.');
+      return;
+    }
+
     try {
       const payload = {
         cauChuyenSangTac: formData.cauChuyenSangTac || null,
@@ -265,6 +273,8 @@ const ArtworkDetailContent: React.FC = () => {
           </div>
         )}
       </div>
+
+      <p className="hint">Mô tả cơ bản và ảnh đại diện được chỉnh sửa tại Quản lý tác phẩm. Nội dung và ảnh bổ sung trên trang này được gửi Admin duyệt riêng.</p>
 
       {/* Thông báo từ chối */}
       {chiTiet && chiTiet.trangThai === 2 && chiTiet.lyDoTuChoi && (

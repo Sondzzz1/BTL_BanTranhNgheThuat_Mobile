@@ -162,9 +162,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             YNghiaNghiThuat = chiTiet.YNghiaNghiThuat,
             KyThuatThucHien = chiTiet.KyThuatThucHien,
             CamHungSangTao = chiTiet.CamHungSangTao,
-            // Các bản ghi cũ từng tự sao chép MoTa của tác phẩm vào đây khi tạo tranh.
-            // MoTa là thông tin hồ sơ tác phẩm, không phải nội dung chi tiết để xét duyệt.
-            ThongTinBosung = GetThongTinBoSungRieng(chiTiet.ThongTinBosung, tacPham.MoTa),
+            ThongTinBosung = chiTiet.ThongTinBosung,
             KichThuoc = tacPham.KichThuoc,
             ChatLieu = tacPham.ChatLieu,
             ChatLieuKhung = tacPham.ChatLieuKhung,
@@ -279,7 +277,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
     public async Task<ChiTietTacPhamCongKhaiResponse?> GetChiTietCongKhai(int maTacPham)
     {
         var chiTiet = await _chiTietRepo.GetCongKhai(maTacPham);
-        if (chiTiet == null) return null;
+        if (chiTiet == null || chiTiet.TrangThai != 1) return null;
 
         var tacPham = await _tacPhamRepo.GetMarketplaceById(maTacPham);
         if (tacPham == null || tacPham.TrangThai != TacPhamStatus.OnSale) return null;
@@ -297,7 +295,7 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
             YNghiaNghiThuat = chiTiet.YNghiaNghiThuat,
             KyThuatThucHien = chiTiet.KyThuatThucHien,
             CamHungSangTao = chiTiet.CamHungSangTao,
-            ThongTinBosung = GetThongTinBoSungRieng(chiTiet.ThongTinBosung, tacPham.MoTa),
+            ThongTinBosung = chiTiet.ThongTinBosung,
             KichThuoc = tacPham.KichThuoc,
             ChatLieu = tacPham.ChatLieu,
             ChatLieuKhung = tacPham.ChatLieuKhung,
@@ -324,17 +322,6 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
         };
     }
 
-    private static string? GetThongTinBoSungRieng(string? thongTinBosung, string? moTaTacPham)
-    {
-        var detail = string.IsNullOrWhiteSpace(thongTinBosung) ? null : thongTinBosung.Trim();
-        var basicDescription = string.IsNullOrWhiteSpace(moTaTacPham) ? null : moTaTacPham.Trim();
-
-        // Không xóa dữ liệu lịch sử; chỉ không trả về bản sao mô tả cơ bản như nội dung chi tiết.
-        return detail != null && string.Equals(detail, basicDescription, StringComparison.Ordinal)
-            ? null
-            : detail;
-    }
-
     /// <summary>
     /// Artist/Admin management must see a newly created marketplace artwork while it is
     /// pending approval. GetMarketplaceById is intentionally sellable/public-facing and
@@ -348,6 +335,12 @@ public class ChiTietTacPhamBusiness : IChiTietTacPhamBusiness
 
     private static void ValidateRequest(TaoChiTietTacPhamRequest request)
     {
+        var content = new[] { request.CauChuyenSangTac, request.YNghiaNghiThuat,
+            request.KyThuatThucHien, request.CamHungSangTao, request.ThongTinBosung,
+            request.DiaDiemSangTac, request.HinhAnh1, request.HinhAnh2, request.HinhAnh3, request.HinhAnh4 };
+        if (!request.NamSangTac.HasValue && !content.Any(value => !string.IsNullOrWhiteSpace(value)))
+            throw new ArgumentException("Vui lòng nhập nội dung chi tiết hoặc ảnh bổ sung trước khi gửi duyệt.");
+
         static void Check(string? value, int max, string name)
         {
             if (value?.Trim().Length > max) throw new ArgumentException($"{name} không được vượt quá {max} ký tự");

@@ -3,8 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   artistDashboardService,
-  ChiTietTacPhamPayload,
-  ChiTietTacPhamResponse,
   OriginalArtworkOption,
   TacPhamHoaSiResponse,
 } from '../../services/artistDashboardService';
@@ -55,8 +53,6 @@ const ArtistArtworks: React.FC = () => {
   const [originSearchLoading, setOriginSearchLoading] = useState(false);
   const [imageUrls, setImageUrls] = useState<string[]>(['']);
   const [failedImageIndexes, setFailedImageIndexes] = useState<number[]>([]);
-  const [loadedDetail, setLoadedDetail] = useState<ChiTietTacPhamResponse | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
 
   const [loading, setLoading] = useState(true);
 
@@ -103,7 +99,6 @@ const ArtistArtworks: React.FC = () => {
 
   const handleOpenModal = async (artwork?: TacPhamHoaSiResponse) => {
     setFailedImageIndexes([]);
-    setLoadedDetail(null);
     if (artwork) {
       setEditingArtwork(artwork);
       setOriginMethod(artwork.maTacPhamGoc || !artwork.tenTacPhamGoc ? 'catalog' : 'external');
@@ -135,26 +130,7 @@ const ArtistArtworks: React.FC = () => {
         chatLieuKhung: artwork.chatLieuKhung || '',
       });
       setImageUrls([artwork.hinhAnh || '']);
-      setDetailLoading(true);
       setIsModalOpen(true);
-      try {
-        const detail = await artistDashboardService.getChiTietTacPham(artwork.maTacPham);
-        setLoadedDetail(detail);
-        const detailImages = detail
-          ? [detail.hinhAnh1, detail.hinhAnh2, detail.hinhAnh3, detail.hinhAnh4]
-              .map((value) => value?.trim())
-              .filter((value): value is string => Boolean(value))
-          : [];
-        const combined = [artwork.hinhAnh?.trim(), ...detailImages]
-          .filter((value): value is string => Boolean(value))
-          .filter((value, index, values) => values.indexOf(value) === index)
-          .slice(0, 5);
-        setImageUrls(combined.length > 0 ? combined : ['']);
-      } catch (error: any) {
-        alert(error?.response?.data?.message || 'Không thể tải danh sách ảnh chi tiết của tác phẩm.');
-      } finally {
-        setDetailLoading(false);
-      }
     } else {
       setEditingArtwork(null);
       setOriginMethod('catalog');
@@ -180,7 +156,6 @@ const ArtistArtworks: React.FC = () => {
         chatLieuKhung: '',
       });
       setImageUrls(['']);
-      setDetailLoading(false);
       setIsModalOpen(true);
     }
   };
@@ -189,7 +164,7 @@ const ArtistArtworks: React.FC = () => {
     .map((value) => value.trim())
     .filter(Boolean)
     .filter((value, index, values) => values.indexOf(value) === index)
-    .slice(0, 5);
+    .slice(0, 1);
 
   const isValidImageUrl = (value: string) => {
     try {
@@ -204,69 +179,6 @@ const ArtistArtworks: React.FC = () => {
     setImageUrls((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
     setFailedImageIndexes((current) => current.filter((itemIndex) => itemIndex !== index));
   };
-
-  const addImageUrl = () => {
-    if (imageUrls.length >= 5) return;
-    if (imageUrls.some((value) => !value.trim())) {
-      alert('Vui lòng nhập URL ảnh hiện tại trước khi thêm URL mới.');
-      return;
-    }
-    setImageUrls((current) => [...current, '']);
-  };
-
-  const removeImageUrl = (index: number) => {
-    setImageUrls((current) => {
-      const next = current.filter((_, itemIndex) => itemIndex !== index);
-      return next.length > 0 ? next : [''];
-    });
-    setFailedImageIndexes([]);
-  };
-
-  const buildDetailPayload = (urls: string[]): ChiTietTacPhamPayload => ({
-    cauChuyenSangTac: loadedDetail?.cauChuyenSangTac || null,
-    yNghiaNghiThuat: loadedDetail?.yNghiaNghiThuat || null,
-    kyThuatThucHien: loadedDetail?.kyThuatThucHien || null,
-    camHungSangTao: loadedDetail?.camHungSangTao || null,
-    // Mô tả trong form thêm tác phẩm thuộc hồ sơ tác phẩm, không phải nội dung chi tiết.
-    // Chỉ giữ nội dung mà họa sĩ đã khai báo riêng ở trang “Nội dung chi tiết”.
-    thongTinBosung: loadedDetail?.thongTinBosung || null,
-    namSangTac: loadedDetail?.namSangTac || null,
-    diaDiemSangTac: loadedDetail?.diaDiemSangTac || null,
-    hinhAnh1: urls[1] || null,
-    hinhAnh2: urls[2] || null,
-    hinhAnh3: urls[3] || null,
-    hinhAnh4: urls[4] || null,
-  });
-
-  const normalizeDetailValue = (value?: string | null) => value?.trim() || null;
-
-  const hasDetailContent = (detail: ChiTietTacPhamPayload) => Boolean(
-    normalizeDetailValue(detail.cauChuyenSangTac)
-    || normalizeDetailValue(detail.yNghiaNghiThuat)
-    || normalizeDetailValue(detail.kyThuatThucHien)
-    || normalizeDetailValue(detail.camHungSangTao)
-    || normalizeDetailValue(detail.thongTinBosung)
-    || detail.namSangTac
-    || normalizeDetailValue(detail.diaDiemSangTac)
-    || normalizeDetailValue(detail.hinhAnh1)
-    || normalizeDetailValue(detail.hinhAnh2)
-    || normalizeDetailValue(detail.hinhAnh3)
-    || normalizeDetailValue(detail.hinhAnh4)
-  );
-
-  const isSameDetailContent = (detail: ChiTietTacPhamPayload, current: ChiTietTacPhamResponse) => (
-    normalizeDetailValue(detail.cauChuyenSangTac) === normalizeDetailValue(current.cauChuyenSangTac)
-    && normalizeDetailValue(detail.yNghiaNghiThuat) === normalizeDetailValue(current.yNghiaNghiThuat)
-    && normalizeDetailValue(detail.kyThuatThucHien) === normalizeDetailValue(current.kyThuatThucHien)
-    && normalizeDetailValue(detail.camHungSangTao) === normalizeDetailValue(current.camHungSangTao)
-    && normalizeDetailValue(detail.thongTinBosung) === normalizeDetailValue(current.thongTinBosung)
-    && (detail.namSangTac || null) === (current.namSangTac || null)
-    && normalizeDetailValue(detail.diaDiemSangTac) === normalizeDetailValue(current.diaDiemSangTac)
-    && normalizeDetailValue(detail.hinhAnh1) === normalizeDetailValue(current.hinhAnh1)
-    && normalizeDetailValue(detail.hinhAnh2) === normalizeDetailValue(current.hinhAnh2)
-    && normalizeDetailValue(detail.hinhAnh3) === normalizeDetailValue(current.hinhAnh3)
-    && normalizeDetailValue(detail.hinhAnh4) === normalizeDetailValue(current.hinhAnh4)
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -392,33 +304,9 @@ const ArtistArtworks: React.FC = () => {
         }
       }
 
-      let detailWasSubmitted = false;
-      try {
-        const detailPayload = buildDetailPayload(urls);
-        if (loadedDetail && !isSameDetailContent(detailPayload, loadedDetail)) {
-          await artistDashboardService.capNhatChiTietTacPham(artworkId, detailPayload);
-          detailWasSubmitted = true;
-        } else if (!loadedDetail && hasDetailContent(detailPayload)) {
-          await artistDashboardService.taoChiTietTacPham(artworkId, detailPayload);
-          detailWasSubmitted = true;
-        }
-      } catch (detailError: any) {
-        setIsModalOpen(false);
-        await loadData();
-        alert(
-          `${editingArtwork ? 'Tác phẩm đã được cập nhật' : 'Tác phẩm đã được tạo'}, ` +
-          `nhưng chưa lưu được nội dung chi tiết/ảnh bổ sung: ${detailError?.response?.data?.message || detailError.message || 'Lỗi không xác định'}`
-        );
-        return;
-      }
-
       alert(editingArtwork
-        ? detailWasSubmitted
-          ? 'Cập nhật tác phẩm thành công! Nội dung chi tiết hoặc ảnh bổ sung đã được gửi duyệt lại.'
-          : 'Cập nhật tác phẩm thành công! Nội dung chi tiết hiện có không bị gửi duyệt lại.'
-        : detailWasSubmitted
-          ? 'Thêm tác phẩm thành công! Nội dung chi tiết hoặc ảnh bổ sung được duyệt riêng.'
-          : 'Thêm tác phẩm thành công! Tác phẩm đang chờ admin duyệt.');
+        ? 'Cập nhật tác phẩm thành công!'
+        : 'Thêm tác phẩm thành công! Tác phẩm đang chờ admin duyệt.');
       setIsModalOpen(false);
       await loadData();
     } catch (error: any) {
@@ -599,10 +487,10 @@ const ArtistArtworks: React.FC = () => {
                       </button>
                       <button
                         onClick={() => navigate(`/artist/artworks/${artwork.maTacPham}/content`)}
-                        title="Quản lý nội dung chi tiết"
+                        title="Thêm / chỉnh sửa nội dung chi tiết để gửi duyệt riêng"
                         style={{ background: '#9b59b6', color: 'white', marginRight: 5 }}
                       >
-                        <i className="ti-write"></i>
+                        <i className="ti-write"></i> Nội dung chi tiết
                       </button>
                       <button
                         onClick={() => navigate(`/artist/artworks/${artwork.maTacPham}/copyright`)}
@@ -921,70 +809,23 @@ const ArtistArtworks: React.FC = () => {
               <div className="artwork-image-url-section">
                 <div className="image-url-heading">
                   <div>
-                    <label>URL hình ảnh tác phẩm</label>
-                    <p>Ảnh đầu tiên là ảnh đại diện của hồ sơ tác phẩm. Bạn có thể thêm tối đa 4 ảnh bổ sung; các ảnh bổ sung được gửi duyệt riêng cùng nội dung chi tiết.</p>
+                    <label htmlFor="artwork-main-image">Ảnh đại diện tác phẩm</label>
+                    <p>Ảnh này được duyệt cùng tác phẩm. Sau khi lưu, chọn “Nội dung chi tiết” để gửi câu chuyện và ảnh bổ sung.</p>
                   </div>
-                  {imageUrls.length < 5 && (
-                    <button type="button" className="btn-add-image-url" onClick={addImageUrl}>
-                      <i className="ti-plus"></i> Thêm URL ảnh
-                    </button>
-                  )}
                 </div>
-
-                {detailLoading ? (
-                  <div className="image-url-loading">Đang tải thư viện ảnh...</div>
-                ) : (
-                  <>
-                    <div className="image-url-inputs">
-                      {imageUrls.map((url, index) => (
-                        <div className="image-url-row" key={index}>
-                          <span className="image-url-index">{index + 1}</span>
-                          <input
-                            type="url"
-                            value={url}
-                            onChange={(e) => updateImageUrl(index, e.target.value)}
-                            placeholder={`URL ảnh ${index + 1} (https://...)`}
-                          />
-                          {imageUrls.length > 1 && (
-                            <button
-                              type="button"
-                              className="btn-remove-image-url"
-                              onClick={() => removeImageUrl(index)}
-                              title="Xóa URL ảnh này"
-                            >
-                              <i className="ti-trash"></i>
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {imageUrls.some((url) => url.trim()) && (
-                      <div className="image-preview-gallery">
-                        {imageUrls.map((url, index) => url.trim() && (
-                          <div className="image-preview-card" key={`${index}-${url}`}>
-                            {failedImageIndexes.includes(index) ? (
-                              <div className="image-preview-error">
-                                <i className="ti-image"></i>
-                                <span>Không tải được ảnh</span>
-                              </div>
-                            ) : (
-                              <img
-                                src={url.trim()}
-                                alt={`Xem trước tác phẩm ${index + 1}`}
-                                onError={() => setFailedImageIndexes((current) =>
-                                  current.includes(index) ? current : [...current, index]
-                                )}
-                              />
-                            )}
-                            <span className="image-preview-label">
-                              {index === 0 ? 'Ảnh đại diện' : `Ảnh bổ sung ${index}`}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
+                <div className="image-url-inputs"><div className="image-url-row">
+                  <span className="image-url-index">1</span>
+                  <input id="artwork-main-image" type="url" value={imageUrls[0] || ''}
+                    onChange={(e) => updateImageUrl(0, e.target.value)} placeholder="URL ảnh đại diện (https://...)" />
+                </div></div>
+                {imageUrls[0]?.trim() && (
+                  <div className="image-preview-gallery"><div className="image-preview-card">
+                    {failedImageIndexes.includes(0) ? <div className="image-preview-error">Không tải được ảnh</div> : (
+                      <img src={imageUrls[0].trim()} alt="Xem trước ảnh đại diện"
+                        onError={() => setFailedImageIndexes([0])} />
                     )}
-                  </>
+                    <span className="image-preview-label">Ảnh đại diện</span>
+                  </div></div>
                 )}
               </div>
 
@@ -999,7 +840,7 @@ const ArtistArtworks: React.FC = () => {
               </div>
 
               <div className="modal-buttons">
-                <button type="submit" className="btn-save" disabled={detailLoading}>
+                <button type="submit" className="btn-save">
                   {editingArtwork ? 'Cập nhật' : 'Thêm mới'}
                 </button>
                 <button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>
