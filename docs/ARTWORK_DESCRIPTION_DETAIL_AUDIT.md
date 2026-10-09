@@ -2,6 +2,8 @@
 
 Ngày: 09/10/2026. Sửa trên module hiện có.
 
+> Báo cáo lịch sử lần triển khai. Kết quả nghiệm thu runtime/regression mới nhất nằm tại [ARTWORK_CONTENT_ACCEPTANCE.md](ARTWORK_CONTENT_ACCEPTANCE.md); các mục NOT TESTED dưới đây mô tả thời điểm trước lần nghiệm thu đó.
+
 ## A. Root cause
 
 Lỗi lịch sử nằm ở `art-gallery-react/src/pages/Artist/ArtistArtworks.tsx`, hàm `buildDetailPayload`:

@@ -464,11 +464,8 @@ export default function ProductDetailScreen({
             </View>
           </View>
 
-          <View style={styles.section}>
+          {artworkContent && <View style={styles.section}>
             <Text style={styles.sectionTitle}>Câu chuyện & nội dung nghệ thuật</Text>
-            {!artworkContent ? (
-              <Text style={styles.emptyContentText}>Tác phẩm chưa có nội dung nghệ thuật đã được duyệt.</Text>
-            ) : (
               <>
                 {[
                   ['Câu chuyện sáng tác', artworkContent.cauChuyenSangTac],
@@ -497,8 +494,7 @@ export default function ProductDetailScreen({
                     ))}
                 </ScrollView>
               </>
-            )}
-          </View>
+          </View>}
 
           <View style={styles.provenanceSection} accessibilityLabel="Thông tin nguồn gốc sáng tạo">
             <Text style={styles.provenanceTitle}>Nguồn gốc sáng tạo</Text>

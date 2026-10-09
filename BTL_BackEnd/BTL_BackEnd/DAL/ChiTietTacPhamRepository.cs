@@ -51,8 +51,17 @@ public class ChiTietTacPhamRepository : IChiTietTacPhamRepository
         command.Parameters.AddWithValue("@HinhAnh3", (object?)chiTiet.HinhAnh3 ?? DBNull.Value);
         command.Parameters.AddWithValue("@HinhAnh4", (object?)chiTiet.HinhAnh4 ?? DBNull.Value);
 
-        var result = await command.ExecuteScalarAsync();
-        return Convert.ToInt32(result);
+        try
+        {
+            var result = await command.ExecuteScalarAsync();
+            return Convert.ToInt32(result);
+        }
+        catch (SqlException ex) when (ex.Number is 2601 or 2627)
+        {
+            // The unique MaTacPham index guards concurrent creates. Return a
+            // business conflict without overwriting the first submission.
+            return 0;
+        }
     }
 
     // ================================================================

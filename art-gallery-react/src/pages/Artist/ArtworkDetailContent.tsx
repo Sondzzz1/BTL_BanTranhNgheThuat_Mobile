@@ -1,5 +1,5 @@
 // Artist Artwork Detail Content - Họa sĩ quản lý nội dung chi tiết tác phẩm
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import apiClient from '../../services/api';
 import './ArtworkDetailContent.css';
@@ -48,6 +48,8 @@ const ArtworkDetailContent: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [uploadingImage, setUploadingImage] = useState<ImageField | null>(null);
+  const submitting = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [imageErrors, setImageErrors] = useState<Partial<Record<ImageField, boolean>>>({});
   const [formData, setFormData] = useState({
     cauChuyenSangTac: '',
@@ -109,7 +111,7 @@ const ArtworkDetailContent: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!id) return;
+    if (!id || submitting.current || uploadingImage) return;
 
     const content = [formData.cauChuyenSangTac, formData.yNghiaNghiThuat,
       formData.kyThuatThucHien, formData.camHungSangTao, formData.thongTinBosung,
@@ -119,6 +121,8 @@ const ArtworkDetailContent: React.FC = () => {
       return;
     }
 
+    submitting.current = true;
+    setSaving(true);
     try {
       const payload = {
         cauChuyenSangTac: formData.cauChuyenSangTac || null,
@@ -146,9 +150,12 @@ const ArtworkDetailContent: React.FC = () => {
         await apiClient.post(`/hoa-si/tac-pham/${id}/chi-tiet`, payload);
         alert('Tạo chi tiết thành công! Đang chờ admin duyệt.');
       }
-      loadChiTiet();
+      await loadChiTiet();
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Có lỗi xảy ra');
+    } finally {
+      submitting.current = false;
+      setSaving(false);
     }
   };
 
@@ -454,7 +461,7 @@ const ArtworkDetailContent: React.FC = () => {
         <div className="form-actions">
           {!chiTiet || isEditing ? (
             <>
-              <button type="submit" className="btn-save">
+              <button type="submit" className="btn-save" disabled={saving || uploadingImage !== null}>
                 <i className="ti-check"></i> {chiTiet ? 'Cập Nhật & Gửi Duyệt' : 'Tạo & Gửi Duyệt'}
               </button>
               {chiTiet && (

@@ -51,8 +51,8 @@ const ArtworkDetailSection: React.FC<ArtworkDetailSectionProps> = ({
       try {
         const response = await apiClient.get(`/public/tac-pham/${artworkId}/chi-tiet`);
         setDetail(response.data);
-      } catch (error) {
-        console.log('Không tìm thấy chi tiết tác phẩm đã duyệt:', error);
+      } catch (error: any) {
+        if (error.response?.status !== 404) console.warn('Không thể tải nội dung chi tiết:', error);
         setDetail(null);
       } finally {
         setLoading(false);
@@ -117,7 +117,7 @@ const ArtworkDetailSection: React.FC<ArtworkDetailSectionProps> = ({
         <div className="divider-line"></div>
       </div>
 
-      <h2 className="detail-section-title">Câu Chuyện & Chi Tiết Tác Phẩm</h2>
+      <h2 className="detail-section-title">{detail ? 'Câu Chuyện & Chi Tiết Tác Phẩm' : 'Mô tả tác phẩm'}</h2>
       
       {/* Phần mô tả ngắn từ artwork.moTa */}
       {artworkDescription && (

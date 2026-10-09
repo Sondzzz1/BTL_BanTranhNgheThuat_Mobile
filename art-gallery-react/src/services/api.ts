@@ -51,6 +51,11 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    // No approved optional detail is an expected response, not an app failure.
+    if (error.response?.status === 404 && error.config?.method?.toLowerCase() === 'get'
+      && /^\/public\/tac-pham\/\d+\/chi-tiet\/?$/.test(error.config?.url || '')) {
+      return Promise.reject(error);
+    }
     console.error('API Error:', {
       message: error.message,
       status: error.response?.status,

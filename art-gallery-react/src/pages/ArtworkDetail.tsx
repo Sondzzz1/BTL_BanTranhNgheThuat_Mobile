@@ -39,6 +39,7 @@ const ArtworkDetail: React.FC = () => {
     // Load gallery images from artwork detail
     const loadGalleryImages = async () => {
       if (!id) return;
+      setGalleryImages([]);
       try {
         const response = await apiClient.get(`/public/tac-pham/${id}/chi-tiet`);
         const detail = response.data;
@@ -49,8 +50,8 @@ const ArtworkDetail: React.FC = () => {
           detail.hinhAnh4
         ].filter(Boolean) as string[];
         setGalleryImages(images.map(resolveContentImage));
-      } catch (error) {
-        console.log('Không tìm thấy ảnh bổ sung:', error);
+      } catch (error: any) {
+        if (error.response?.status !== 404) console.warn('Không thể tải ảnh bổ sung:', error);
       }
     };
     loadGalleryImages();
