@@ -119,8 +119,9 @@ public class DoanhThuTheoTacPhamResponse
 }
 
 // Tác phẩm của họa sĩ
-public class TacPhamHoaSiResponse
+public class TacPhamHoaSiResponse : ArtworkSaleResponse
 {
+    public string RightsStatus { get; set; } = "UNDECLARED";
     public int MaTacPham { get; set; }
     public string TenTacPham { get; set; } = null!;
     public string? TenDanhMuc { get; set; }
@@ -167,6 +168,9 @@ public class TacPhamAdminPageResponse
 
 public class TaoTacPhamRequest
 {
+    public byte? CanCuSuDung { get; set; }
+    public bool XacNhanQuyenSuDung { get; set; }
+    public string? KhaiBaoNguonGoc { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public Guid? SubmitRequestKey { get; set; }
     public string TenTacPham { get; set; } = null!;

@@ -14,4 +14,6 @@ public interface IGioHangRepository
     Task<bool> DeleteChiTiet(int maChiTietGH);
     Task<bool> ClearGioHang(int maGioHang);
     Task<bool> AddOrIncrementTransactional(int maNguoiDung, int maTacPham, int soLuong);
+    Task<List<DoAn2_BackEnd.DTO.ChiTietGioHangResponse>> GetView(int maGioHang);
+    Task<bool> UpdateQuantityTransactional(int maNguoiDung, int maChiTietGH, int soLuong);
 }

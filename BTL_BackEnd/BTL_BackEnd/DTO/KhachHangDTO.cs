@@ -43,8 +43,10 @@ public class GioHangResponse
     public decimal TongTien { get; set; }
 }
 
-public class ChiTietGioHangResponse
+public class ChiTietGioHangResponse : ArtworkSaleResponse
 {
+    public int SoLuongTon { get; set; }
+    public bool CanCheckout => CanSell && SoLuong > 0 && SoLuong <= SoLuongTon;
     public int MaChiTietGH { get; set; }
     public int MaTacPham { get; set; }
     public string TenTacPham { get; set; } = null!;

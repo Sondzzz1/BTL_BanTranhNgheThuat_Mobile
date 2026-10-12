@@ -13,14 +13,7 @@ public class TacPhamRepository : ITacPhamRepository
 {
     private readonly string _connectionString;
 
-    // Xác minh hồ sơ nguồn gốc phục vụ chứng nhận/quyền sở hữu sau bán, không phải
-    // điều kiện để ẩn một tác phẩm đã được Admin duyệt. Marketplace chỉ loại trừ
-    // tác phẩm khi hồ sơ bản quyền đã bị chặn bán một cách rõ ràng.
-    private const string SellableCopyrightPredicate = @"
-        AND NOT EXISTS (
-            SELECT 1 FROM BanQuyen b
-            WHERE b.MaTacPham=tp.MaTacPham
-              AND ISNULL(b.BiChanBan, 0)=1)";
+    // Public visibility is independent of rights verification and sale eligibility.
 
     public TacPhamRepository(IConfiguration configuration)
     {
@@ -42,6 +35,8 @@ public class TacPhamRepository : ITacPhamRepository
         {
             list.Add(MapToTacPham(reader));
         }
+        await reader.CloseAsync();
+        await ArtworkSaleSql.PopulateAsync(connection, list);
         return list;
     }
 
@@ -57,7 +52,10 @@ public class TacPhamRepository : ITacPhamRepository
         using var reader = await command.ExecuteReaderAsync();
         if (await reader.ReadAsync())
         {
-            return MapToTacPham(reader);
+            var item = MapToTacPham(reader);
+            await reader.CloseAsync();
+            await ArtworkSaleSql.PopulateAsync(connection, new[] { item });
+            return item;
         }
         return null;
     }
@@ -77,6 +75,8 @@ public class TacPhamRepository : ITacPhamRepository
         {
             list.Add(MapToTacPham(reader));
         }
+        await reader.CloseAsync();
+        await ArtworkSaleSql.PopulateAsync(connection, list);
         return list;
     }
 
@@ -95,12 +95,14 @@ public class TacPhamRepository : ITacPhamRepository
         {
             list.Add(MapToTacPham(reader));
         }
+        await reader.CloseAsync();
+        await ArtworkSaleSql.PopulateAsync(connection, list);
         return list;
     }
 
     public Task<List<TacPham>> GetMarketplaceAll() =>
         QueryList(@"SELECT tp.* FROM TacPham tp
-                    WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + SellableCopyrightPredicate +
+                    WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " +
                   " ORDER BY tp.NgayTao DESC");
 
     public Task<List<TacPham>> GetMarketplaceBestSelling(int top) => QueryList(
@@ -113,7 +115,7 @@ public class TacPhamRepository : ITacPhamRepository
               INNER JOIN DonHang dh ON dh.MaDonHang = ct.MaDonHang AND dh.TrangThai = 3
               WHERE ct.MaTacPham = tp.MaTacPham
           ) sales
-          WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai = 1 " + SellableCopyrightPredicate + @"
+          WHERE tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai = 1 " + @"
           ORDER BY ISNULL(sales.SoLuongBan, 0) DESC, tp.NgayTao DESC",
         command =>
         {
@@ -127,16 +129,19 @@ public class TacPhamRepository : ITacPhamRepository
 
         var query = @"SELECT tp.* FROM TacPham tp
                       WHERE tp.MaTacPham=@MaTacPham AND tp.MaYeuCauVeTranh IS NULL
-                        AND tp.TrangThai=1 " + SellableCopyrightPredicate;
+                        AND tp.TrangThai=1 ";
         using var command = new SqlCommand(query, connection);
         command.Parameters.AddWithValue("@MaTacPham", maTacPham);
         using var reader = await command.ExecuteReaderAsync();
-        return await reader.ReadAsync() ? MapToTacPham(reader) : null;
+        var item = await reader.ReadAsync() ? MapToTacPham(reader) : null;
+        await reader.CloseAsync();
+        if (item != null) await ArtworkSaleSql.PopulateAsync(connection, new[] { item });
+        return item;
     }
 
     public Task<List<TacPham>> GetMarketplaceByArtist(int maHoaSi) => QueryList(
         @"SELECT tp.* FROM TacPham tp
-          WHERE tp.MaHoaSi=@MaHoaSi AND tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + SellableCopyrightPredicate + @"
+          WHERE tp.MaHoaSi=@MaHoaSi AND tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + @"
           ORDER BY NgayTao DESC",
         command =>
         {
@@ -145,7 +150,7 @@ public class TacPhamRepository : ITacPhamRepository
 
     public Task<List<TacPham>> GetMarketplaceByCategory(int maDanhMuc) => QueryList(
         @"SELECT tp.* FROM TacPham tp
-          WHERE tp.MaDanhMuc=@MaDanhMuc AND tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + SellableCopyrightPredicate + @"
+          WHERE tp.MaDanhMuc=@MaDanhMuc AND tp.MaYeuCauVeTranh IS NULL AND tp.TrangThai=1 " + @"
           ORDER BY NgayTao DESC",
         command =>
         {
@@ -217,6 +222,8 @@ public class TacPhamRepository : ITacPhamRepository
         var items = new List<TacPham>();
         using var reader = await pageCommand.ExecuteReaderAsync();
         while (await reader.ReadAsync()) items.Add(MapToTacPham(reader));
+        await reader.CloseAsync();
+        await ArtworkSaleSql.PopulateAsync(connection, items);
         return (items, totalItems);
     }
 
@@ -226,7 +233,7 @@ public class TacPhamRepository : ITacPhamRepository
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
         var requestHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-        { tacPham.TenTacPham,tacPham.MaHoaSi,tacPham.MaDanhMuc,tacPham.Gia,tacPham.SoLuong,tacPham.SoLuongBanDau,tacPham.MoTa,tacPham.HinhAnh,tacPham.ChatLieu,tacPham.ChatLieuKhung,tacPham.KichThuoc,tacPham.LaTacPhamDocBan,tacPham.LoaiTacPham,tacPham.TacGiaGoc,tacPham.MaTacPhamGoc,tacPham.TenTacPhamGoc,tacPham.KhongXacDinhTacGiaGoc,tacPham.NguonThamKhao,tacPham.MoTaNguonGoc }))));
+        { tacPham.TenTacPham,tacPham.MaHoaSi,tacPham.MaDanhMuc,tacPham.Gia,tacPham.SoLuong,tacPham.SoLuongBanDau,tacPham.MoTa,tacPham.HinhAnh,tacPham.ChatLieu,tacPham.ChatLieuKhung,tacPham.KichThuoc,tacPham.LaTacPhamDocBan,tacPham.LoaiTacPham,tacPham.TacGiaGoc,tacPham.MaTacPhamGoc,tacPham.TenTacPhamGoc,tacPham.KhongXacDinhTacGiaGoc,tacPham.NguonThamKhao,tacPham.MoTaNguonGoc,tacPham.SubmitUsageBasis,tacPham.SubmitOriginDeclaration }))));
         if (tacPham.SubmitRequestKey.HasValue)
         {
             using var prior = new SqlCommand("SELECT MaTacPham,SubmitRequestHash FROM TacPham WITH (UPDLOCK,HOLDLOCK) WHERE MaHoaSi=@Artist AND SubmitRequestKey=@Key;", connection, transaction);
@@ -277,12 +284,39 @@ public class TacPhamRepository : ITacPhamRepository
         if (tacPham.TrangThai == 0 && tacPham.MaYeuCauVeTranh == null)
         {
             var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, result, tacPham.MaHoaSi);
+            await CreateSubmitDeclaration(connection, transaction, result, tacPham, owner.AccountId, owner.Artist);
+            await ArtworkSaleSql.EnsureDeclaredAsync(connection, transaction, result);
             await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
                 "TacPham", result, "ARTWORK_SUBMITTED", owner.Artist, owner.Name,
                 "vừa gửi tác phẩm mới để duyệt", $"/admin/art?artworkId={result}"));
         }
         await transaction.CommitAsync();
         return result;
+    }
+
+    private static async Task CreateSubmitDeclaration(SqlConnection connection, SqlTransaction transaction,
+        int artworkId, TacPham artwork, int accountId, string artistName)
+    {
+        if (!CopyrightUsageBases.IsValid(artwork.SubmitUsageBasis) || string.IsNullOrWhiteSpace(artwork.SubmitOriginDeclaration))
+            throw new ArgumentException("Cần khai báo nguồn gốc, căn cứ và xác nhận quyền sử dụng trước khi gửi duyệt.");
+        using var command = new SqlCommand(@"
+            INSERT INTO BanQuyen(MaTacPham,MaTacGia,MaNguoiGiuQuyen,TacGia,NguonGoc,CanCuSuDung,
+                LaDuLieuCu,BiChanBan,TrangThai,NguoiTao,NguoiCapNhat,NgayTao,NgayCapNhat)
+            OUTPUT INSERTED.MaBanQuyen
+            VALUES(@Artwork,@Artist,@Artist,@Author,@Origin,@Basis,0,0,@Pending,@Actor,@Actor,SYSUTCDATETIME(),SYSUTCDATETIME());", connection, transaction);
+        command.Parameters.AddWithValue("@Artwork", artworkId);
+        command.Parameters.AddWithValue("@Artist", artwork.MaHoaSi);
+        command.Parameters.AddWithValue("@Author", artistName);
+        command.Parameters.AddWithValue("@Origin", artwork.SubmitOriginDeclaration);
+        command.Parameters.AddWithValue("@Basis", artwork.SubmitUsageBasis!.Value);
+        command.Parameters.AddWithValue("@Pending", CopyrightStatuses.Pending);
+        command.Parameters.AddWithValue("@Actor", accountId);
+        var id = Convert.ToInt32(await command.ExecuteScalarAsync());
+        await AuditLogSql.InsertAsync(connection, transaction, "BanQuyen", id, "CREATE", accountId, null,
+            after: JsonSerializer.Serialize(new { artworkId, artwork.SubmitUsageBasis }));
+        await ThongBaoSql.NotifyAdminsAsync(connection, transaction, WorkflowNotifications.Submitted(
+            "BanQuyen", id, "COPYRIGHT_SUBMITTED", artistName, artwork.TenTacPham,
+            "vừa gửi khai báo nguồn gốc/quyền sử dụng cho tác phẩm", $"/admin/copyright?copyrightId={id}"));
     }
 
     public async Task<bool> Update(TacPham tacPham)
@@ -296,6 +330,9 @@ public class TacPhamRepository : ITacPhamRepository
         if (statusValue == null) return false;
         var oldStatus = Convert.ToByte(statusValue);
         if (tacPham.ExpectedStatus.HasValue && oldStatus != tacPham.ExpectedStatus.Value) return false;
+
+        if (tacPham.TrangThai == TacPhamStatus.PendingApproval && oldStatus != TacPhamStatus.PendingApproval)
+            await ArtworkSaleSql.EnsureDeclaredAsync(connection, transaction, tacPham.MaTacPham);
 
         var query = @"UPDATE TacPham 
                       SET TenTacPham = @TenTacPham, 
@@ -470,6 +507,8 @@ public class TacPhamRepository : ITacPhamRepository
         configure?.Invoke(command);
         using var reader = await command.ExecuteReaderAsync();
         while (await reader.ReadAsync()) list.Add(MapToTacPham(reader));
+        await reader.CloseAsync();
+        await ArtworkSaleSql.PopulateAsync(connection, list);
         return list;
     }
 

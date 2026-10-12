@@ -1,4 +1,4 @@
-import React, { FormEvent, useCallback, useEffect, useState } from 'react';
+import React, { ChangeEvent, FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { CopyrightRecord, copyrightService } from '../../services/copyrightService';
 import { artistDashboardService, OriginalArtworkOption } from '../../services/artistDashboardService';
@@ -13,6 +13,10 @@ const emptyForm = {
 };
 
 const isImageEvidence = (file: CopyrightRecord['bangChung'][number]) => file.loaiTep.startsWith('image/');
+const maxEvidenceCount = 10;
+const maxEvidenceSize = 5 * 1024 * 1024;
+const evidenceTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+type PendingEvidence = { key: string; file: File; note: string };
 
 export default function ArtistCopyright() {
   const { id = '' } = useParams();
@@ -22,8 +26,13 @@ export default function ArtistCopyright() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [file, setFile] = useState<File | null>(null);
-  const [evidenceNote, setEvidenceNote] = useState('');
+  const [pendingEvidence, setPendingEvidence] = useState<PendingEvidence[]>([]);
+  const [evidenceBusy, setEvidenceBusy] = useState(false);
+  const [evidenceError, setEvidenceError] = useState('');
+  const [evidenceMessage, setEvidenceMessage] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const evidenceBusyRef = useRef(false);
+  const evidenceInputRef = useRef<HTMLInputElement>(null);
   const [evidencePreviewUrls, setEvidencePreviewUrls] = useState<Record<number, string>>({});
   const [originMethod, setOriginMethod] = useState<'catalog' | 'external'>('catalog');
   const [originSearch, setOriginSearch] = useState('');
@@ -81,6 +90,11 @@ export default function ArtistCopyright() {
 
   useEffect(() => { if (Number.isInteger(artworkId) && artworkId > 0) void load(); }, [artworkId, load]);
   useEffect(() => {
+    setPendingEvidence([]);
+    setEvidenceError('');
+    setEvidenceMessage('');
+  }, [artworkId]);
+  useEffect(() => {
     if (form.loaiTacPham !== 2 || originMethod !== 'catalog' || originSearch.trim().length < 2) {
       setOriginResults([]);
       return;
@@ -132,7 +146,9 @@ export default function ArtistCopyright() {
   });
 
   const save = async (event: FormEvent) => {
-    event.preventDefault(); setSaving(true);
+    event.preventDefault();
+    if (evidenceBusyRef.current) return;
+    setSaving(true);
     try {
       if (form.loaiTacPham === 2 && originMethod === 'catalog' && !selectedOriginal)
         throw new Error('Vui lòng chọn tác phẩm gốc trong kết quả tìm kiếm.');
@@ -148,16 +164,72 @@ export default function ArtistCopyright() {
     finally { setSaving(false); }
   };
 
+  const canAddEvidence = Boolean(record && ['PENDING', 'NEED_INFO', 'REJECTED', 'LEGACY'].includes(record.trangThai));
+  const remainingEvidenceSlots = Math.max(0, maxEvidenceCount - (record?.bangChung.length || 0) - pendingEvidence.length);
+
+  const selectEvidence = (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!canAddEvidence || evidenceBusyRef.current || saving || !selected.length) return;
+    setEvidenceError('');
+    setEvidenceMessage('');
+    const invalid = selected.find(item => !evidenceTypes.includes(item.type.toLowerCase()) || item.size === 0 || item.size > maxEvidenceSize);
+    if (invalid) {
+      setEvidenceError(`Tệp "${invalid.name}" không hợp lệ. Chỉ nhận JPG, PNG, WEBP hoặc PDF, không rỗng và tối đa 5 MB/tệp.`);
+      return;
+    }
+    const additions = selected.map(item => ({
+      key: JSON.stringify([item.name, item.type, item.size, item.lastModified]), file: item, note: '',
+    })).filter((item, index, items) => !pendingEvidence.some(existing => existing.key === item.key)
+      && items.findIndex(other => other.key === item.key) === index);
+    if (additions.length > remainingEvidenceSlots) {
+      setEvidenceError(`Mỗi hồ sơ tối đa ${maxEvidenceCount} bằng chứng. Bạn chỉ có thể chọn thêm ${remainingEvidenceSlots} tệp.`);
+      return;
+    }
+    setPendingEvidence(current => [...current, ...additions]);
+  };
+
   const upload = async () => {
-    if (!record || !file) return;
-    try { await copyrightService.artistAddEvidence(record.maBanQuyen, file, evidenceNote.trim() || undefined); setFile(null); setEvidenceNote(''); await load(); }
-    catch (error: any) { alert(error?.response?.data?.message || 'Không thể tải bằng chứng'); }
+    if (!record || !canAddEvidence || !pendingEvidence.length || saving || evidenceBusyRef.current) return;
+    evidenceBusyRef.current = true;
+    setEvidenceBusy(true);
+    setEvidenceError('');
+    setEvidenceMessage('');
+    const batch = [...pendingEvidence];
+    let uploaded = 0;
+    setUploadProgress({ done: 0, total: batch.length });
+    try {
+      for (const item of batch) {
+        await copyrightService.artistAddEvidence(record.maBanQuyen, item.file, item.note.trim() || undefined);
+        uploaded++;
+        // Keep failed/unattempted files for retry; never resend successful ones.
+        setPendingEvidence(current => current.filter(other => other.key !== item.key));
+        setUploadProgress({ done: uploaded, total: batch.length });
+      }
+    } catch (error: any) {
+      setEvidenceError(`Không thể tải "${batch[uploaded].file.name}": ${error?.response?.data?.message || 'Vui lòng thử lại.'} Các tệp chưa tải vẫn được giữ trong danh sách.`);
+    } finally {
+      if (uploaded > 0) setEvidenceMessage(`Đã thêm ${uploaded} bằng chứng. Bạn có thể tiếp tục chọn thêm tệp nếu hồ sơ chưa đủ ${maxEvidenceCount} bằng chứng.`);
+      try {
+        // Refresh evidence/status without discarding unsaved form fields or hiding the uploader.
+        setRecord(await copyrightService.artistGet(artworkId));
+      } catch {
+        setEvidenceError(current => `${current ? `${current} ` : ''}Không thể cập nhật danh sách bằng chứng. Vui lòng tải lại trang để kiểm tra các tệp đã gửi.`);
+      } finally {
+        evidenceBusyRef.current = false;
+        setEvidenceBusy(false);
+        setUploadProgress(null);
+      }
+    }
   };
 
   const removeEvidence = async (evidenceId: number) => {
-    if (!record || !window.confirm('Xóa bằng chứng này?')) return;
-    try { await copyrightService.artistDeleteEvidence(record.maBanQuyen, evidenceId); await load(); }
+    if (!record || saving || evidenceBusyRef.current || !window.confirm('Xóa bằng chứng này?')) return;
+    evidenceBusyRef.current = true;
+    setEvidenceBusy(true);
+    try { await copyrightService.artistDeleteEvidence(record.maBanQuyen, evidenceId); setRecord(await copyrightService.artistGet(artworkId)); }
     catch (error: any) { alert(error?.response?.data?.message || 'Không thể xóa bằng chứng'); }
+    finally { evidenceBusyRef.current = false; setEvidenceBusy(false); }
   };
 
   const openEvidence = async (item: CopyrightRecord['bangChung'][number]) => {
@@ -203,17 +275,32 @@ export default function ArtistCopyright() {
       {form.loaiTacPham !== 0 && <><label className="wide">Nguồn tham khảo<input required={form.loaiTacPham === 4} value={form.nguonThamKhao} onChange={e => setForm({...form, nguonThamKhao:e.target.value})}/></label><label className="wide">Mô tả nguồn gốc / cách sử dụng nguồn<textarea required={form.loaiTacPham === 4} rows={3} value={form.moTaNguonGoc} onChange={e => setForm({...form, moTaNguonGoc:e.target.value})}/></label></>}
       <label className="wide">Mô tả quyền và phạm vi sử dụng<textarea rows={3} value={form.moTaBanQuyen} onChange={e => setForm({...form, moTaBanQuyen:e.target.value})}/></label>
       <label className="wide">Ghi chú<textarea rows={2} value={form.ghiChu} onChange={e => setForm({...form, ghiChu:e.target.value})}/></label>
-      <div className="wide form-actions"><button disabled={saving}>{saving ? 'Đang lưu...' : record ? 'Cập nhật và gửi lại kiểm tra' : 'Tạo hồ sơ chờ kiểm tra'}</button></div>
+      <div className="wide form-actions"><button disabled={saving || evidenceBusy}>{saving ? 'Đang lưu...' : record ? 'Cập nhật và gửi lại kiểm tra' : 'Tạo hồ sơ chờ kiểm tra'}</button></div>
     </form>
     {record && (
       <section className="artist-evidence">
-        <h2>Bằng chứng ({record.bangChung.length}/10)</h2>
+        <h2>Bằng chứng ({record.bangChung.length}/{maxEvidenceCount})</h2>
         <p>JPG, PNG, WEBP hoặc PDF; tối đa 5 MB/tệp. Ảnh sẽ hiển thị bản xem trước. Tệp chỉ Admin và chủ hồ sơ được xem.</p>
-        <div className="evidence-upload">
-          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e => setFile(e.target.files?.[0] || null)} />
-          <input value={evidenceNote} onChange={e => setEvidenceNote(e.target.value)} placeholder="Mô tả bằng chứng" />
-          <button type="button" disabled={!file} onClick={() => void upload()}>Tải lên</button>
-        </div>
+        {canAddEvidence ? <>
+          <div className="evidence-upload-actions">
+            <input ref={evidenceInputRef} type="file" multiple hidden accept={evidenceTypes.join(',')} aria-label="Chọn tệp bằng chứng" onChange={selectEvidence} disabled={evidenceBusy || saving || remainingEvidenceSlots === 0} />
+            <button type="button" className="evidence-add-button" disabled={evidenceBusy || saving || remainingEvidenceSlots === 0} onClick={() => evidenceInputRef.current?.click()}>＋ Thêm bằng chứng</button>
+            <span>Có thể chọn nhiều tệp. Còn {remainingEvidenceSlots} chỗ, đã chọn {pendingEvidence.length} tệp chưa tải.</span>
+          </div>
+          {pendingEvidence.length > 0 && <ul className="pending-evidence-list">
+            {pendingEvidence.map(item => <li key={item.key}>
+              <div><strong>{item.file.name}</strong><span>{(item.file.size / 1024).toFixed(1)} KB</span></div>
+              <label>Mô tả bằng chứng<input aria-label={`Mô tả cho ${item.file.name}`} value={item.note} maxLength={500} disabled={evidenceBusy || saving} placeholder="Ví dụ: ảnh quá trình sáng tác, giấy cho phép…" onChange={event => setPendingEvidence(current => current.map(other => other.key === item.key ? { ...other, note: event.target.value } : other))} /></label>
+              <button type="button" className="evidence-remove-pending" aria-label={`Bỏ tệp ${item.file.name}`} disabled={evidenceBusy || saving} onClick={() => setPendingEvidence(current => current.filter(other => other.key !== item.key))}>Bỏ tệp</button>
+            </li>)}
+          </ul>}
+          <div className="evidence-upload-actions">
+            <button type="button" className="evidence-upload-button" disabled={evidenceBusy || saving || pendingEvidence.length === 0} onClick={() => void upload()}>{uploadProgress ? `Đang tải ${uploadProgress.done}/${uploadProgress.total} tệp…` : `Tải lên${pendingEvidence.length ? ` (${pendingEvidence.length} tệp)` : ''}`}</button>
+          </div>
+          {remainingEvidenceSlots === 0 && <p>Đã đủ {maxEvidenceCount} bằng chứng tính cả tệp đang chọn. Bỏ tệp đang chọn hoặc xóa bằng chứng cũ nếu cần thay thế.</p>}
+        </> : <p>Hồ sơ đã xác minh, đang tranh chấp hoặc đã thu hồi không được thêm hay thay đổi bằng chứng. Vui lòng liên hệ Admin nếu cần bổ sung.</p>}
+        {evidenceError && <p className="evidence-upload-error" role="alert">{evidenceError}</p>}
+        {evidenceMessage && <p className="evidence-upload-success" role="status">{evidenceMessage}</p>}
         <div className="artist-evidence-list">
           {record.bangChung.map(item => {
             const previewUrl = evidencePreviewUrls[item.maBangChung];
@@ -225,7 +312,7 @@ export default function ArtistCopyright() {
                   </span>
                   <span className="artist-evidence-copy"><strong>{item.tenTepGoc}</strong><span>{item.moTa || item.loaiTep}</span><code>{item.sha256}</code></span>
                 </button>
-                {['PENDING', 'NEED_INFO', 'REJECTED'].includes(record.trangThai) && <button onClick={() => void removeEvidence(item.maBangChung)}>Xóa</button>}
+                {['PENDING', 'NEED_INFO', 'REJECTED'].includes(record.trangThai) && <button type="button" disabled={evidenceBusy || saving} onClick={() => void removeEvidence(item.maBangChung)}>Xóa</button>}
               </article>
             );
           })}

@@ -150,7 +150,9 @@ public class AdminBusiness : IAdminBusiness
     {
         return list.Select(x => new TacPhamHoaSiResponse
         { 
-            MaTacPham = x.MaTacPham, 
+            MaTacPham = x.MaTacPham,
+            SaleEligibility = x.SaleEligibility,
+            RightsStatus = x.RightsStatus, 
             TenTacPham = x.TenTacPham, 
             Gia = x.Gia, 
             SoLuong = x.SoLuong,
@@ -163,7 +165,7 @@ public class AdminBusiness : IAdminBusiness
             TrangThai = x.TrangThai,
             TrangThaiText = x.TrangThai switch {
                 0 => "Chờ duyệt",
-                1 => "Đang bán",
+                1 => "Đã duyệt nội dung",
                 2 => "Ẩn (ngừng bán tạm thời)",
                 3 => "Từ chối",
                 99 => "Đã xóa (Bởi họa sĩ)",
@@ -663,7 +665,9 @@ public class AdminBusiness : IAdminBusiness
 
         return list.Select(x => new TacPhamHoaSiResponse 
         { 
-            MaTacPham = x.MaTacPham, 
+            MaTacPham = x.MaTacPham,
+            SaleEligibility = x.SaleEligibility,
+            RightsStatus = x.RightsStatus, 
             TenTacPham = x.TenTacPham, 
             Gia = x.Gia,
             SoLuong = x.SoLuong,
@@ -674,7 +678,7 @@ public class AdminBusiness : IAdminBusiness
             TrangThai = x.TrangThai,
             TrangThaiText = x.TrangThai switch {
                 0 => "Chờ duyệt",
-                1 => "Đang bán",
+                1 => "Đã duyệt nội dung",
                 2 => "Ẩn (ngừng bán tạm thời)",
                 3 => "Từ chối",
                 _ => "Không xác định"

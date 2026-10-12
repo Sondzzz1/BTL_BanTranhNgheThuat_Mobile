@@ -325,6 +325,8 @@ public partial class CopyrightRepository
                         _options.EnforcementStartUtc);
             }
 
+            var canSell = status == CopyrightStatuses.Verified
+                && (await ArtworkSaleSql.LoadAsync(connection, transaction, new[] { artworkId }))[artworkId].Eligibility.CanSell;
             var isNeedInfo = status == CopyrightStatuses.NeedInfo;
             var notification = new ThongBao
             {
@@ -334,7 +336,8 @@ public partial class CopyrightRepository
                 TieuDe = status == CopyrightStatuses.Verified ? "Hồ sơ nguồn gốc đã được xác minh"
                     : isNeedInfo ? "Cần bổ sung hồ sơ bản quyền" : "Hồ sơ bản quyền bị từ chối",
                 NoiDung = status == CopyrightStatuses.Verified
-                    ? $"Hồ sơ nguồn gốc của tác phẩm “{artworkName}” đã được xác minh."
+                    ? canSell ? $"Tác phẩm “{artworkName}” đã hoàn tất xác minh và đủ điều kiện mở bán."
+                        : $"Hồ sơ nguồn gốc của tác phẩm “{artworkName}” đã được xác minh; tác phẩm chưa đủ điều kiện mở bán."
                     : $"Tác phẩm “{artworkName}”: {note}",
                 LoaiDoiTuong = "BanQuyen",
                 MaDoiTuong = maBanQuyen,

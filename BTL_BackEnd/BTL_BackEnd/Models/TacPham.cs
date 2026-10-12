@@ -11,6 +11,14 @@ public static class TacPhamStatus
 
 public class TacPham
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DoAn2_BackEnd.Helpers.SaleEligibility SaleEligibility { get; set; } = DoAn2_BackEnd.Helpers.SaleEligibility.Unavailable("RIGHTS_NOT_DECLARED", "Tác phẩm hiện chưa đủ điều kiện mở bán.");
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string RightsStatus { get; set; } = "UNDECLARED";
+    [System.Text.Json.Serialization.JsonIgnore]
+    public byte? SubmitUsageBasis { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string? SubmitOriginDeclaration { get; set; }
     public int MaTacPham { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public Guid? SubmitRequestKey { get; set; }

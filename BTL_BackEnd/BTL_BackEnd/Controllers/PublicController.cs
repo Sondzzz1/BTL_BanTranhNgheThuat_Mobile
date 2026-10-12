@@ -58,6 +58,7 @@ public class PublicController : ControllerBase
                 .Select(x => new TacPhamResponse
                 {
                     MaTacPham = x.TacPham.MaTacPham,
+                    SaleEligibility = x.TacPham.SaleEligibility,
                     TenTacPham = x.TacPham.TenTacPham,
                     TenHoaSi = x.TenHoaSi,
                     TenDanhMuc = x.TenDanhMuc,
@@ -94,6 +95,7 @@ public class PublicController : ControllerBase
             var result = tacPhamList.Select(tp => new TacPhamResponse
             {
                 MaTacPham = tp.MaTacPham,
+                SaleEligibility = tp.SaleEligibility,
                 TenTacPham = tp.TenTacPham,
                 TenHoaSi = hoaSiMap.GetValueOrDefault(tp.MaHoaSi, ""),
                 TenDanhMuc = tp.MaDanhMuc.HasValue ? danhMucMap.GetValueOrDefault(tp.MaDanhMuc.Value) : null,
@@ -139,6 +141,7 @@ public class PublicController : ControllerBase
             var result = new TacPhamResponse
             {
                 MaTacPham = tacPham.MaTacPham,
+                SaleEligibility = tacPham.SaleEligibility,
                 TenTacPham = tacPham.TenTacPham,
                 TenHoaSi = hoaSi?.TenHoaSi ?? "",
                 TenDanhMuc = tenDanhMuc,
@@ -210,6 +213,7 @@ public class PublicController : ControllerBase
                 .Select(x => new TacPhamResponse
                 {
                     MaTacPham = x.TacPham.MaTacPham,
+                    SaleEligibility = x.TacPham.SaleEligibility,
                     TenTacPham = x.TacPham.TenTacPham,
                     TenHoaSi = hoaSiMap.TryGetValue(x.TacPham.MaHoaSi, out var ten) ? ten : "",
                     TenDanhMuc = x.TacPham.MaDanhMuc.HasValue && danhMucMap.TryGetValue(x.TacPham.MaDanhMuc.Value, out var dm) ? dm : null,
@@ -458,7 +462,7 @@ public class PublicController : ControllerBase
 }
 
 // Response DTOs
-public class TacPhamResponse
+public class TacPhamResponse : ArtworkSaleResponse
 {
     public int MaTacPham { get; set; }
     public string TenTacPham { get; set; } = null!;

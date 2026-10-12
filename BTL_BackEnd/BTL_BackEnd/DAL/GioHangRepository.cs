@@ -184,6 +184,59 @@ public class GioHangRepository : IGioHangRepository
         return rowsAffected > 0;
     }
 
+    public async Task<List<DoAn2_BackEnd.DTO.ChiTietGioHangResponse>> GetView(int maGioHang)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var command = new SqlCommand(@"
+            SELECT c.MaChiTietGH,c.MaTacPham,c.SoLuong,t.TenTacPham,t.Gia,t.HinhAnh,t.SoLuong AS Stock,h.TenHoaSi
+            FROM ChiTietGioHang c JOIN TacPham t ON t.MaTacPham=c.MaTacPham
+            JOIN HoaSi h ON h.MaHoaSi=t.MaHoaSi
+            WHERE c.MaGioHang=@Id AND t.MaYeuCauVeTranh IS NULL ORDER BY c.MaChiTietGH;", connection);
+        command.Parameters.AddWithValue("@Id", maGioHang);
+        var items = new List<DoAn2_BackEnd.DTO.ChiTietGioHangResponse>();
+        using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync()) items.Add(new()
+            {
+                MaChiTietGH = reader.GetInt32(0), MaTacPham = reader.GetInt32(1), SoLuong = reader.GetInt32(2),
+                TenTacPham = reader.GetString(3), Gia = reader.GetDecimal(4), HinhAnh = reader.IsDBNull(5) ? null : reader.GetString(5),
+                SoLuongTon = reader.GetInt32(6), TenHoaSi = reader.GetString(7), ThanhTien = reader.GetDecimal(4) * reader.GetInt32(2),
+            });
+        }
+        var sales = await ArtworkSaleSql.LoadAsync(connection, null, items.Select(item => item.MaTacPham));
+        foreach (var item in items)
+        {
+            var sale = sales[item.MaTacPham];
+            item.SoLuongTon = sale.Stock;
+            item.SaleEligibility = sale.Eligibility;
+            if (item.CanSell && item.SoLuong > sale.Stock)
+                item.SaleEligibility = SaleEligibility.Unavailable("INSUFFICIENT_STOCK", "Số lượng trong giỏ vượt quá tồn kho hiện tại.");
+        }
+        return items;
+    }
+
+    public async Task<bool> UpdateQuantityTransactional(int maNguoiDung, int maChiTietGH, int soLuong)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+        using var find = new SqlCommand(@"SELECT c.MaTacPham FROM ChiTietGioHang c JOIN GioHang g ON g.MaGioHang=c.MaGioHang
+            WHERE c.MaChiTietGH=@Id AND g.MaNguoiDung=@User;", connection, transaction);
+        find.Parameters.AddWithValue("@Id", maChiTietGH); find.Parameters.AddWithValue("@User", maNguoiDung);
+        var value = await find.ExecuteScalarAsync();
+        if (value == null) return false;
+        var id = Convert.ToInt32(value);
+        var sale = (await ArtworkSaleSql.LoadAsync(connection, transaction, new[] { id }))[id];
+        ArtworkSalePolicy.EnsureCanSell(sale.Eligibility, $"#{id}");
+        if (soLuong <= 0 || soLuong > sale.Stock) throw new BusinessConflictException("Số lượng không hợp lệ hoặc vượt quá tồn kho hiện tại.");
+        using var update = new SqlCommand(@"UPDATE c SET SoLuong=@Qty FROM ChiTietGioHang c
+            JOIN GioHang g ON g.MaGioHang=c.MaGioHang WHERE c.MaChiTietGH=@Id AND g.MaNguoiDung=@User;", connection, transaction);
+        update.Parameters.AddWithValue("@Qty", soLuong); update.Parameters.AddWithValue("@Id", maChiTietGH); update.Parameters.AddWithValue("@User", maNguoiDung);
+        var changed = await update.ExecuteNonQueryAsync() == 1;
+        transaction.Commit(); return changed;
+    }
+
     public async Task<bool> AddOrIncrementTransactional(int maNguoiDung, int maTacPham, int soLuong)
     {
         await using var connection = new SqlConnection(_connectionString);
@@ -191,35 +244,19 @@ public class GioHangRepository : IGioHangRepository
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
-            const string productSql = @"
-                SELECT t.TenTacPham,t.SoLuong,t.TrangThai,t.MaYeuCauVeTranh,
-                       CASE WHEN NOT EXISTS (SELECT 1 FROM BanQuyen b
-                                             WHERE b.MaTacPham=t.MaTacPham
-                                               AND ISNULL(b.BiChanBan,0)=1)
-                            THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END
-                FROM TacPham t WITH (UPDLOCK,HOLDLOCK)
-                WHERE t.MaTacPham=@MaTacPham;";
+            const string productSql = @"SELECT t.TenTacPham,t.SoLuong FROM TacPham t WITH (UPDLOCK,HOLDLOCK) WHERE t.MaTacPham=@MaTacPham;";
             await using var product = new SqlCommand(productSql, connection, transaction);
             product.Parameters.AddWithValue("@MaTacPham", maTacPham);
             string productName;
             int stock;
-            byte status;
-            bool isCommission;
-            bool copyrightNotBlocked;
             await using (var reader = await product.ExecuteReaderAsync())
             {
                 if (!await reader.ReadAsync()) throw new KeyNotFoundException("Tác phẩm không tồn tại");
                 productName = reader.GetString(0);
                 stock = reader.GetInt32(1);
-                status = reader.GetByte(2);
-                isCommission = !reader.IsDBNull(3);
-                copyrightNotBlocked = reader.GetBoolean(4);
             }
-            if (isCommission)
-                throw new BusinessConflictException("Tác phẩm nội bộ của yêu cầu vẽ tranh không được thêm vào giỏ hàng");
-            if (status != 1) throw new BusinessConflictException("Tác phẩm hiện không khả dụng");
-            if (!copyrightNotBlocked)
-                throw new BusinessConflictException("Tác phẩm đang bị chặn bán do hồ sơ bản quyền");
+            var sales = await ArtworkSaleSql.LoadAsync(connection, transaction, new[] { maTacPham });
+            ArtworkSalePolicy.EnsureCanSell(sales[maTacPham].Eligibility, productName);
 
             const string cartSql = "SELECT MaGioHang FROM GioHang WITH (UPDLOCK,HOLDLOCK) WHERE MaNguoiDung=@MaNguoiDung;";
             await using var cart = new SqlCommand(cartSql, connection, transaction);

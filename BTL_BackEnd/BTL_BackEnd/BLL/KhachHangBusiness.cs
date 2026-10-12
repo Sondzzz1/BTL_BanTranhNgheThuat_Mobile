@@ -104,31 +104,8 @@ public class KhachHangBusiness : IKhachHangBusiness
             };
         }
 
-        var chiTietList = await _gioHangRepo.GetChiTiet(gioHang.MaGioHang);
-        var danhSachSanPham = new List<ChiTietGioHangResponse>();
-        decimal tongTien = 0;
-
-        foreach (var chiTiet in chiTietList)
-        {
-            var tacPham = await _tacPhamRepo.GetById(chiTiet.MaTacPham);
-            if (tacPham == null) continue;
-            if (tacPham.MaYeuCauVeTranh.HasValue) continue;
-
-            var hoaSi = await _hoaSiRepo.GetById(tacPham.MaHoaSi);
-            var thanhTien = tacPham.Gia * chiTiet.SoLuong;
-            danhSachSanPham.Add(new ChiTietGioHangResponse
-            {
-                MaChiTietGH = chiTiet.MaChiTietGH,
-                MaTacPham = tacPham.MaTacPham,
-                TenTacPham = tacPham.TenTacPham,
-                TenHoaSi = hoaSi?.TenHoaSi ?? "",
-                Gia = tacPham.Gia,
-                SoLuong = chiTiet.SoLuong,
-                ThanhTien = thanhTien,
-                HinhAnh = tacPham.HinhAnh
-            });
-            tongTien += thanhTien;
-        }
+        var danhSachSanPham = await _gioHangRepo.GetView(gioHang.MaGioHang);
+        var tongTien = danhSachSanPham.Where(item => item.CanCheckout).Sum(item => item.ThanhTien);
 
         return new GioHangResponse
         {
@@ -150,26 +127,7 @@ public class KhachHangBusiness : IKhachHangBusiness
         if (request.SoLuong < 1)
             throw new ArgumentException("Số lượng phải lớn hơn 0");
 
-        var chiTiet = await _gioHangRepo.GetChiTietById(maChiTietGH);
-        if (chiTiet == null) return false;
-
-        // Verify ownership: chiTiet phải thuộc giỏ hàng của user
-        var gioHang = await _gioHangRepo.GetByNguoiDung(maNguoiDung);
-        if (gioHang == null || chiTiet.MaGioHang != gioHang.MaGioHang)
-            throw new UnauthorizedAccessException("Không có quyền cập nhật mục giỏ hàng này");
-
-        var tacPham = await _tacPhamRepo.GetById(chiTiet.MaTacPham);
-        if (tacPham == null) throw new InvalidOperationException("Tác phẩm không tồn tại");
-        if (tacPham.MaYeuCauVeTranh.HasValue)
-            throw new BusinessConflictException("Tác phẩm nội bộ của yêu cầu vẽ tranh không được cập nhật trong giỏ hàng");
-        if (tacPham.TrangThai != 1)
-            throw new BusinessConflictException("Tác phẩm hiện không khả dụng");
-        if (tacPham.SoLuong < request.SoLuong)
-            throw new InvalidOperationException(
-                $"Sản phẩm '{tacPham.TenTacPham}' không đủ số lượng (chỉ còn {tacPham.SoLuong})");
-
-        chiTiet.SoLuong = request.SoLuong;
-        return await _gioHangRepo.UpdateChiTiet(chiTiet);
+        return await _gioHangRepo.UpdateQuantityTransactional(maNguoiDung, maChiTietGH, request.SoLuong);
     }
 
     public async Task<bool> XoaKhoiGioHang(int maNguoiDung, int maChiTietGH)

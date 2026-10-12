@@ -202,8 +202,13 @@ public class DonHangRepository : IDonHangRepository
                 throw new BusinessConflictException("Tác phẩm nội bộ của yêu cầu vẽ tranh không được mua qua marketplace");
             if (lines.Any(x => x.Status != 1))
                 throw new BusinessConflictException("Sản phẩm đã ngừng bán hoặc không còn khả dụng");
-            if (lines.Any(x => !x.CopyrightNotBlocked))
-                throw new BusinessConflictException("Sản phẩm đang bị chặn bán do hồ sơ bản quyền");
+            var sales = await ArtworkSaleSql.LoadAsync(connection, transaction, lines.Select(line => line.ArtworkId));
+            foreach (var line in lines)
+            {
+                ArtworkSalePolicy.EnsureCanSell(sales[line.ArtworkId].Eligibility, $"#{line.ArtworkId}");
+                if (line.Quantity > sales[line.ArtworkId].Stock)
+                    throw new BusinessConflictException($"Tác phẩm #{line.ArtworkId} không đủ tồn kho hiện tại.");
+            }
 
             var total = lines.Sum(x => x.UnitPrice * x.Quantity);
             const string insertOrderSql = @"
@@ -241,10 +246,7 @@ public class DonHangRepository : IDonHangRepository
                 const string decreaseStockSql = @"
                     UPDATE TacPham
                     SET SoLuong=SoLuong-@SoLuong
-                    WHERE MaTacPham=@MaTacPham AND TrangThai=1 AND MaYeuCauVeTranh IS NULL AND SoLuong>=@SoLuong
-                      AND NOT EXISTS (SELECT 1 FROM BanQuyen b
-                                      WHERE b.MaTacPham=TacPham.MaTacPham
-                                        AND ISNULL(b.BiChanBan,0)=1);";
+                    WHERE MaTacPham=@MaTacPham AND TrangThai=1 AND MaYeuCauVeTranh IS NULL AND SoLuong>=@SoLuong;";
                 await using var decreaseStock = new SqlCommand(decreaseStockSql, connection, transaction);
                 decreaseStock.Parameters.AddWithValue("@MaTacPham", line.ArtworkId);
                 decreaseStock.Parameters.AddWithValue("@SoLuong", line.Quantity);
@@ -715,11 +717,7 @@ public class DonHangRepository : IDonHangRepository
         {
             const string buyNowSql = @"
                 SELECT t.MaTacPham,t.Gia,t.TrangThai,
-                       CASE WHEN t.MaYeuCauVeTranh IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END,
-                       CASE WHEN NOT EXISTS (SELECT 1 FROM BanQuyen b
-                                             WHERE b.MaTacPham=t.MaTacPham
-                                               AND ISNULL(b.BiChanBan,0)=1)
-                            THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END
+                       CASE WHEN t.MaYeuCauVeTranh IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END
                 FROM TacPham t WITH (UPDLOCK,HOLDLOCK)
                 WHERE t.MaTacPham=@MaTacPham;";
             await using var command = new SqlCommand(buyNowSql, connection, transaction);
@@ -728,7 +726,7 @@ public class DonHangRepository : IDonHangRepository
             if (!await reader.ReadAsync()) return new List<CheckoutLine>();
             return new List<CheckoutLine>
             {
-                new(null, reader.GetInt32(0), request.SoLuong!.Value, reader.GetDecimal(1), reader.GetByte(2), reader.GetBoolean(3), reader.GetBoolean(4))
+                new(null, reader.GetInt32(0), request.SoLuong!.Value, reader.GetDecimal(1), reader.GetByte(2), reader.GetBoolean(3))
             };
         }
 
@@ -743,11 +741,7 @@ public class DonHangRepository : IDonHangRepository
 
         var cartSql = $@"
             SELECT c.MaChiTietGH,c.MaTacPham,c.SoLuong,t.Gia,t.TrangThai,
-                   CASE WHEN t.MaYeuCauVeTranh IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END,
-                   CASE WHEN NOT EXISTS (SELECT 1 FROM BanQuyen b
-                                         WHERE b.MaTacPham=t.MaTacPham
-                                           AND ISNULL(b.BiChanBan,0)=1)
-                        THEN CAST(1 AS bit) ELSE CAST(0 AS bit) END
+                   CASE WHEN t.MaYeuCauVeTranh IS NULL THEN CAST(0 AS bit) ELSE CAST(1 AS bit) END
             FROM GioHang g WITH (UPDLOCK,HOLDLOCK)
             INNER JOIN ChiTietGioHang c WITH (UPDLOCK,HOLDLOCK) ON c.MaGioHang=g.MaGioHang
             INNER JOIN TacPham t WITH (UPDLOCK,HOLDLOCK) ON t.MaTacPham=c.MaTacPham
@@ -762,7 +756,7 @@ public class DonHangRepository : IDonHangRepository
         await using (var reader = await cartCommand.ExecuteReaderAsync())
         {
             while (await reader.ReadAsync())
-                result.Add(new CheckoutLine(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetDecimal(3), reader.GetByte(4), reader.GetBoolean(5), reader.GetBoolean(6)));
+                result.Add(new CheckoutLine(reader.GetInt32(0), reader.GetInt32(1), reader.GetInt32(2), reader.GetDecimal(3), reader.GetByte(4), reader.GetBoolean(5)));
         }
 
         if (requestedIds.Count > 0 && result.Count != requestedIds.Count)
@@ -770,7 +764,7 @@ public class DonHangRepository : IDonHangRepository
         return result;
     }
 
-    private sealed record CheckoutLine(int? CartLineId, int ArtworkId, int Quantity, decimal UnitPrice, byte Status, bool IsCommission, bool CopyrightNotBlocked);
+    private sealed record CheckoutLine(int? CartLineId, int ArtworkId, int Quantity, decimal UnitPrice, byte Status, bool IsCommission);
 
     private DonHang MapToDonHang(SqlDataReader reader)
     {

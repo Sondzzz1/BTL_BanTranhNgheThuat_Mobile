@@ -100,6 +100,8 @@ public class HoaSiBusiness : IHoaSiBusiness
             result.Add(new TacPhamHoaSiResponse
             {
                 MaTacPham = tacPham.MaTacPham,
+                SaleEligibility = tacPham.SaleEligibility,
+                RightsStatus = tacPham.RightsStatus,
                 TenTacPham = tacPham.TenTacPham,
                 TenDanhMuc = tenDanhMuc,
                 Gia = tacPham.Gia,
@@ -145,6 +147,8 @@ public class HoaSiBusiness : IHoaSiBusiness
         return new TacPhamHoaSiResponse
         {
             MaTacPham = tacPham.MaTacPham,
+                SaleEligibility = tacPham.SaleEligibility,
+                RightsStatus = tacPham.RightsStatus,
             TenTacPham = tacPham.TenTacPham,
             TenDanhMuc = tenDanhMuc,
             Gia = tacPham.Gia,
@@ -177,11 +181,17 @@ public class HoaSiBusiness : IHoaSiBusiness
         if (request.Gia <= 0)
             throw new ArgumentException("Giá phải lớn hơn 0");
         ExclusiveArtworkPolicy.EnsureCreateDeclaration(request.LaTacPhamDocBan, request.SoLuong);
+        if (!request.XacNhanQuyenSuDung || !CopyrightUsageBases.IsValid(request.CanCuSuDung)
+            || string.IsNullOrWhiteSpace(request.KhaiBaoNguonGoc))
+            throw new ArgumentException("Vui lòng khai báo nguồn gốc, chọn căn cứ và xác nhận quyền sử dụng trước khi gửi duyệt.");
+        request.KhaiBaoNguonGoc = NormalizeOptionalOriginField(request.KhaiBaoNguonGoc, "Khai báo nguồn gốc/quyền sử dụng", 500);
         await NormalizeAndValidateCreationOrigin(request);
 
         var tacPham = new TacPham
         {
             SubmitRequestKey = request.SubmitRequestKey,
+            SubmitUsageBasis = request.CanCuSuDung,
+            SubmitOriginDeclaration = request.KhaiBaoNguonGoc,
             TenTacPham = request.TenTacPham.Trim(),
             MaHoaSi = maHoaSi,
             MaDanhMuc = request.MaDanhMuc,
@@ -392,6 +402,8 @@ public class HoaSiBusiness : IHoaSiBusiness
             result.Add(new TacPhamHoaSiResponse
             {
                 MaTacPham = tp.MaTacPham,
+                SaleEligibility = tp.SaleEligibility,
+                RightsStatus = tp.RightsStatus,
                 TenTacPham = tp.TenTacPham,
                 TenDanhMuc = tenDanhMuc,
                 Gia = tp.Gia,
@@ -1043,7 +1055,7 @@ public class HoaSiBusiness : IHoaSiBusiness
         return trangThai switch
         {
             0 => "Chờ duyệt",
-            1 => "Đang bán",
+            1 => "Đã duyệt nội dung",
             2 => "Ẩn (ngừng bán tạm thời)",
             3 => "Từ chối",
             _ => "Không xác định"
