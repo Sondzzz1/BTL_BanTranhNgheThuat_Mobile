@@ -407,23 +407,19 @@ export default function ProductDetailScreen({
             )}
           </View>
 
-          <View style={[
-            styles.exclusiveStatusBadge,
-            product.laTacPhamDocBan
-              ? isVerifiedExclusive && styles.exclusiveStatusBadgeVerified
-              : styles.multipleStatusBadge,
-          ]}>
-            <Text style={[
-              styles.exclusiveStatusText,
-              product.laTacPhamDocBan
-                ? isVerifiedExclusive && styles.exclusiveStatusTextVerified
-                : styles.multipleStatusText,
+          {product.laTacPhamDocBan && (
+            <View style={[
+              styles.exclusiveStatusBadge,
+              isVerifiedExclusive && styles.exclusiveStatusBadgeVerified,
             ]}>
-              {product.laTacPhamDocBan
-                ? isVerifiedExclusive ? 'Độc bản đã xác minh' : 'Khai báo độc bản · chưa xác minh'
-                : `Khai báo nhiều bản${product.soLuongBanDau != null && product.soLuongBanDau >= 2 ? ` · ban đầu ${product.soLuongBanDau} bản` : ''}`}
-            </Text>
-          </View>
+              <Text style={[
+                styles.exclusiveStatusText,
+                isVerifiedExclusive && styles.exclusiveStatusTextVerified,
+              ]}>
+                {isVerifiedExclusive ? 'Độc bản đã xác minh' : 'Khai báo độc bản · chưa xác minh'}
+              </Text>
+            </View>
+          )}
 
           <Text style={styles.price}>{formatPrice(product.gia)}</Text>
 
@@ -801,10 +797,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0fdf4',
     borderColor: '#bbf7d0',
   },
-  multipleStatusBadge: {
-    backgroundColor: '#e0f2fe',
-    borderColor: '#bae6fd',
-  },
   exclusiveStatusText: {
     color: '#9a3412',
     fontSize: 12,
@@ -812,9 +804,6 @@ const styles = StyleSheet.create({
   },
   exclusiveStatusTextVerified: {
     color: '#166534',
-  },
-  multipleStatusText: {
-    color: '#075985',
   },
   price: {
     fontSize: 28,
