@@ -8,6 +8,7 @@ import {
   getCustomArtTypeLabel,
 } from '../../services/customArtService';
 import { formatVnd } from '../../utils/currency';
+import CustomArtRequirements from '../../components/CustomArtRequirements';
 import './ArtistCustomArt.css';
 
 const ArtistCustomArt: React.FC = () => {
@@ -21,7 +22,6 @@ const ArtistCustomArt: React.FC = () => {
   const [progressForm, setProgressForm] = useState<{ title: string; description: string; image?: File }>({ title: '', description: '' });
   const [completionTarget, setCompletionTarget] = useState<CustomArtRequestApi | null>(null);
   const [completionForm, setCompletionForm] = useState<{ note: string; image?: File }>({ note: '' });
-  const [referencePreview, setReferencePreview] = useState<string>();
   const [progressPreviews, setProgressPreviews] = useState<Record<number, string>>({});
   const [progressUploadPreview, setProgressUploadPreview] = useState<string>();
   const [completionUploadPreview, setCompletionUploadPreview] = useState<string>();
@@ -34,9 +34,6 @@ const ArtistCustomArt: React.FC = () => {
   }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => () => {
-    if (referencePreview?.startsWith('blob:')) URL.revokeObjectURL(referencePreview);
-  }, [referencePreview]);
-  useEffect(() => () => {
     Object.values(progressPreviews).filter((url) => url.startsWith('blob:')).forEach(URL.revokeObjectURL);
   }, [progressPreviews]);
   useEffect(() => () => {
@@ -48,15 +45,11 @@ const ArtistCustomArt: React.FC = () => {
 
   const loadDetail = async (id: number) => {
     const detail = await customArtService.getById(id);
-    const [reference, progressImages] = await Promise.all([
-      getAuthenticatedCustomArtFileUrl(detail.referenceImageUrl || detail.anhThamKhao),
-      Promise.all((detail.progress || []).map(async (entry) => [
-        entry.maTienDo,
-        await getAuthenticatedCustomArtFileUrl(entry.anhPreview),
-      ] as const)),
-    ]);
+    const progressImages = await Promise.all((detail.progress || []).map(async (entry) => [
+      entry.maTienDo,
+      await getAuthenticatedCustomArtFileUrl(entry.anhPreview),
+    ] as const));
     setSelected(detail);
-    setReferencePreview(reference);
     setProgressPreviews(Object.fromEntries(progressImages.filter((entry): entry is readonly [number, string] => Boolean(entry[1]))));
   };
 
@@ -73,7 +66,6 @@ const ArtistCustomArt: React.FC = () => {
 
   const closeDetail = () => {
     setSelected(null);
-    setReferencePreview(undefined);
     setProgressPreviews({});
     setProgressUploadPreview(undefined);
   };
@@ -191,11 +183,7 @@ const ArtistCustomArt: React.FC = () => {
 
     {selected && <div className="artist-modal-overlay" onMouseDown={closeDetail}><div className="artist-modal" onMouseDown={(e) => e.stopPropagation()}>
       <div className="artist-modal-top"><div><h2>{selected.tieuDe}</h2><span className="artist-commission-badge">{getCustomArtStatusLabel(selected.trangThai)}</span></div><button className="artist-secondary" onClick={closeDetail}>Đóng</button></div>
-      <p><strong>Khách hàng:</strong> {selected.tenKhachHang || `#${selected.maKhachHang}`}</p>
-      <p><strong>Nội dung:</strong> {selected.moTa}</p>
-      <p><strong>Ngân sách dự kiến:</strong> {formatVnd(selected.giaDuKien)}</p>
-      {selected.type === 'EXISTING_ARTWORK' && <div className="artist-source"><h3>Nguồn gốc và điều kiện sử dụng</h3><p><strong>Tác phẩm gốc:</strong> {selected.referenceArtworkName}</p><p><strong>Tác giả gốc:</strong> {selected.referenceArtistName}</p><p><strong>Nguồn:</strong> {selected.nguonTacPhamGoc || '—'}</p><p><strong>Quyền sử dụng:</strong> {selected.tinhTrangQuyenSuDung || '—'}</p><p><strong>Ghi chú quyền:</strong> {selected.moTaQuyenSuDung || '—'}</p></div>}
-      {referencePreview && <img className="artist-reference" src={referencePreview} alt="Tham khảo" />}
+      <CustomArtRequirements key={selected.maYeuCau} request={selected} />
       {selected.quote && <div className="artist-source"><h3>Báo giá hiện tại</h3><p><strong>Số tiền:</strong> {formatVnd(selected.quote.giaBaoGia)}</p><p><strong>Ngày hoàn thành:</strong> {new Date(`${selected.quote.thoiGianHoanThanh}T00:00:00`).toLocaleDateString('vi-VN')}</p><p><strong>Ghi chú:</strong> {selected.quote.ghiChu || '—'}</p><p><strong>Trạng thái:</strong> {selected.quote.trangThai === 'CustomerAccepted' ? 'Khách hàng đã chấp nhận' : 'Chờ khách hàng chấp nhận'}</p></div>}
       {selected.trangThaiNoiBo === 'Completed' && <div className="artist-completed-summary">
         <h3>Yêu cầu đã hoàn thành</h3>

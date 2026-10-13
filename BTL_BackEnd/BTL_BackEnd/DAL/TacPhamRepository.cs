@@ -300,15 +300,16 @@ public class TacPhamRepository : ITacPhamRepository
         if (!CopyrightUsageBases.IsValid(artwork.SubmitUsageBasis) || string.IsNullOrWhiteSpace(artwork.SubmitOriginDeclaration))
             throw new ArgumentException("Cần khai báo nguồn gốc, căn cứ và xác nhận quyền sử dụng trước khi gửi duyệt.");
         using var command = new SqlCommand(@"
-            INSERT INTO BanQuyen(MaTacPham,MaTacGia,MaNguoiGiuQuyen,TacGia,NguonGoc,CanCuSuDung,
+            INSERT INTO BanQuyen(MaTacPham,MaTacGia,MaNguoiGiuQuyen,TacGia,NguonGoc,CanCuSuDung,NguonThamKhao,
                 LaDuLieuCu,BiChanBan,TrangThai,NguoiTao,NguoiCapNhat,NgayTao,NgayCapNhat)
             OUTPUT INSERTED.MaBanQuyen
-            VALUES(@Artwork,@Artist,@Artist,@Author,@Origin,@Basis,0,0,@Pending,@Actor,@Actor,SYSUTCDATETIME(),SYSUTCDATETIME());", connection, transaction);
+            VALUES(@Artwork,@Artist,@Artist,@Author,@Origin,@Basis,@Source,0,0,@Pending,@Actor,@Actor,SYSUTCDATETIME(),SYSUTCDATETIME());", connection, transaction);
         command.Parameters.AddWithValue("@Artwork", artworkId);
         command.Parameters.AddWithValue("@Artist", artwork.MaHoaSi);
         command.Parameters.AddWithValue("@Author", artistName);
         command.Parameters.AddWithValue("@Origin", artwork.SubmitOriginDeclaration);
         command.Parameters.AddWithValue("@Basis", artwork.SubmitUsageBasis!.Value);
+        command.Parameters.AddWithValue("@Source", (object?)artwork.NguonThamKhao ?? DBNull.Value);
         command.Parameters.AddWithValue("@Pending", CopyrightStatuses.Pending);
         command.Parameters.AddWithValue("@Actor", accountId);
         var id = Convert.ToInt32(await command.ExecuteScalarAsync());
@@ -377,6 +378,17 @@ public class TacPhamRepository : ITacPhamRepository
         command.Parameters.AddWithValue("@NguonThamKhao", (object?)tacPham.NguonThamKhao ?? DBNull.Value);
         command.Parameters.AddWithValue("@MoTaNguonGoc", (object?)tacPham.MoTaNguonGoc ?? DBNull.Value);
 
+        using (var originGuard = new SqlCommand(@"
+            SELECT COUNT(*) FROM TacPham t JOIN BanQuyen b WITH (UPDLOCK,HOLDLOCK) ON b.MaTacPham=t.MaTacPham
+            WHERE t.MaTacPham=@MaTacPham AND b.TrangThai=2 AND EXISTS(
+                SELECT t.LoaiTacPham,t.TacGiaGoc,t.MaTacPhamGoc,t.TenTacPhamGoc,t.KhongXacDinhTacGiaGoc,t.NguonThamKhao,t.MoTaNguonGoc
+                EXCEPT SELECT @LoaiTacPham,@TacGiaGoc,@MaTacPhamGoc,@TenTacPhamGoc,@KhongXacDinhTacGiaGoc,@NguonThamKhao,@MoTaNguonGoc);", connection, transaction))
+        {
+            foreach (var name in new[] { "@MaTacPham", "@LoaiTacPham", "@TacGiaGoc", "@MaTacPhamGoc", "@TenTacPhamGoc", "@KhongXacDinhTacGiaGoc", "@NguonThamKhao", "@MoTaNguonGoc" })
+                originGuard.Parameters.AddWithValue(name, command.Parameters[name].Value);
+            if (Convert.ToInt32(await originGuard.ExecuteScalarAsync()) > 0)
+                throw new InvalidOperationException("Không thể sửa nguồn gốc của hồ sơ đã xác minh qua form tác phẩm. Vui lòng liên hệ Admin để xử lý lại hồ sơ quyền.");
+        }
         var rowsAffected = await command.ExecuteNonQueryAsync();
         if (rowsAffected == 1 && oldStatus == 3 && tacPham.TrangThai == 0)
         {

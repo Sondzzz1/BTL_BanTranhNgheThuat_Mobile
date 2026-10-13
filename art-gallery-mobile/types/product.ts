@@ -1,6 +1,9 @@
 // Product Types
 
 export interface Product {
+  canSell?: boolean;
+  saleReason?: string;
+  saleMessage?: string;
   maTacPham: number;
   tenTacPham: string;
   tenHoaSi: string;

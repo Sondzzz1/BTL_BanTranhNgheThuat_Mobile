@@ -58,6 +58,7 @@ public class ArtworkContentRuntimeTests(ITestOutputHelper output)
             var created = await Send(artist, HttpMethod.Post, "hoa-si/tac-pham/create", new
             {
                 tenTacPham = name, maDanhMuc = 1, gia = 100000, soLuong = 1, laTacPhamDocBan = true,
+                canCuSuDung = 1, xacNhanQuyenSuDung = true, khaiBaoNguonGoc = "Fixture original declaration",
                 moTa = "Mo ta co ban runtime test", loaiTacPham = 0
             }, HttpStatusCode.OK);
             id = created.GetProperty("maTacPham").GetInt32();
@@ -147,6 +148,9 @@ public class ArtworkContentRuntimeTests(ITestOutputHelper output)
                         WHERE MaTacPham=@Id AND TenTacPham=@Name AND MaHoaSi=@Artist)
                         THROW 51000, 'Fixture identity changed; refuse cleanup.', 1;
                     DELETE FROM ThongBao WHERE LoaiDoiTuong IN ('TacPham','ChiTietTacPham') AND MaDoiTuong=@Id;
+                    DELETE FROM ThongBao WHERE LoaiDoiTuong='BanQuyen' AND MaDoiTuong IN(SELECT MaBanQuyen FROM BanQuyen WHERE MaTacPham=@Id);
+                    DELETE FROM BangChungBanQuyen WHERE MaBanQuyen IN(SELECT MaBanQuyen FROM BanQuyen WHERE MaTacPham=@Id);
+                    DELETE FROM BanQuyen WHERE MaTacPham=@Id;
                     DELETE FROM TacPhamChinhSua WHERE MaTacPham=@Id;
                     DELETE FROM ChiTietTacPham WHERE MaTacPham=@Id;
                     DELETE FROM TacPham WHERE MaTacPham=@Id AND TenTacPham=@Name AND MaHoaSi=@Artist;

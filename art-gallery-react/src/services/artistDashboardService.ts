@@ -17,6 +17,9 @@ export interface CapNhatHoSoHoaSiRequest {
 }
 
 export interface TaoTacPhamRequest {
+    canCuSuDung: number;
+    xacNhanQuyenSuDung: boolean;
+    khaiBaoNguonGoc: string;
     tenTacPham: string;
     maDanhMuc?: number;
     gia: number;
@@ -95,6 +98,10 @@ export interface ChiTietTacPhamResponse extends ChiTietTacPhamPayload {
 }
 
 export interface TacPhamHoaSiResponse {
+    canSell?: boolean;
+    saleReason?: string;
+    saleMessage?: string;
+    rightsStatus?: string;
     maTacPham: number;
     tenTacPham: string;
     tenDanhMuc?: string;

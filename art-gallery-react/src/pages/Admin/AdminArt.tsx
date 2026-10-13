@@ -13,7 +13,7 @@ import './AdminArt.css';
 
 const STATUS_TEXT: Record<number, string> = {
     0: 'Chờ duyệt',
-    1: 'Đang bán',
+    1: 'Đã duyệt nội dung',
     2: 'Đang ẩn',
     3: 'Từ chối',
     99: 'Đã xóa (Họa sĩ)',
@@ -505,7 +505,7 @@ const AdminArt: React.FC = () => {
                                 >
                                     <option value="">Tất cả trạng thái</option>
                                     <option value="0">Chờ duyệt</option>
-                                    <option value="1">Đang bán</option>
+                                    <option value="1">Đã duyệt nội dung</option>
                                     <option value="2">Đang ẩn</option>
                                     <option value="3">Từ chối</option>
                                     <option value="99">Đã xóa bởi họa sĩ</option>
@@ -823,6 +823,12 @@ const AdminArt: React.FC = () => {
                             </section>
 
                             <section className="artwork-review-section">
+                                <h4>Kiểm duyệt tác phẩm</h4><p>{STATUS_TEXT[selectedArtwork.trangThai] || selectedArtwork.trangThaiText}</p>
+                            </section>
+                            <section className="artwork-review-section">
+                                <h4>Trạng thái kinh doanh</h4><strong>{selectedArtwork.canSell === true ? 'Được mở bán' : 'Chưa đủ điều kiện mở bán'}</strong><p>{selectedArtwork.saleMessage || 'Chưa đủ điều kiện mở bán.'}</p>
+                            </section>
+                            <section className="artwork-review-section">
                                 <h4><i className="ti-bookmark"></i> Nguồn gốc &amp; quyền sử dụng</h4>
                                 <div className="artwork-review-info-grid">
                                     <div><span>Phân loại</span><strong>{selectedArtwork.loaiTacPhamText || (selectedArtwork.loaiTacPham === 2 ? 'Vẽ lại / phái sinh' : selectedArtwork.loaiTacPham === 4 ? 'Dựa trên tư liệu tham khảo' : 'Tự sáng tác')}</strong></div>
@@ -841,7 +847,7 @@ const AdminArt: React.FC = () => {
                                 {selectedArtwork.nguonThamKhao && <div className="artwork-review-description"><span>Nguồn tham khảo</span><p>{selectedArtwork.nguonThamKhao}</p></div>}
                                 {selectedArtwork.moTaNguonGoc && <div className="artwork-review-description"><span>Mô tả nguồn gốc</span><p>{selectedArtwork.moTaNguonGoc}</p></div>}
                                 <div className="artwork-review-description"><span>Căn cứ sử dụng</span><p>{copyrightSummary ? USAGE_BASIS_TEXT[copyrightSummary.canCuSuDung] || copyrightSummary.canCuSuDung : 'Chưa có hồ sơ bản quyền riêng'}</p></div>
-                                {copyrightSummary && <p>Trạng thái xác minh riêng: {copyrightSummary.trangThai}</p>}
+                                <p>Trạng thái quyền sử dụng: {selectedArtwork.rightsStatus || copyrightSummary?.trangThai || 'Chưa khai báo'}</p>
                                 <p>Khai báo nguồn gốc không đồng nghĩa với xác minh bản quyền hoặc quyền sử dụng.</p>
                                 <p>Loại phát hành độc bản/nhiều bản độc lập với phân loại nguồn gốc sáng tạo ở trên.</p>
                             </section>

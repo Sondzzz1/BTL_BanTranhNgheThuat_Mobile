@@ -98,6 +98,7 @@ public class TacPhamChinhSuaRepository : ITacPhamChinhSuaRepository
         await connection.OpenAsync();
         using var transaction = connection.BeginTransaction();
         var owner = await ThongBaoSql.LockArtworkAsync(connection, transaction, edit.MaTacPham);
+        await ArtworkSaleSql.EnsureDeclaredAsync(connection, transaction, edit.MaTacPham);
         using var command = new SqlCommand(@"DECLARE @Id INT;
             SELECT @Id=MaChinhSua FROM TacPhamChinhSua WITH (UPDLOCK,HOLDLOCK) WHERE MaTacPham=@MaTacPham AND TrangThai=0;
             IF @Id IS NOT NULL AND EXISTS (SELECT TenTacPham,MaDanhMuc,Gia,SoLuong,MoTa,HinhAnh,KichThuoc,ChatLieu,ChatLieuKhung FROM TacPhamChinhSua WHERE MaChinhSua=@Id INTERSECT SELECT @TenTacPham,@MaDanhMuc,@Gia,@SoLuong,@MoTa,@HinhAnh,@KichThuoc,@ChatLieu,@ChatLieuKhung)

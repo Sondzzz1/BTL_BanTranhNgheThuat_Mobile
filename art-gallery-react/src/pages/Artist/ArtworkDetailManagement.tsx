@@ -36,10 +36,25 @@ interface MonthlyRevenue {
 
 const STATUS_LABEL: Record<number, { text: string; cls: string; icon: string }> = {
   0: { text: 'Chờ duyệt', cls: 'pending', icon: 'ti-time' },
-  1: { text: 'Đang bán', cls: 'success', icon: 'ti-check-box' },
+  1: { text: 'Đã duyệt nội dung', cls: 'success', icon: 'ti-check-box' },
   2: { text: 'Đã ẩn', cls: 'shipped', icon: 'ti-eye' },
   3: { text: 'Bị từ chối', cls: 'canceled', icon: 'ti-close' },
 };
+
+const SalesStatCard = ({ label, value, icon, tone }: {
+  label: string;
+  value: string | number;
+  icon: string;
+  tone: 'sold' | 'revenue' | 'orders' | 'stock' | 'monthly';
+}) => (
+  <div className={`artwork-sales-card artwork-sales-card-${tone}`} role="group" aria-label={label}>
+    <span className="artwork-sales-icon" aria-hidden="true"><i className={icon}></i></span>
+    <div className="artwork-sales-copy">
+      <p className="artwork-sales-label">{label}</p>
+      <strong className="artwork-sales-value">{value}</strong>
+    </div>
+  </div>
+);
 
 const ArtworkDetailManagement: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -231,6 +246,11 @@ const ArtworkDetailManagement: React.FC = () => {
 
   return (
     <div id="artwork-detail-management" className="page">
+      <section role="status" style={{ padding: 16, marginBottom: 16, borderRadius: 10, background: '#fff7ed' }}>
+        <strong>{artwork.canSell === true ? 'Được mở bán' : 'Chưa đủ điều kiện mở bán'}</strong>
+        <p>{artwork.saleMessage}</p>
+        {artwork.canSell !== true && <Link to={`/artist/artworks/${artwork.maTacPham}/copyright`}>Nguồn gốc / Bản quyền</Link>}
+      </section>
       {/* Header */}
       <div className="detail-header">
         <div className="header-left">
@@ -338,58 +358,22 @@ const ArtworkDetailManagement: React.FC = () => {
       </div>
 
       {/* Statistics Section */}
-      <div className="stats-section">
-        <h3>
-          <i className="ti-bar-chart"></i> Thống Kê Bán Hàng
+      <section className="artwork-sales-stats" aria-labelledby="artwork-sales-stats-title">
+        <h3 id="artwork-sales-stats-title" className="artwork-sales-title">
+          <i className="ti-bar-chart" aria-hidden="true"></i> Thống Kê Bán Hàng
         </h3>
-        <div className="stats-grid">
-          <div className="stat-card bg-primary">
-            <i className="ti-shopping-cart"></i>
-            <div className="stat-content">
-              <h4>{stats?.tongSoLuongBan || 0}</h4>
-              <p>Đã bán</p>
-            </div>
-          </div>
-          <div className="stat-card bg-success">
-            <i className="ti-money"></i>
-            <div className="stat-content">
-              <h4>{formatPrice(stats?.tongDoanhThu || 0)}</h4>
-              <p>Tổng doanh thu</p>
-            </div>
-          </div>
-          <div className="stat-card bg-info">
-            <i className="ti-receipt"></i>
-            <div className="stat-content">
-              <h4>{stats?.soDonHang || 0}</h4>
-              <p>Đơn hàng</p>
-            </div>
-          </div>
-          <div className="stat-card bg-warning">
-            <i className="ti-package"></i>
-            <div className="stat-content">
-              <h4>{stats?.soLuongConLai || 0}</h4>
-              <p>Còn lại</p>
-            </div>
-          </div>
+        <div className="artwork-sales-grid">
+          <SalesStatCard label="Đã bán" value={stats?.tongSoLuongBan || 0} icon="ti-shopping-cart" tone="sold" />
+          <SalesStatCard label="Tổng doanh thu" value={formatPrice(stats?.tongDoanhThu || 0)} icon="ti-money" tone="revenue" />
+          <SalesStatCard label="Đơn hàng" value={stats?.soDonHang || 0} icon="ti-receipt" tone="orders" />
+          <SalesStatCard label="Còn lại" value={stats?.soLuongConLai || 0} icon="ti-package" tone="stock" />
         </div>
 
-        <div className="monthly-stats">
-          <div className="stat-card-small">
-            <i className="ti-calendar"></i>
-            <div>
-              <p>Doanh thu tháng này</p>
-              <h4>{formatPrice(stats?.doanhThuThangNay || 0)}</h4>
-            </div>
-          </div>
-          <div className="stat-card-small">
-            <i className="ti-shopping-cart"></i>
-            <div>
-              <p>Số lượng bán tháng này</p>
-              <h4>{stats?.soLuongBanThangNay || 0}</h4>
-            </div>
-          </div>
+        <div className="artwork-sales-monthly">
+          <SalesStatCard label="Doanh thu tháng này" value={formatPrice(stats?.doanhThuThangNay || 0)} icon="ti-calendar" tone="monthly" />
+          <SalesStatCard label="Số lượng bán tháng này" value={stats?.soLuongBanThangNay || 0} icon="ti-shopping-cart" tone="monthly" />
         </div>
-      </div>
+      </section>
 
       {/* Revenue Chart */}
       {monthlyRevenue.length > 0 && (

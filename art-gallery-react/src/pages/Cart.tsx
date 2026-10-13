@@ -15,7 +15,8 @@ const Cart: React.FC = () => {
     increaseQuantity, 
     decreaseQuantity,
     updateQuantity,
-    clearCart 
+    clearCart,
+    reload
   } = useCart();
   const navigate = useNavigate();
 
@@ -32,6 +33,8 @@ const Cart: React.FC = () => {
       navigate('/');
     }
   }, [isAuthenticated, isAdmin, navigate]);
+
+  useEffect(() => { if (isAuthenticated) void reload().catch(() => {}); }, [isAuthenticated, reload]);
 
   // Event Handlers
   const handleRemove = (id: string) => {
@@ -58,6 +61,7 @@ const Cart: React.FC = () => {
       alert('⚠️ Giỏ hàng của bạn đang trống!');
       return;
     }
+    if (cart.some(item => item.canCheckout !== true)) { alert('Có tác phẩm không còn khả dụng. Vui lòng bỏ các mục đó khỏi giỏ trước khi thanh toán.'); return; }
     navigate('/checkout');
   };
 
@@ -110,7 +114,7 @@ const Cart: React.FC = () => {
                           style={{ width: '50px', height: '50px', borderRadius: '6px' }}
                         />
                       </td>
-                      <td className="ten-sp">{item.name}</td>
+                      <td className="ten-sp">{item.name}{item.canCheckout !== true && <p style={{ color: '#b91c1c' }}>Không còn khả dụng · {item.saleMessage}</p>}</td>
                       <td className="gia-sp">{formatVnd(item.price)}</td>
                       <td className="sl-sp">
                         <button
@@ -171,7 +175,7 @@ const Cart: React.FC = () => {
               </tbody>
             </table>
             <div className="pay">
-              <button onClick={handleCheckout}>Tiến hành thanh toán</button>
+              <button disabled={cart.length === 0 || cart.some(item => item.canCheckout !== true)} onClick={handleCheckout}>Tiến hành thanh toán</button>
             </div>
           </div>
         </div>

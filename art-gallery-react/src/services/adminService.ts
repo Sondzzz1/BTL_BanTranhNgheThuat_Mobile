@@ -149,6 +149,10 @@ export interface HoSoHoaSiResponse {
 }
 
 export interface TacPhamHoaSiResponse {
+  canSell?: boolean;
+  saleReason?: string;
+  saleMessage?: string;
+  rightsStatus?: string;
   maTacPham: number;
   tenTacPham: string;
   tenDanhMuc?: string;

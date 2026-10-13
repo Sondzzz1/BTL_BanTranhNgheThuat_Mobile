@@ -21,6 +21,23 @@ beforeEach(() => {
   svc.markAsRead.mockResolvedValue(); svc.markAllAsRead.mockResolvedValue();
 });
 
+test.each(['bell', 'inbox'])('Admin %s shows the artist who claimed a commission and navigates to that request', async (surface) => {
+  const claimed = { ...item, loai: 'CUSTOM_ART_CLAIMED', tieuDe: 'Họa sĩ đã nhận yêu cầu vẽ tranh',
+    noiDung: 'Họa sĩ Trịnh Tuấn đã nhận yêu cầu vẽ tranh #35 “Tranh hoa sen”.',
+    loaiDoiTuong: 'YeuCauVeTranh', maDoiTuong: 35, duongDan: '/admin/custom-art?requestId=35' };
+  svc.getMine.mockResolvedValue({ items: [claimed], total: 1, page: 1, pageSize: 20 });
+  if (surface === 'bell') {
+    render(<ArtistNotificationBell allNotificationsPath="/admin/notifications" />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Thông báo, 14 chưa đọc' }));
+  } else render(<AdminNotifications />);
+  const notification = await screen.findByRole('button', { name: /Họa sĩ đã nhận yêu cầu vẽ tranh/ });
+  expect(notification).toHaveTextContent('Trịnh Tuấn');
+  expect(notification).toHaveTextContent('#35');
+  fireEvent.click(notification);
+  await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/admin/custom-art?requestId=35'));
+  expect(svc.markAsRead).toHaveBeenCalledWith(21);
+});
+
 test.each(['/admin/notifications', '/artist/notifications'])('shared bell displays badge and correct inbox link for %s', async path => {
   render(<ArtistNotificationBell allNotificationsPath={path} />);
   const bell = await screen.findByRole('button', { name: 'Thông báo, 14 chưa đọc' });

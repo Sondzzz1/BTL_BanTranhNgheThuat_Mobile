@@ -13,7 +13,7 @@ import { newRequestKey } from '../../utils/requestKey';
 
 const STATUS_LABEL: Record<number, { text: string; cls: string; icon: string }> = {
   0: { text: 'Chờ duyệt',  cls: 'pending',   icon: 'ti-time' },
-  1: { text: 'Đang bán',   cls: 'success',   icon: 'ti-check-box' },
+  1: { text: 'Đã duyệt nội dung',   cls: 'success',   icon: 'ti-check-box' },
   2: { text: 'Đã ẩn',      cls: 'shipped',   icon: 'ti-eye' },
   3: { text: 'Bị từ chối', cls: 'canceled',  icon: 'ti-close' },
 };
@@ -45,6 +45,9 @@ const ArtistArtworks: React.FC = () => {
     khongXacDinhTacGiaGoc: false,
     nguonThamKhao: '',
     moTaNguonGoc: '',
+    canCuSuDung: '',
+    khaiBaoNguonGoc: '',
+    xacNhanQuyenSuDung: false,
     moTa: '',
     kichThuoc: '',
     chatLieu: '',
@@ -130,6 +133,9 @@ const ArtistArtworks: React.FC = () => {
         khongXacDinhTacGiaGoc: artwork.khongXacDinhTacGiaGoc || false,
         nguonThamKhao: artwork.nguonThamKhao || '',
         moTaNguonGoc: artwork.moTaNguonGoc || '',
+        canCuSuDung: '',
+        khaiBaoNguonGoc: '',
+        xacNhanQuyenSuDung: false,
         moTa: artwork.moTa || '',
         kichThuoc: artwork.kichThuoc || '',
         chatLieu: artwork.chatLieu || '',
@@ -156,7 +162,10 @@ const ArtistArtworks: React.FC = () => {
         khongXacDinhTacGiaGoc: false,
         nguonThamKhao: '',
         moTaNguonGoc: '',
-        moTa: '',
+        canCuSuDung: '',
+    khaiBaoNguonGoc: '',
+    xacNhanQuyenSuDung: false,
+    moTa: '',
         kichThuoc: '',
         chatLieu: '',
         chatLieuKhung: '',
@@ -279,9 +288,15 @@ const ArtistArtworks: React.FC = () => {
         });
         artworkId = editingArtwork.maTacPham;
       } else {
+        if (!formData.canCuSuDung || !formData.khaiBaoNguonGoc.trim() || !formData.xacNhanQuyenSuDung) {
+          throw new Error('Vui lòng hoàn thành khai báo và xác nhận quyền sử dụng trước khi gửi duyệt.');
+        }
         const created = await artistDashboardService.taoTacPham({
           ...artworkPayload,
           ...originPayload,
+          canCuSuDung: Number(formData.canCuSuDung),
+          khaiBaoNguonGoc: formData.khaiBaoNguonGoc.trim(),
+          xacNhanQuyenSuDung: formData.xacNhanQuyenSuDung,
         }, createRequestKey.current);
         artworkId = created.maTacPham;
       }
@@ -368,7 +383,7 @@ const ArtistArtworks: React.FC = () => {
   if (loading) return <div className="page" style={{ padding: '20px' }}>Đang tải dữ liệu...</div>;
 
   return (
-    <div id="art" className="page">
+    <div id="art" className="page artist-artworks-page">
       <div className="art-header">
         <h4><i className="ti-image"></i> Quản Lý Tác Phẩm</h4>
         <button className="add-btn" onClick={() => handleOpenModal()}>
@@ -382,7 +397,7 @@ const ArtistArtworks: React.FC = () => {
           ⏳ Chờ duyệt: <strong>{countByStatus(0)}</strong>
         </div>
         <div style={{ background: '#e8f5e9', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
-          ✅ Đang bán: <strong>{countByStatus(1)}</strong>
+          ✅ Đã duyệt nội dung: <strong>{countByStatus(1)}</strong>
         </div>
         <div style={{ background: '#e3f2fd', borderRadius: 10, padding: '8px 14px', fontSize: 13 }}>
           🙈 Đã ẩn: <strong>{countByStatus(2)}</strong>
@@ -417,7 +432,7 @@ const ArtistArtworks: React.FC = () => {
         >
           <option value={-1}>Tất cả trạng thái</option>
           <option value={0}>Chờ duyệt</option>
-          <option value={1}>Đang bán</option>
+          <option value={1}>Đã duyệt nội dung</option>
           <option value={2}>Đã ẩn</option>
           <option value={3}>Bị từ chối</option>
         </select>
@@ -429,7 +444,7 @@ const ArtistArtworks: React.FC = () => {
           <h3>Không tìm thấy tác phẩm nào</h3>
         </div>
       ) : (
-        <div className="table-container">
+        <div className="table-container artist-artworks-table-container" role="region" aria-label="Danh sách tác phẩm" tabIndex={0}>
           <table className="art-table">
             <thead>
               <tr>
@@ -440,7 +455,7 @@ const ArtistArtworks: React.FC = () => {
                 <th>Phát hành</th>
                 <th>Số lượng</th>
                 <th>Trạng thái</th>
-                <th>Hành động</th>
+                <th className="artist-artwork-actions-heading">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -471,6 +486,10 @@ const ArtistArtworks: React.FC = () => {
                       <span className={`status ${st.cls}`} title={isRejected ? (artwork.lyDo || '') : ''}>
                         <i className={st.icon}></i> {st.text}
                       </span>
+                      {artwork.trangThai === 1 && <div style={{ marginTop: 8, maxWidth: 300, fontSize: 12 }}>
+                        <strong>{artwork.canSell === true ? 'Được mở bán' : 'Chưa đủ điều kiện mở bán'}</strong>
+                        {artwork.canSell !== true && <><p>Tác phẩm đã được duyệt nội dung nhưng chưa đủ điều kiện mở bán.</p><p>{artwork.saleMessage}</p><button type="button" onClick={() => navigate(`/artist/artworks/${artwork.maTacPham}/copyright`)}>Nguồn gốc / Bản quyền</button></>}
+                      </div>}
                       {isRejected && artwork.lyDo && (
                         <button
                           onClick={() => setRejectInfo(artwork)}
@@ -486,50 +505,64 @@ const ArtistArtworks: React.FC = () => {
                         </button>
                       )}
                     </td>
-                    <td>
+                    <td className="artist-artwork-actions-cell">
+                      <div className="artwork-row-actions" role="group" aria-label={`Hành động cho ${artwork.tenTacPham}`}>
                       <button
+                        type="button"
+                        className="artwork-row-action artwork-row-action-view"
                         onClick={() => navigate(`/artist/artworks/${artwork.maTacPham}`)}
                         title="Xem thống kê"
-                        style={{ background: '#3498db', color: 'white', marginRight: 5 }}
+                        aria-label="Xem thống kê"
                       >
-                        <i className="ti-eye"></i>
+                        <i className="ti-eye" aria-hidden="true"></i>
                       </button>
                       <button
+                        type="button"
+                        className="artwork-row-action artwork-row-action-content"
                         onClick={() => navigate(`/artist/artworks/${artwork.maTacPham}/content`)}
                         title="Thêm / chỉnh sửa nội dung chi tiết để gửi duyệt riêng"
-                        style={{ background: '#9b59b6', color: 'white', marginRight: 5 }}
                       >
-                        <i className="ti-write"></i> Nội dung chi tiết
+                        <i className="ti-write" aria-hidden="true"></i><span>Nội dung chi tiết</span>
                       </button>
                       <button
+                        type="button"
+                        className="artwork-row-action artwork-row-action-rights"
                         onClick={() => navigate(`/artist/artworks/${artwork.maTacPham}/copyright`)}
                         title="Nguồn gốc và xác minh tác phẩm"
-                        style={{ background: '#1f3d2f', color: 'white', marginRight: 5 }}
+                        aria-label="Nguồn gốc và xác minh tác phẩm"
                       >
-                        <i className="ti-shield"></i>
+                        <i className="ti-shield" aria-hidden="true"></i>
                       </button>
                       {isRejected && (
                         <button
+                          type="button"
+                          className="artwork-row-action artwork-row-action-resubmit"
                           onClick={() => handleResubmit(artwork.maTacPham, artwork.tenTacPham)}
                           title="Gửi duyệt lại (không sửa)"
-                          style={{ background: '#f39c12', color: 'white', marginRight: 5 }}
+                          aria-label="Gửi duyệt lại (không sửa)"
                         >
-                          <i className="ti-reload"></i>
+                          <i className="ti-reload" aria-hidden="true"></i>
                         </button>
                       )}
                       <button
+                        type="button"
+                        className="artwork-row-action artwork-row-action-edit"
                         onClick={() => handleOpenModal(artwork)}
                         title={isRejected ? 'Sửa và gửi duyệt lại' : 'Sửa'}
+                        aria-label={isRejected ? 'Sửa và gửi duyệt lại' : 'Sửa'}
                       >
-                        <i className="ti-pencil"></i>
+                        <i className="ti-pencil" aria-hidden="true"></i>
                       </button>
                       <button
+                        type="button"
+                        className="artwork-row-action artwork-row-action-delete"
                         onClick={() => handleDelete(artwork.maTacPham)}
-                        style={{ color: 'red', marginLeft: 5 }}
                         title="Xóa"
+                        aria-label="Xóa"
                       >
-                        <i className="ti-trash"></i>
+                        <i className="ti-trash" aria-hidden="true"></i>
                       </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -721,7 +754,18 @@ const ArtistArtworks: React.FC = () => {
                 </div>
               </div>
 
+                {!editingArtwork && <section style={{ gridColumn: '1 / -1', marginBottom: 20, padding: 16, background: '#fff7ed', borderRadius: 8 }}>
+                  <h3>Khai báo quyền sử dụng trước khi gửi duyệt</h3>
+                  <label>Căn cứ sử dụng *<select aria-label="Căn cứ sử dụng" required value={formData.canCuSuDung} onChange={e => setFormData({ ...formData, canCuSuDung: e.target.value })}>
+                    <option value="">Chọn căn cứ sử dụng</option><option value="1">Tác giả / chủ thể quyền</option><option value="2">Phạm vi công cộng đã được xem xét</option><option value="3">Có văn bản cho phép</option><option value="4">Căn cứ hợp pháp khác</option><option value="5">Chưa đủ căn cứ — cần bổ sung để mở bán</option>
+                  </select></label>
+                  <label>Khai báo nguồn gốc/quyền sử dụng *<textarea aria-label="Khai báo nguồn gốc/quyền sử dụng" required maxLength={500} rows={3} value={formData.khaiBaoNguonGoc} onChange={e => setFormData({ ...formData, khaiBaoNguonGoc: e.target.value })} /></label>
+                  <label><input type="checkbox" required checked={formData.xacNhanQuyenSuDung} onChange={e => setFormData({ ...formData, xacNhanQuyenSuDung: e.target.checked })} /> Tôi xác nhận khai báo nguồn gốc và căn cứ sử dụng là thông tin do tôi cung cấp.</label>
+                  <p>Khai báo được lưu thành hồ sơ chờ xác minh. Duyệt nội dung tác phẩm không tự cho phép bán; bạn cần bổ sung bằng chứng tại Nguồn gốc / Bản quyền.</p>
+                </section>}
+
               {(!editingArtwork || editingArtwork.trangThai === 0 || editingArtwork.trangThai === 3) ? (
+
                 <section
                   aria-labelledby="artwork-origin-heading"
                   style={{

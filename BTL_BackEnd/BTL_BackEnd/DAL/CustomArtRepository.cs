@@ -153,16 +153,52 @@ public class CustomArtRepository : ICustomArtRepository
     {
         await using var connection = new SqlConnection(_connectionString);
         await connection.OpenAsync();
-        const string sql = @"
-            UPDATE YeuCauVeTranh
-            SET MaHoaSi=@MaHoaSi, TrangThai=@Accepted, NgayCapNhat=GETDATE()
-            WHERE MaYeuCau=@MaYeuCau AND MaHoaSi IS NULL AND TrangThai=@Approved;";
-        await using var command = new SqlCommand(sql, connection);
-        command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
-        command.Parameters.AddWithValue("@Accepted", (int)CustomArtStatus.Assigned);
-        command.Parameters.AddWithValue("@Approved", (int)CustomArtStatus.PendingArtist);
-        command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
-        return await command.ExecuteNonQueryAsync() == 1;
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
+        try
+        {
+            // The conditional update selects one winner and holds the request lock until
+            // both the assignment and every Admin inbox entry have committed.
+            const string sql = @"
+                UPDATE YeuCauVeTranh
+                SET MaHoaSi=@MaHoaSi, TrangThai=@Accepted, NgayCapNhat=GETDATE()
+                WHERE MaYeuCau=@MaYeuCau AND MaHoaSi IS NULL AND TrangThai=@Approved;";
+            await using var command = new SqlCommand(sql, connection, transaction);
+            command.Parameters.AddWithValue("@MaHoaSi", maHoaSi);
+            command.Parameters.AddWithValue("@Accepted", (int)CustomArtStatus.Assigned);
+            command.Parameters.AddWithValue("@Approved", (int)CustomArtStatus.PendingArtist);
+            command.Parameters.AddWithValue("@MaYeuCau", maYeuCau);
+            if (await command.ExecuteNonQueryAsync() != 1)
+            {
+                await transaction.RollbackAsync();
+                return false;
+            }
+
+            await using var get = new SqlCommand(@"
+                SELECT y.TieuDe,h.TenHoaSi FROM YeuCauVeTranh y
+                JOIN HoaSi h ON h.MaHoaSi=y.MaHoaSi
+                WHERE y.MaYeuCau=@Id AND y.MaHoaSi=@Artist;", connection, transaction);
+            get.Parameters.AddWithValue("@Id", maYeuCau);
+            get.Parameters.AddWithValue("@Artist", maHoaSi);
+            string title;
+            string artist;
+            await using (var reader = await get.ExecuteReaderAsync())
+            {
+                if (!await reader.ReadAsync()) throw new InvalidOperationException("Không thể đọc thông tin họa sĩ nhận yêu cầu");
+                title = reader.IsDBNull(0) ? $"Yêu cầu #{maYeuCau}" : reader.GetString(0);
+                artist = reader.IsDBNull(1) || string.IsNullOrWhiteSpace(reader.GetString(1))
+                    ? $"#{maHoaSi}" : reader.GetString(1);
+            }
+
+            await ThongBaoSql.NotifyAdminsAsync(connection, transaction,
+                WorkflowNotifications.CustomArtClaimed(maYeuCau, artist, title));
+            await transaction.CommitAsync();
+            return true;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
     public async Task<bool> ReviewRequest(int maYeuCau, int maTaiKhoan, CustomArtStatus status, string? note)

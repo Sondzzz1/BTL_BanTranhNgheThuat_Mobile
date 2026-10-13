@@ -1,6 +1,10 @@
 // Cart Types - Khớp với GioHangResponse và ChiTietGioHangResponse từ Backend ASP.NET Core
 
 export interface CartItem {
+  canSell?: boolean;
+  canCheckout?: boolean;
+  saleReason?: string;
+  saleMessage?: string;
   maChiTietGH: number;
   maGioHang?: number;
   maTacPham: number;

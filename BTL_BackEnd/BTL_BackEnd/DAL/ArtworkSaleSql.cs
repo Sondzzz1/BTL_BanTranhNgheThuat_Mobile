@@ -70,6 +70,6 @@ internal static class ArtworkSaleSql
     {
         var sales = await LoadAsync(connection, transaction, new[] { artworkId });
         if (!sales.TryGetValue(artworkId, out var sale) || !sale.DeclarationComplete)
-            throw new BusinessConflictException("Vui lòng hoàn thành khai báo nguồn gốc/quyền sử dụng tại mục Nguồn gốc và xác minh trước khi gửi duyệt tác phẩm.");
+            throw new InvalidOperationException("Vui lòng hoàn thành khai báo nguồn gốc/quyền sử dụng tại mục Nguồn gốc và xác minh trước khi gửi duyệt tác phẩm.");
     }
 }

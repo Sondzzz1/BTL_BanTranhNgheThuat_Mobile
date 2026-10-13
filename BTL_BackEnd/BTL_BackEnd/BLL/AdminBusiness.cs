@@ -77,7 +77,7 @@ public class AdminBusiness : IAdminBusiness
     // ==========================================
     public async Task<List<TacPhamHoaSiResponse>> GetAllTacPham(byte? trangThai = null)
     {
-        var list = await _tacPhamRepo.GetMarketplaceAll();
+        var list = (await _tacPhamRepo.GetAll()).Where(item => item.MaYeuCauVeTranh == null).ToList();
         if (trangThai.HasValue)
             list = list.Where(x => x.TrangThai == trangThai.Value).ToList();
         

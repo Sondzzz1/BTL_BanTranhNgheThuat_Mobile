@@ -47,7 +47,8 @@ export function notificationPath(item: ArtistNotification, inboxPath: string): s
     path = `/artist/artworks/${item.maDoiTuong}/content`;
   if (!path || path.includes('\\\\') || Array.from(path).some(char => char.charCodeAt(0) < 32) || /%5c/i.test(path)) return undefined;
   const allowed = root === 'admin'
-    ? /^\/admin\/(art|artwork-details|copyright)(\?[a-zA-Z0-9=&_-]+)?$/
-    : /^\/artist\/artworks(\/[1-9][0-9]*(\/(content|copyright))?)?$/;
-  return allowed.test(path) ? path : undefined;
+    ? /^\/admin\/(art|artwork-details|copyright)(\?[a-zA-Z0-9=&_-]+)?$/.test(path)
+      || /^\/admin\/custom-art\?requestId=[1-9][0-9]*$/.test(path)
+    : /^\/artist\/artworks(\/[1-9][0-9]*(\/(content|copyright))?)?$/.test(path);
+  return allowed ? path : undefined;
 }

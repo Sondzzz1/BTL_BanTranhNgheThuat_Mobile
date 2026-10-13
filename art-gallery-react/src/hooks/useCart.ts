@@ -10,7 +10,7 @@ export const useCart = () => {
   // Tổng số lượng (đếm theo từng sản phẩm chứ không cộng quantity, để badge không to bất thường)
   const cartCount = useMemo(() => cart.reduce((t, i) => t + i.quantity, 0), [cart]);
   const cartTotal = useMemo(
-    () => cart.reduce((t, i) => t + i.price * i.quantity, 0),
+    () => cart.reduce((t, i) => i.canCheckout === true ? t + i.price * i.quantity : t, 0),
     [cart]
   );
 

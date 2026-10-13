@@ -1,6 +1,9 @@
 // Types và Interfaces cho dự án Art Gallery
 
 export interface Artwork {
+  canSell?: boolean;
+  saleReason?: string;
+  saleMessage?: string;
   id: string;
   tenTranh: string;
   giaBan: number;
@@ -17,6 +20,10 @@ export interface Artwork {
 }
 
 export interface CartItem {
+  canSell?: boolean;
+  canCheckout?: boolean;
+  saleReason?: string;
+  saleMessage?: string;
   id: string;
   dbId?: number; // ID trong database (maChiTietGH)
   name: string;

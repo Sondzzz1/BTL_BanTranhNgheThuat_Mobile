@@ -6,6 +6,16 @@ const { test } = require('node:test');
 const React = require('react');
 const ts = require('typescript');
 
+function loadUtility(relativePath, requireStub = name => { throw new Error(`Unexpected import: ${name}`); }) {
+  const filename = path.join(__dirname, '..', relativePath);
+  const module = { exports: {} };
+  const source = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
+  }).outputText;
+  vm.runInNewContext(source, { require: requireStub, module, exports: module.exports }, { filename });
+  return module.exports;
+}
+
 // Render the real JSX with host-component stubs; no native runtime or API calls.
 function loadComponent(relativePath, { product, copyright = null } = {}) {
   const filename = path.join(__dirname, '..', relativePath);
@@ -40,6 +50,7 @@ function loadComponent(relativePath, { product, copyright = null } = {}) {
     if (name === 'react') return react;
     if (name === 'react-native') return native;
     if (name.endsWith('/utils/currency')) return { formatVnd: value => `${value} đ` };
+    if (name.endsWith('/utils/saleEligibility')) return loadUtility('utils/saleEligibility.ts');
     if (name.endsWith('/context/AuthContext')) {
       return { useAuth: () => ({ user: null, isAuthenticated: false }) };
     }
@@ -68,6 +79,7 @@ const baseProduct = {
   soLuong: 20,
   soLuongBanDau: 20,
   laTacPhamDocBan: false,
+  canSell: true,
 };
 
 for (const quantity of [20, 0]) {
@@ -123,4 +135,35 @@ test('missing edition flag does not imply an exclusive declaration', () => {
   const Detail = loadComponent('app/products/ProductDetailScreen.tsx', { product });
   assert.doesNotMatch(textContent(Card({ product, onPress() {} })), /Khai báo/);
   assert.doesNotMatch(textContent(Detail({ route: { params: { id: 35 } }, navigation: {} })), /Khai báo/);
+});
+
+for (const permission of [false, undefined]) {
+  test(`sale permission=${permission} hides buying controls but keeps the artwork visible`, () => {
+    const product = { ...baseProduct, canSell: permission, saleReason: 'RIGHTS_PENDING', saleMessage: 'Đang hoàn thiện xác minh nguồn gốc và quyền sử dụng.' };
+    const Detail = loadComponent('app/products/ProductDetailScreen.tsx', { product });
+    const text = textContent(Detail({ route: { params: { id: 35 } }, navigation: {} }));
+    assert.match(text, /Hạ bừng nở/);
+    assert.match(text, /Đang hoàn thiện xác minh/);
+    assert.doesNotMatch(text, /Mua ngay|Thêm vào giỏ/);
+  });
+}
+
+test('unavailable or excessive-quantity cart lines cannot be selected for checkout', () => {
+  const { canCheckoutItem } = loadUtility('utils/saleEligibility.ts');
+  const item = { canSell: true, canCheckout: true, soLuong: 1, soLuongTon: 3 };
+  assert.equal(canCheckoutItem(item), true);
+  assert.equal(canCheckoutItem({ ...item, canSell: false, canCheckout: false }), false);
+  assert.equal(canCheckoutItem({ ...item, soLuong: 4 }), false);
+  assert.equal(canCheckoutItem({ ...item, canCheckout: undefined }), false);
+});
+
+test('backend checkout rejection reaches the mobile UI as a readable error', async () => {
+  const { orderService } = loadUtility('services/orderService.ts', name => {
+    if (name === './api') return { __esModule: true, default: { post: async () => {
+      throw { response: { status: 409, data: { message: 'Tác phẩm hiện không khả dụng để mua.' } } };
+    } } };
+    if (name === '../constants/api') return { API_ENDPOINTS: { ORDER_CREATE: '/don-hang/tao' } };
+    throw new Error(name);
+  });
+  await assert.rejects(orderService.createOrder('Fixture', '0901234567', 'Address'), /Tác phẩm hiện không khả dụng để mua/);
 });

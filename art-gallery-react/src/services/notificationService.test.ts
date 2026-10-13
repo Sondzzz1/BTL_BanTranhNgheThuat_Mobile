@@ -1,9 +1,25 @@
 import apiClient from './api';
-import { notificationService } from './notificationService';
+import { notificationPath, notificationService } from './notificationService';
 jest.mock('./api', () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn() } }));
 const get = apiClient.get as jest.Mock;
 const put = apiClient.put as jest.Mock;
+const commission = { maThongBao: 35, loai: 'CUSTOM_ART_CLAIMED', tieuDe: 'Họa sĩ đã nhận yêu cầu vẽ tranh',
+  noiDung: 'Họa sĩ Trịnh Tuấn đã nhận yêu cầu vẽ tranh #35.', daDoc: false, ngayTao: '2026-10-13T00:00:00Z' };
 beforeEach(() => { jest.resetAllMocks(); put.mockResolvedValue({}); });
+
+test('commission notification opens only the Admin request detail route', () => {
+  const item = { ...commission, duongDan: '/admin/custom-art?requestId=35' };
+  expect(notificationPath(item, '/admin/notifications')).toBe(item.duongDan);
+  expect(notificationPath(item, '/artist/notifications')).toBeUndefined();
+});
+
+test.each([
+  '/admin/custom-art?requestId=0', '/admin/custom-art?requestId=-1',
+  '/admin/custom-art?requestId=35&redirect=evil', '//evil.example/admin/custom-art?requestId=35',
+  'https://evil.example/admin/custom-art?requestId=35', '/admin/custom-art?requestId=35%5c',
+])('invalid commission target %s is not navigable', (duongDan) => {
+  expect(notificationPath({ ...commission, duongDan }, '/admin/notifications')).toBeUndefined();
+});
 
 test('inbox and unread requests never send recipient IDs', async () => {
   get.mockResolvedValueOnce({ data: { items: [], total: 0, page: 2, pageSize: 20 } }).mockResolvedValueOnce({ data: { soLuong: 3 } });

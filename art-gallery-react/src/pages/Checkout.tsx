@@ -35,6 +35,8 @@ const Checkout: React.FC = () => {
     }
   }, [isAuthenticated, cart, navigate]);
 
+  useEffect(() => { if (isAuthenticated) void reload().catch(() => setSubmitError('Không thể cập nhật điều kiện mua hàng.')); }, [isAuthenticated, reload]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({
       ...formData,
@@ -54,6 +56,11 @@ const Checkout: React.FC = () => {
 
     if (cart.length === 0) {
       setSubmitError('Giỏ hàng trống!');
+      return;
+    }
+
+    if (cart.some(item => item.canCheckout !== true)) {
+      setSubmitError('Có tác phẩm không còn khả dụng để thanh toán. Vui lòng tải lại giỏ hàng.');
       return;
     }
 
@@ -226,7 +233,7 @@ const Checkout: React.FC = () => {
                 type="button"
                 onClick={handleSubmit}
                 className="btn-checkout"
-                disabled={loading}
+                disabled={loading || cart.some(item => item.canCheckout !== true)}
               >
                 {loading ? 'Đang xử lý...' : 'ĐẶT HÀNG'}
               </button>

@@ -60,6 +60,7 @@ public class NotificationWorkflowRuntimeTests(ITestOutputHelper output)
         try
         {
             var body = new { tenTacPham = name, maDanhMuc = 1, gia = 100000, soLuong = 3,
+                canCuSuDung = 1, xacNhanQuyenSuDung = true, khaiBaoNguonGoc = "Fixture original declaration",
                 laTacPhamDocBan = false, moTa = "Only basic description", loaiTacPham = 0 };
             var concurrentCreates = await Task.WhenAll(Send(artist, HttpMethod.Post, "hoa-si/tac-pham/create", body),
                 Send(artist, HttpMethod.Post, "hoa-si/tac-pham/create", body));
@@ -69,6 +70,7 @@ public class NotificationWorkflowRuntimeTests(ITestOutputHelper output)
             var retry = await Send(artist, HttpMethod.Post, "hoa-si/tac-pham/create", body);
             Assert.Equal(id, retry.GetProperty("maTacPham").GetInt32()); await Event("ARTWORK_SUBMITTED", admins);
             await Send(artist, HttpMethod.Post, "hoa-si/tac-pham/create", new { tenTacPham = name, maDanhMuc = 1, gia = 999999, soLuong = 3,
+                canCuSuDung = 1, xacNhanQuyenSuDung = true, khaiBaoNguonGoc = "Fixture original declaration",
                 laTacPhamDocBan = false, moTa = "Changed body under same key", loaiTacPham = 0 }, HttpStatusCode.BadRequest);
             await Event("ARTWORK_SUBMITTED", admins);
             await Send(admin, HttpMethod.Put, Review(), new { pheDuyet = false, lyDo = "Fixture reason <b>plain text</b>" });
@@ -110,8 +112,7 @@ public class NotificationWorkflowRuntimeTests(ITestOutputHelper output)
             await Event("ARTWORK_CONTENT_APPROVED", 2, ownerId);
 
             var repo = new CopyrightRepository(config);
-            copyrightId = await repo.Create(artistId, ownerId, new TaoBanQuyenRequest { MaTacPham = id,
-                TacGia = "Fixture author", NguonGoc = "Fixture original", CanCuSuDung = 1, LoaiTacPham = 0, LaTacPhamDocBan = false });
+            copyrightId = await Int($"SELECT MaBanQuyen FROM BanQuyen WHERE MaTacPham={id}");
             await Event("COPYRIGHT_SUBMITTED", admins);
             Assert.True(await repo.Review(copyrightId, adminId, CopyrightStatuses.NeedInfo, "Add evidence"));
             await Event("COPYRIGHT_NEED_INFO", 1, ownerId);
@@ -164,8 +165,12 @@ public class NotificationWorkflowRuntimeTests(ITestOutputHelper output)
             Assert.DoesNotContain(otherInbox.GetProperty("items").EnumerateArray(), n => n.GetProperty("maThongBao").GetInt64() == notificationId);
             artist.DefaultRequestHeaders.Remove("Idempotency-Key"); artist.DefaultRequestHeaders.Add("Idempotency-Key", removedKey);
             removedId = (await Send(artist, HttpMethod.Post, "hoa-si/tac-pham/create", new {
-                tenTacPham = removedName, maDanhMuc = 1, gia = 100000, soLuong = 3, laTacPhamDocBan = false, loaiTacPham = 0
+                tenTacPham = removedName, maDanhMuc = 1, gia = 100000, soLuong = 3, laTacPhamDocBan = false, loaiTacPham = 0,
+                canCuSuDung = 1, xacNhanQuyenSuDung = true, khaiBaoNguonGoc = "Fixture original declaration"
             })).GetProperty("maTacPham").GetInt32();
+            // Exercise the existing bare-artwork delete path, not deletion of a rights dossier.
+            using (var unlink = new SqlCommand($"DELETE FROM ThongBao WHERE LoaiDoiTuong='BanQuyen' AND MaDoiTuong IN(SELECT MaBanQuyen FROM BanQuyen WHERE MaTacPham={removedId}); DELETE FROM BanQuyen WHERE MaTacPham={removedId};", db))
+                await unlink.ExecuteNonQueryAsync();
             await Send(admin, HttpMethod.Delete, $"admin/tac-pham/{removedId}/delete", null);
             Assert.Equal(0, await Int($"SELECT COUNT(*) FROM TacPham WHERE MaTacPham={removedId}"));
             Assert.Equal(1, await Int($"SELECT COUNT(*) FROM ThongBao WHERE Loai='ARTWORK_REMOVED' AND MaDoiTuong={removedId} AND MaTaiKhoan={ownerId} AND DuongDan='/artist/artworks'"));

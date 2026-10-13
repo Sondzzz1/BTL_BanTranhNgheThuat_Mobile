@@ -4,6 +4,9 @@ import { Artwork } from '../types';
 
 // Interface khớp với TacPhamResponse từ PublicController backend
 interface TacPhamResponse {
+  canSell?: boolean;
+  saleReason?: string;
+  saleMessage?: string;
   maTacPham: number;
   tenTacPham: string;
   tenHoaSi: string;
@@ -21,6 +24,7 @@ interface TacPhamResponse {
 const mapToArtwork = (dto: TacPhamResponse): Artwork => {
   return {
     id: dto.maTacPham.toString(),
+    canSell: dto.canSell === true, saleReason: dto.saleReason, saleMessage: dto.saleMessage,
     tenTranh: dto.tenTacPham,
     giaBan: dto.gia,
     danhMuc: (dto.tenDanhMuc || 'Khác') as any,

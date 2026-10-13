@@ -14,6 +14,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { cartService } from '../../services/cartService';
 import { Cart, CartItem } from '../../types/cart';
+import { canCheckoutItem, saleMessage } from '../../utils/saleEligibility';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
 import EmptyState from '../../components/EmptyState';
@@ -57,7 +58,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       setIsLoading(true);
       const cartData = await cartService.getCart();
       setCart(cartData);
-      const validIds = new Set(cartData.danhSachSanPham.map(item => item.maChiTietGH));
+      const validIds = new Set(cartData.danhSachSanPham.filter(canCheckoutItem).map(item => item.maChiTietGH));
       setSelectedItemIds(previous => {
         if (!selectionInitialized.current) {
           selectionInitialized.current = true;
@@ -165,7 +166,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   const handleCheckout = () => {
     const items = cart?.danhSachSanPham || [];
     const selectedIds = items
-      .filter(item => selectedItemIds.has(item.maChiTietGH))
+      .filter(item => selectedItemIds.has(item.maChiTietGH) && canCheckoutItem(item))
       .map(item => item.maChiTietGH);
     if (selectedIds.length === 0) {
       Alert.alert('Thông báo', 'Vui lòng chọn ít nhất một sản phẩm');
@@ -180,7 +181,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   const calculateTotal = (): number => {
     if (!cart) return 0;
     return (cart.danhSachSanPham || []).reduce(
-      (sum, item) => selectedItemIds.has(item.maChiTietGH)
+      (sum, item) => selectedItemIds.has(item.maChiTietGH) && canCheckoutItem(item)
         ? sum + (item.thanhTien || item.gia * item.soLuong)
         : sum,
       0
@@ -188,6 +189,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
   };
 
   const toggleItem = (id: number) => {
+    if (!cart?.danhSachSanPham.some(item => item.maChiTietGH === id && canCheckoutItem(item))) return;
     setSelectedItemIds(previous => {
       const next = new Set(previous);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -203,8 +205,9 @@ export default function CartScreen({ navigation }: CartScreenProps) {
         <TouchableOpacity
           style={[styles.checkbox, selectedItemIds.has(item.maChiTietGH) && styles.checkboxSelected]}
           onPress={() => toggleItem(item.maChiTietGH)}
+          disabled={!canCheckoutItem(item)}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: selectedItemIds.has(item.maChiTietGH) }}
+          accessibilityState={{ checked: selectedItemIds.has(item.maChiTietGH), disabled: !canCheckoutItem(item) }}
         >
           {selectedItemIds.has(item.maChiTietGH) && <Text style={styles.checkmark}>✓</Text>}
         </TouchableOpacity>
@@ -225,6 +228,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
 
         {/* Product Info */}
         <View style={styles.itemInfo}>
+          {!canCheckoutItem(item) && <Text style={{ color: '#b91c1c', marginBottom: 6 }}>Không còn khả dụng · {saleMessage(item)}</Text>}
           <Text style={styles.itemName} numberOfLines={2}>
             {item.tenTacPham}
           </Text>
@@ -339,12 +343,12 @@ export default function CartScreen({ navigation }: CartScreenProps) {
       {/* Header Info Bar */}
       <View style={styles.cartHeaderBar}>
         <TouchableOpacity onPress={() => setSelectedItemIds(
-          selectedItemIds.size === items.length
+          selectedItemIds.size === items.filter(canCheckoutItem).length
             ? new Set()
-            : new Set(items.map(item => item.maChiTietGH))
+            : new Set(items.filter(canCheckoutItem).map(item => item.maChiTietGH))
         )}>
           <Text style={styles.cartCountText}>
-            {selectedItemIds.size === items.length ? '☑' : '☐'} Chọn tất cả ({selectedItemIds.size}/{items.length})
+            {selectedItemIds.size === items.filter(canCheckoutItem).length ? '☑' : '☐'} Chọn tất cả ({selectedItemIds.size}/{items.filter(canCheckoutItem).length} khả dụng)
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -382,6 +386,7 @@ export default function CartScreen({ navigation }: CartScreenProps) {
         <TouchableOpacity
           style={styles.checkoutButton}
           onPress={handleCheckout}
+          disabled={!items.some(item => selectedItemIds.has(item.maChiTietGH) && canCheckoutItem(item))}
         >
           <Text style={styles.checkoutButtonText}>Tiến hành thanh toán</Text>
         </TouchableOpacity>

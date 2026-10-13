@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   CustomArtRequestApi,
   CustomArtPaymentResponse,
@@ -8,9 +9,12 @@ import {
   getCustomArtTypeLabel,
 } from '../../services/customArtService';
 import { formatVnd } from '../../utils/currency';
+import CustomArtRequirements from '../../components/CustomArtRequirements';
 import './AdminCustomArt.css';
 
 const AdminCustomArt: React.FC = () => {
+  const { search } = useLocation();
+  const detailSequence = useRef(0);
   const [items, setItems] = useState<CustomArtRequestApi[]>([]);
   const [type, setType] = useState('');
   const [status, setStatus] = useState('');
@@ -18,8 +22,6 @@ const AdminCustomArt: React.FC = () => {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [referencePreview, setReferencePreview] = useState<string>();
-  const [evidencePreview, setEvidencePreview] = useState<string>();
   const [progressPreviews, setProgressPreviews] = useState<Record<number, string>>({});
   const [payments, setPayments] = useState<CustomArtPaymentResponse[]>([]);
 
@@ -35,42 +37,52 @@ const AdminCustomArt: React.FC = () => {
   }, [status, type]);
 
   useEffect(() => { load(); }, [load]);
-  useEffect(() => () => {
-    if (referencePreview?.startsWith('blob:')) URL.revokeObjectURL(referencePreview);
-  }, [referencePreview]);
-  useEffect(() => () => {
-    if (evidencePreview?.startsWith('blob:')) URL.revokeObjectURL(evidencePreview);
-  }, [evidencePreview]);
+  useEffect(() => () => { ++detailSequence.current; }, []);
   useEffect(() => () => {
     Object.values(progressPreviews).filter((url) => url.startsWith('blob:')).forEach(URL.revokeObjectURL);
   }, [progressPreviews]);
 
-  const openDetail = async (id: number) => {
+  const openDetail = useCallback(async (id: number) => {
+    const sequence = ++detailSequence.current;
     try {
       const detail = await customArtService.getById(id);
-      const [reference, evidence, progressImages, paymentItems] = await Promise.all([
-        getAuthenticatedCustomArtFileUrl(detail.referenceImageUrl || detail.anhThamKhao),
-        getAuthenticatedCustomArtFileUrl(detail.bangChungQuyenSuDung),
+      if (sequence !== detailSequence.current) return;
+      const [progressImages, paymentItems] = await Promise.all([
         Promise.all((detail.progress || []).map(async (entry) => [
           entry.maTienDo,
           await getAuthenticatedCustomArtFileUrl(entry.anhPreview),
         ] as const)),
         customArtService.getPayments(id),
       ]);
+      if (sequence !== detailSequence.current) {
+        progressImages.forEach(([, url]) => { if (url?.startsWith('blob:')) URL.revokeObjectURL(url); });
+        return;
+      }
       setSelected(detail);
-      setReferencePreview(reference);
-      setEvidencePreview(evidence);
       setProgressPreviews(Object.fromEntries(progressImages.filter((entry): entry is readonly [number, string] => Boolean(entry[1]))));
       setPayments(paymentItems);
       setNote('');
     }
-    catch (error: any) { setMessage(error?.response?.data?.message || 'Không thể tải chi tiết.'); }
-  };
+    catch (error: any) {
+      if (sequence === detailSequence.current) setMessage(error?.response?.data?.message || 'Không thể tải chi tiết.');
+    }
+  }, []);
+
+  useEffect(() => {
+    const requestIds = new URLSearchParams(search).getAll('requestId');
+    if (!requestIds.length) return;
+    const id = Number(requestIds[0]);
+    if (requestIds.length !== 1 || !/^[1-9][0-9]*$/.test(requestIds[0]) || !Number.isSafeInteger(id) || id > 2147483647) {
+      setMessage('Liên kết yêu cầu vẽ tranh không hợp lệ.');
+      return;
+    }
+    void openDetail(id);
+    return () => { ++detailSequence.current; };
+  }, [search, openDetail]);
 
   const closeDetail = () => {
+    ++detailSequence.current;
     setSelected(null);
-    setReferencePreview(undefined);
-    setEvidencePreview(undefined);
     setProgressPreviews({});
     setPayments([]);
   };
@@ -145,24 +157,11 @@ const AdminCustomArt: React.FC = () => {
           <div className="commission-modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="commission-modal-header"><div><h2>{selected.tieuDe}</h2><span className="commission-badge">{getCustomArtStatusLabel(selected.trangThai)}</span></div><button className="commission-close" onClick={closeDetail}>×</button></div>
             <div className="commission-grid">
-              <Field label="Khách hàng" value={selected.tenKhachHang || `#${selected.maKhachHang}`} />
-              <Field label="Loại yêu cầu" value={getCustomArtTypeLabel(selected.type)} />
               <Field label="Họa sĩ thực hiện" value={selected.tenHoaSiThucHien || 'Chưa có'} />
-              <Field label="Ngân sách" value={formatVnd(selected.giaDuKien)} />
               <Field label="Báo giá đã chấp nhận" value={selected.quote?.trangThai === 'CustomerAccepted' ? formatVnd(selected.quote.giaBaoGia) : 'Chưa ghi nhận'} />
               <Field label="Mã TacPham nội bộ" value={selected.maTacPhamKetQua ? `#${selected.maTacPhamKetQua}` : '—'} />
             </div>
-            <Field label="Mô tả" value={selected.moTa || '—'} />
-            {selected.type === 'EXISTING_ARTWORK' && <div className="commission-source">
-              <h3>Thông tin tác phẩm gốc và quyền sử dụng</h3>
-              <Field label="Tác phẩm gốc" value={selected.referenceArtworkName || '—'} />
-              <Field label="Tác giả gốc" value={selected.referenceArtistName || '—'} />
-              <Field label="Nguồn" value={selected.nguonTacPhamGoc || '—'} />
-              <Field label="Tình trạng quyền" value={selected.tinhTrangQuyenSuDung || '—'} />
-              <Field label="Mô tả quyền" value={selected.moTaQuyenSuDung || '—'} />
-            </div>}
-            {referencePreview && <><h4>Ảnh tham khảo</h4><img className="commission-image" src={referencePreview} alt="Ảnh tham khảo" /></>}
-            {evidencePreview && <><h4>Bằng chứng quyền sử dụng</h4><a href={evidencePreview} target="_blank" rel="noreferrer">Mở bằng chứng</a></>}
+            <CustomArtRequirements key={selected.maYeuCau} request={selected} />
             {selected.trangThaiNoiBo === 'Completed' && <div className="commission-completed-summary">
               <h3>Yêu cầu đã hoàn thành</h3>
               <Field label="Ngày hoàn thành" value={finalProgress ? new Date(finalProgress.ngayTao).toLocaleString('vi-VN') : '—'} />

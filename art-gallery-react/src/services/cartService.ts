@@ -3,6 +3,10 @@ import apiClient from './api';
 import { CartItem } from '../types';
 
 export interface ChiTietGioHangResponse {
+  canSell?: boolean;
+  canCheckout?: boolean;
+  saleReason?: string;
+  saleMessage?: string;
   maChiTietGH: number;
   maTacPham: number;
   tenTacPham: string;
@@ -26,6 +30,7 @@ export const cartService = {
       const response = await apiClient.get<GioHangResponse>('/gio-hang');
       return response.data.danhSachSanPham.map(item => ({
         id: item.maTacPham.toString(),
+        canSell: item.canSell === true, canCheckout: item.canCheckout === true, saleReason: item.saleReason, saleMessage: item.saleMessage,
         dbId: item.maChiTietGH, // Lưu lại ID trong DB để cập nhật/xóa
         name: item.tenTacPham,
         price: Number(item.gia),

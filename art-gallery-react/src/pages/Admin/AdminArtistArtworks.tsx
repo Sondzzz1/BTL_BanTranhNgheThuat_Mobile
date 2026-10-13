@@ -74,7 +74,7 @@ const AdminArtistArtworks: React.FC = () => {
     const getStatusText = (status: number): string => {
         switch (status) {
             case 0: return 'Chờ duyệt';
-            case 1: return 'Đang bán';
+            case 1: return 'Đã duyệt nội dung';
             case 2: return 'Ẩn';
             case 3: return 'Từ chối';
             case 99: return 'Đã xóa';

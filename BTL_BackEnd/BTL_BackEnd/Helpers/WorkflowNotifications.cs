@@ -5,6 +5,14 @@ namespace DoAn2_BackEnd.Helpers;
 /// <summary>Plain-text workflow messages. Recipients and event revisions are resolved in the SQL transaction.</summary>
 public static class WorkflowNotifications
 {
+    public static ThongBao CustomArtClaimed(int id, string artist, string title) => new()
+    {
+        Loai = "CUSTOM_ART_CLAIMED", TieuDe = "Họa sĩ đã nhận yêu cầu vẽ tranh",
+        NoiDung = $"Họa sĩ {Text(artist, 150)} đã nhận yêu cầu vẽ tranh #{id} “{Text(title, 300)}”.",
+        LoaiDoiTuong = "YeuCauVeTranh", MaDoiTuong = id,
+        DuongDan = $"/admin/custom-art?requestId={id}", EventKey = "CUSTOM_ART_CLAIMED",
+    };
+
     public static ThongBao Submitted(string entity, int id, string type, string artist, string name, string action, string path) => new()
     {
         Loai = type, TieuDe = "Yêu cầu từ họa sĩ",

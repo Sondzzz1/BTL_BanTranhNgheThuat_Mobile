@@ -15,6 +15,7 @@ import { cartService } from '../../services/cartService';
 import { reviewService } from '../../services/reviewService';
 import { Product } from '../../types/product';
 import { formatVnd } from '../../utils/currency';
+import { canPurchase, saleMessage } from '../../utils/saleEligibility';
 import { Review, ProductReviewSummary } from '../../types/review';
 import Loading from '../../components/Loading';
 import ErrorMessage from '../../components/ErrorMessage';
@@ -277,8 +278,8 @@ export default function ProductDetailScreen({
   const handleAddToCart = async () => {
     if (!product) return;
 
-    if (product.soLuong === 0) {
-      Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
+    if (!canPurchase(product)) {
+      Alert.alert('Chưa mở bán', saleMessage(product));
       return;
     }
 
@@ -309,8 +310,8 @@ export default function ProductDetailScreen({
   const handleBuyNow = () => {
     if (!product) return;
 
-    if (product.soLuong === 0) {
-      Alert.alert('Thông báo', 'Sản phẩm đã hết hàng');
+    if (!canPurchase(product)) {
+      Alert.alert('Chưa mở bán', saleMessage(product));
       return;
     }
 
@@ -357,6 +358,7 @@ export default function ProductDetailScreen({
   }
 
   const isOutOfStock = product.soLuong === 0;
+  const canBuy = canPurchase(product);
   const isVerifiedExclusive = Boolean(
     product.laTacPhamDocBan
     && product.soLuongBanDau === 1
@@ -422,6 +424,7 @@ export default function ProductDetailScreen({
           )}
 
           <Text style={styles.price}>{formatPrice(product.gia)}</Text>
+          {!canBuy && <View style={styles.saleNotice} accessibilityRole="alert"><Text style={styles.saleNoticeText}>{saleMessage(product)}</Text></View>}
 
           {/* Details */}
           {product.moTa && (
@@ -654,7 +657,7 @@ export default function ProductDetailScreen({
       </ScrollView>
 
       {/* Bottom Bar - Buy Now & Add to Cart */}
-      {!isOutOfStock && (
+      {canBuy && (
         <View style={styles.bottomBar}>
           {/* Quantity Selector */}
           <View style={styles.quantityContainer}>
@@ -811,6 +814,8 @@ const styles = StyleSheet.create({
     color: '#2563eb',
     marginBottom: 24,
   },
+  saleNotice: { padding: 14, marginBottom: 24, borderRadius: 10, backgroundColor: '#fff7ed' },
+  saleNoticeText: { color: '#9a3412', lineHeight: 22, fontSize: 14 },
   section: {
     marginBottom: 24,
   },

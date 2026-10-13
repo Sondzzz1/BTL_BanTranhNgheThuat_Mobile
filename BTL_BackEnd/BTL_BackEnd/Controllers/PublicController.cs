@@ -346,13 +346,14 @@ public class PublicController : ControllerBase
                 cacTacPham.Add(new TacPhamCongKhaiResponse
                 {
                     MaTacPham = tp.MaTacPham,
+                    SaleEligibility = tp.SaleEligibility,
                     TenTacPham = tp.TenTacPham,
                     TenDanhMuc = tenDanhMuc,
                     Gia = tp.Gia,
                     HinhAnh = tp.HinhAnh,
                     KichThuoc = tp.KichThuoc,
                     ChatLieu = tp.ChatLieu,
-                    TrangThai = tp.SoLuong > 0 ? "available" : "sold"
+                    TrangThai = tp.SaleEligibility.CanSell ? "available" : tp.SoLuong <= 0 ? "sold" : "unavailable"
                 });
             }
 
@@ -492,7 +493,7 @@ public class NguonGocSangTaoResponse
     public string? MoTaNguonGoc { get; set; }
 }
 
-public class TacPhamCongKhaiResponse
+public class TacPhamCongKhaiResponse : ArtworkSaleResponse
 {
     public int MaTacPham { get; set; }
     public string TenTacPham { get; set; } = null!;

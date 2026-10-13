@@ -46,7 +46,8 @@ public class ArtworkContentWorkflowTests
         Task<int> Save(TacPham artwork) { saved = artwork; artwork.MaTacPham = 7; return Task.FromResult(7); }
         var artist = Business<HoaSiBusiness>(artworkRepo);
         await artist.TaoTacPham(3, new TaoTacPhamRequest { TenTacPham = "Hoa ly", Gia = 100,
-            SoLuong = 1, LaTacPhamDocBan = true, MoTa = " Tranh hoa ly... " });
+            SoLuong = 1, LaTacPhamDocBan = true, MoTa = " Tranh hoa ly... ",
+            CanCuSuDung = 1, XacNhanQuyenSuDung = true, KhaiBaoNguonGoc = "Tác giả tự sáng tác" });
         Assert.Equal("Tranh hoa ly...", saved!.MoTa);
         Assert.Equal(TacPhamStatus.PendingApproval, saved.TrangThai);
         var edits = Fake<ITacPhamChinhSuaRepository>((_, _) => Task.FromResult<TacPhamChinhSua?>(null));

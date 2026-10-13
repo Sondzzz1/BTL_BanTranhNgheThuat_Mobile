@@ -1,7 +1,6 @@
 // Artwork Detail Page - Chi tiết tác phẩm
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useAppContext } from '../context/AppContext';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
 import { artworkService } from '../services/artworkService';
@@ -22,7 +21,6 @@ const resolveContentImage = (value: string) => {
 const ArtworkDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { artworks } = useAppContext();
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
   const [artwork, setArtwork] = useState<Artwork | null>(null);
@@ -69,15 +67,8 @@ const ArtworkDetail: React.FC = () => {
 
     setLoading(true);
     try {
-      // Try to get from context first
-      const found = artworks.find(art => art.id === id);
-      if (found) {
-        setArtwork(found);
-      } else {
-        // Fetch from API
-        const data = await artworkService.getArtworkById(id);
-        setArtwork(data);
-      }
+      const data = await artworkService.getArtworkById(id);
+      setArtwork(data);
 
     } catch (error) {
       console.error('Error loading artwork:', error);
@@ -95,6 +86,7 @@ const ArtworkDetail: React.FC = () => {
     }
 
     if (!artwork) return;
+    if (artwork.canSell !== true) { alert(artwork.saleMessage || 'Tác phẩm hiện chưa đủ điều kiện mở bán.'); return; }
 
     const ok = await addToCart({
       id: artwork.id,
@@ -115,6 +107,7 @@ const ArtworkDetail: React.FC = () => {
     }
 
     if (!artwork) return;
+    if (artwork.canSell !== true) { alert(artwork.saleMessage || 'Tác phẩm hiện chưa đủ điều kiện mở bán.'); return; }
 
     const ok = await addToCart({
       id: artwork.id,
@@ -208,6 +201,7 @@ const ArtworkDetail: React.FC = () => {
             </div>
 
             <div className="stock-info">
+              {artwork.canSell !== true && <p role="status">{artwork.saleMessage || 'Tác phẩm hiện chưa đủ điều kiện mở bán.'}</p>}
               <span className={`stock-badge ${artwork.soLuongTon > 0 ? 'in-stock' : 'out-of-stock'}`}>
                 <i className={artwork.soLuongTon > 0 ? 'ti-check-box' : 'ti-alert'}></i>
                 {artwork.soLuongTon > 0 ? `Còn hàng: ${artwork.soLuongTon} tác phẩm` : 'Đã hết hàng'}
@@ -223,7 +217,7 @@ const ArtworkDetail: React.FC = () => {
                 <button 
                   className="qty-btn"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={artwork.soLuongTon === 0}
+                  disabled={artwork.canSell !== true || artwork.soLuongTon === 0}
                 >
                   -
                 </button>
@@ -241,7 +235,7 @@ const ArtworkDetail: React.FC = () => {
                   }}
                   min="1"
                   max={artwork.soLuongTon}
-                  disabled={artwork.soLuongTon === 0}
+                  disabled={artwork.canSell !== true || artwork.soLuongTon === 0}
                 />
                 <button 
                   className="qty-btn"
@@ -252,7 +246,7 @@ const ArtworkDetail: React.FC = () => {
                       setQuantity(quantity + 1);
                     }
                   }}
-                  disabled={artwork.soLuongTon === 0 || quantity >= artwork.soLuongTon}
+                  disabled={artwork.canSell !== true || artwork.soLuongTon === 0 || quantity >= artwork.soLuongTon}
                 >
                   +
                 </button>
@@ -263,14 +257,14 @@ const ArtworkDetail: React.FC = () => {
               <button 
                 className="btn-buy-main" 
                 onClick={handleBuyNow}
-                disabled={artwork.soLuongTon === 0}
+                disabled={artwork.canSell !== true || artwork.soLuongTon === 0}
               >
                 {artwork.soLuongTon > 0 ? 'Mua ngay' : 'Đã hết hàng'}
               </button>
               <button 
                 className="btn-add-cart" 
                 onClick={handleAddToCart}
-                disabled={artwork.soLuongTon === 0}
+                disabled={artwork.canSell !== true || artwork.soLuongTon === 0}
               >
                 Thêm vào giỏ hàng
               </button>

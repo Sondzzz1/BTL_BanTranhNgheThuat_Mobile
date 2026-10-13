@@ -1,5 +1,73 @@
 /* Artist Artworks Styles */
 
+/* Keep row actions together; only this artist page overrides the shared admin table. */
+#art.artist-artworks-page .artist-artworks-table-container {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+#art.artist-artworks-page .art-table {
+  min-width: 1280px;
+}
+
+#art.artist-artworks-page .art-table th,
+#art.artist-artworks-page .art-table td {
+  vertical-align: middle;
+}
+
+#art.artist-artworks-page .artist-artwork-actions-heading,
+#art.artist-artworks-page .artist-artwork-actions-cell {
+  min-width: 344px;
+  width: 344px;
+  white-space: nowrap;
+}
+
+#art.artist-artworks-page .artwork-row-actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+#art.artist-artworks-page .art-table .artwork-row-action {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-sizing: border-box;
+  width: 36px;
+  height: 36px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+
+#art.artist-artworks-page .art-table .artwork-row-action i { font-size: 15px; }
+#art.artist-artworks-page .art-table .artwork-row-action-content { width: auto; padding: 0 10px; background: #7e22ce; color: #fff; }
+#art.artist-artworks-page .art-table .artwork-row-action-content:hover { background: #6b21a8; }
+#art.artist-artworks-page .art-table .artwork-row-action-view { background: #2563eb; color: #fff; }
+#art.artist-artworks-page .art-table .artwork-row-action-view:hover { background: #1d4ed8; }
+#art.artist-artworks-page .art-table .artwork-row-action-rights { background: #166534; color: #fff; }
+#art.artist-artworks-page .art-table .artwork-row-action-rights:hover { background: #14532d; }
+#art.artist-artworks-page .art-table .artwork-row-action-edit,
+#art.artist-artworks-page .art-table .artwork-row-action-resubmit { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+#art.artist-artworks-page .art-table .artwork-row-action-edit:hover,
+#art.artist-artworks-page .art-table .artwork-row-action-resubmit:hover { background: #fef3c7; border-color: #f59e0b; }
+#art.artist-artworks-page .art-table .artwork-row-action-delete { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+#art.artist-artworks-page .art-table .artwork-row-action-delete:hover { background: #fee2e2; border-color: #f87171; }
+#art.artist-artworks-page .art-table .artwork-row-action:focus-visible,
+#art.artist-artworks-page .artist-artworks-table-container:focus-visible { outline: 3px solid #93c5fd; outline-offset: 3px; }
+
 .admin-content {
   padding: 24px;
 }

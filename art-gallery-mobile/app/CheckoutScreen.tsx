@@ -15,6 +15,7 @@ import { orderService } from '../services/orderService';
 import { customerService } from '../services/customerService';
 import { productService } from '../services/productService';
 import { Cart } from '../types/cart';
+import { canPurchase, canCheckoutItem, saleMessage } from '../utils/saleEligibility';
 import Loading from '../components/Loading';
 import { formatVnd } from '../utils/currency';
 
@@ -56,6 +57,7 @@ export default function CheckoutScreen({ navigation, route }: CheckoutScreenProp
 
       if (mode === 'buyNow') {
         const product = orderData as Awaited<ReturnType<typeof productService.getProductById>>;
+        if (!canPurchase(product)) throw new Error(saleMessage(product));
         if (!buyNowProductId || buyNowQuantity <= 0 || buyNowQuantity > product.soLuong) {
           throw new Error('Sản phẩm đã hết hoặc không đủ tồn kho');
         }
@@ -72,6 +74,7 @@ export default function CheckoutScreen({ navigation, route }: CheckoutScreenProp
             thanhTien: product.gia * buyNowQuantity,
             hinhAnh: product.hinhAnh,
             soLuongTon: product.soLuong,
+            canSell: product.canSell, canCheckout: true, saleReason: product.saleReason, saleMessage: product.saleMessage,
           }],
         });
       } else {
@@ -80,6 +83,8 @@ export default function CheckoutScreen({ navigation, route }: CheckoutScreenProp
         if (selected.length !== cartItemIds.length || selected.length === 0) {
           throw new Error('Các sản phẩm đã chọn không còn hợp lệ trong giỏ hàng');
         }
+        const unavailable = selected.find(item => !canCheckoutItem(item));
+        if (unavailable) throw new Error(`${unavailable.tenTacPham}: ${saleMessage(unavailable)}`);
         setCart({
           ...fullCart,
           danhSachSanPham: selected,
@@ -141,6 +146,11 @@ export default function CheckoutScreen({ navigation, route }: CheckoutScreenProp
     const items = cart?.danhSachSanPham || [];
     if (items.length === 0) {
       Alert.alert('Lỗi', 'Giỏ hàng trống');
+      return;
+    }
+
+    if (items.some(item => !canCheckoutItem(item))) {
+      Alert.alert('Không thể đặt hàng', 'Có tác phẩm không còn khả dụng. Vui lòng tải lại giỏ hàng.');
       return;
     }
 
