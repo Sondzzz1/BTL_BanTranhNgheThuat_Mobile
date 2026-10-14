@@ -3,10 +3,12 @@ import { adminService, DonHangAdminResponse, DonHangResponse } from '../../servi
 import { formatVnd } from '../../utils/currency';
 import { invoiceService } from '../../services/invoiceService';
 import InvoiceModal from '../../components/InvoiceModal';
+import { requireAdminList } from '../../utils/adminListResponse';
 
 const AdminOrders: React.FC = () => {
     const [orders, setOrders] = useState<DonHangAdminResponse[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [statusFilter, setStatusFilter] = useState<number>(-1);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedOrder, setSelectedOrder] = useState<DonHangResponse | null>(null);
@@ -22,12 +24,14 @@ const AdminOrders: React.FC = () => {
 
     const loadOrders = async () => {
         setLoading(true);
+        setLoadError('');
         try {
             const data = await adminService.getOrders();
-            setOrders(data);
-        } catch (error) {
+            setOrders(requireAdminList<DonHangAdminResponse>(data));
+        } catch (error: any) {
             console.error('Error loading orders:', error);
-            alert('Không thể tải danh sách đơn hàng');
+            setOrders([]);
+            setLoadError(error?.response?.data?.message || error?.message || 'Không thể tải danh sách đơn hàng');
         } finally {
             setLoading(false);
         }
@@ -237,6 +241,11 @@ const AdminOrders: React.FC = () => {
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
                     <p>Đang tải dữ liệu...</p>
+                </div>
+            ) : loadError ? (
+                <div role="alert" style={{ padding: '20px', color: '#991b1b', background: '#fff1f2', borderRadius: '8px' }}>
+                    <p>{loadError}</p>
+                    <button type="button" className="btn-refresh" onClick={loadOrders}>Thử lại</button>
                 </div>
             ) : filteredOrders.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>

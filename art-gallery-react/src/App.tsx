@@ -9,9 +9,6 @@ import Login from './pages/Login';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import ChangePassword from './pages/ChangePassword';
-import TestPage from './pages/TestPage';
-import ApiTest from './pages/ApiTest';
-import TestAuth from './pages/TestAuth';
 import News from './pages/News';
 import Contact from './pages/Contact';
 import About from './pages/About';
@@ -40,8 +37,6 @@ import AdminNotifications from './pages/Admin/AdminNotifications';
 import CertificateVerify from './pages/CertificateVerify';
 
 import AdminAuthorRevenue from './pages/Admin/AdminAuthorRevenue';
-import AdminApiTest from './pages/Admin/AdminApiTest';
-import TestEditsAPI from './pages/Admin/TestEditsAPI';
 import ArtistLayout from './pages/Artist/ArtistLayout';
 import ArtistDashboard from './pages/Artist/ArtistDashboard';
 import ArtistProfile from './pages/Artist/ArtistProfile';
@@ -58,7 +53,6 @@ import UserProfile from './pages/User/UserProfile';
 import UserOrders from './pages/User/UserOrders';
 import UserOrderDetail from './pages/User/UserOrderDetail';
 import UserFavorites from './pages/User/UserFavorites';
-import FavoriteTest from './pages/FavoriteTest';
 import ScrollToTop from './components/ScrollToTop';
 import PlaceholderPage from './pages/PlaceholderPage';
 import './App.css';
@@ -111,8 +105,6 @@ function App() {
               <Route path="certificates" element={<AdminCertificates />} />
               <Route path="copyright-audit" element={<AdminCopyrightAudit />} />
               <Route path="notifications" element={<AdminNotifications />} />
-              <Route path="api-test" element={<AdminApiTest />} />
-              <Route path="test-edits" element={<TestEditsAPI />} />
             </Route>
 
             {/* Artist Routes - GIỮ LẠI */}
@@ -132,12 +124,6 @@ function App() {
 
             {/* ===== CUSTOMER ROUTES - TẮT (Dùng Mobile App) ===== */}
             {/* Uncomment các routes dưới nếu muốn bật lại phần Customer */}
-            
-            {/* Test Routes - CHỈ DEV */}
-            {/* <Route path="/test" element={<TestPage />} /> */}
-            {/* <Route path="/api-test" element={<ApiTest />} /> */}
-            {/* <Route path="/test-auth" element={<TestAuth />} /> */}
-            {/* <Route path="/favorite-test" element={<FavoriteTest />} /> */}
             
             {/* Public Customer Routes - TẮT */}
             {/* <Route path="/" element={<Layout><Home /></Layout>} /> */}

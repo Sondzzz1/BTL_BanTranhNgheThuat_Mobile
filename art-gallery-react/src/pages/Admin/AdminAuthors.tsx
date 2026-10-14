@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService, HoSoHoaSiResponse, TacPhamHoaSiResponse } from '../../services/adminService';
 import { formatVnd } from '../../utils/currency';
+import { requireAdminList } from '../../utils/adminListResponse';
 
 interface CreateForm {
     tenDangNhap: string;
@@ -27,6 +28,7 @@ const AdminAuthors: React.FC = () => {
     const navigate = useNavigate();
     const [authors, setAuthors] = useState<HoSoHoaSiResponse[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form, setForm] = useState<CreateForm>(emptyForm);
     const [formError, setFormError] = useState('');
@@ -44,12 +46,14 @@ const AdminAuthors: React.FC = () => {
 
     const loadAuthors = async () => {
         setLoading(true);
+        setLoadError('');
         try {
             const data = await adminService.getAllHoaSi();
-            setAuthors(data);
-        } catch (error) {
+            setAuthors(requireAdminList<HoSoHoaSiResponse>(data));
+        } catch (error: any) {
             console.error('Lỗi khi tải tác giả:', error);
-            alert('Không thể tải danh sách tác giả');
+            setAuthors([]);
+            setLoadError(error?.response?.data?.message || error?.message || 'Không thể tải danh sách tác giả');
         } finally {
             setLoading(false);
         }
@@ -154,6 +158,11 @@ const AdminAuthors: React.FC = () => {
 
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '20px' }}>Đang tải dữ liệu...</div>
+            ) : loadError ? (
+                <div role="alert" style={{ padding: 20, color: '#991b1b', background: '#fff1f2', borderRadius: 8 }}>
+                    <p>{loadError}</p>
+                    <button type="button" className="btn-refresh" onClick={loadAuthors}>Thử lại</button>
+                </div>
             ) : authors.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px' }}>Chưa có tác giả nào.</div>
             ) : (

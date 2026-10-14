@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { customerService, ThongTinKhachHangResponse } from '../../services/customerService';
 import { adminService } from '../../services/adminService';
+import { requireAdminList } from '../../utils/adminListResponse';
 
 const AdminCustomers: React.FC = () => {
     const [customers, setCustomers] = useState<ThongTinKhachHangResponse[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
     const [keyword, setKeyword] = useState('');
 
     useEffect(() => {
@@ -13,12 +15,14 @@ const AdminCustomers: React.FC = () => {
 
     const loadCustomers = async () => {
         setLoading(true);
+        setLoadError('');
         try {
             const data = await customerService.getAllCustomers();
-            setCustomers(data);
-        } catch (error) {
+            setCustomers(requireAdminList<ThongTinKhachHangResponse>(data));
+        } catch (error: any) {
             console.error('Error loading customers:', error);
-            alert('Không thể tải danh sách khách hàng');
+            setCustomers([]);
+            setLoadError(error?.response?.data?.message || error?.message || 'Không thể tải danh sách khách hàng');
         } finally {
             setLoading(false);
         }
@@ -75,6 +79,11 @@ const AdminCustomers: React.FC = () => {
             {loading ? (
                 <div style={{ textAlign: 'center', padding: 40 }}>
                     <p>Đang tải dữ liệu...</p>
+                </div>
+            ) : loadError ? (
+                <div role="alert" style={{ padding: 20, color: '#991b1b', background: '#fff1f2', borderRadius: 8 }}>
+                    <p>{loadError}</p>
+                    <button type="button" className="btn-refresh" onClick={loadCustomers}>Thử lại</button>
                 </div>
             ) : filtered.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: 40 }}>
